@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+import re
 from typing import Literal
 
 from fastapi import APIRouter, Depends, Request
@@ -71,6 +72,34 @@ def _version_for_user(db: Session, version_id: int, user: User, draft_required: 
     return version
 
 
+def _evidence_excerpt(db: Session, chunk: ResourceChunk, limit: int = 600) -> str:
+    """Show readable evidence: remove stored overlap and stop at a sentence boundary."""
+    text = (chunk.text or "").strip()
+    previous = db.scalar(select(ResourceChunk).where(
+        ResourceChunk.resource_id == chunk.resource_id,
+        ResourceChunk.position == chunk.position - 1,
+    )) if chunk.position > 0 else None
+    if previous and text:
+        previous_text = (previous.text or "").rstrip()
+        maximum = min(1000, len(previous_text), len(text))
+        for size in range(maximum, 15, -1):
+            if previous_text[-size:] == text[:size]:
+                text = text[size:].lstrip()
+                break
+
+    text = re.sub(r"[ \t]+", " ", text).strip()
+    if len(text) <= limit:
+        return text
+    lower = max(1, limit // 2)
+    boundaries = [text.rfind(mark, lower, limit) for mark in ("。", "！", "？", ". ", "! ", "? ", "\n")]
+    end = max(boundaries)
+    if end < lower:
+        forward = [position for mark in ("。", "！", "？", ". ", "! ", "? ", "\n")
+                   if 0 <= (position := text.find(mark, limit, min(len(text), limit + 180)))]
+        end = min(forward) if forward else limit - 1
+    return text[:end + 1].rstrip() + "……"
+
+
 def _evidence_view(db: Session, *, node_id: int | None = None, edge_id: int | None = None) -> list[dict]:
     query = (select(CourseMapEvidence, ResourceChunk, CourseResource)
              .join(ResourceChunk, ResourceChunk.id == CourseMapEvidence.chunk_id)
@@ -81,7 +110,7 @@ def _evidence_view(db: Session, *, node_id: int | None = None, edge_id: int | No
         "chunk_id": chunk.id, "resource_id": resource.id, "title": resource.title,
         "position": chunk.position, "heading_path": chunk.heading_path,
         "page_number": chunk.page_number, "slide_number": chunk.slide_number,
-        "excerpt": chunk.text[:600],
+        "excerpt": _evidence_excerpt(db, chunk),
     } for _, chunk, resource in db.execute(query).all()]
 
 

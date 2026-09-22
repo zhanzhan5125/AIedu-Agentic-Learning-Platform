@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from app.ai.contracts import CourseMapDraft
+
 
 def _login(client, role: str, account: str) -> str:
     response = client.post("/api/v1/auth/login", json={
@@ -40,3 +42,22 @@ def test_ai_provider_probes_return_sanitized_results(client, monkeypatch):
     assert chat.status_code == embedding.status_code == 200
     assert chat.json()["data"]["content"] == "ping"
     assert embedding.json()["data"]["dimensions"] == 3072
+
+
+def test_course_map_confidence_is_clamped_to_contract_range():
+    value = CourseMapDraft.model_validate({
+        "title": "测试路线",
+        "nodes": [{
+            "node_key": "intro", "name": "课程导论", "confidence": -1,
+            "evidence_chunk_ids": [1],
+        }, {
+            "node_key": "practice", "name": "课程实践", "confidence": 120,
+            "evidence_chunk_ids": [2],
+        }],
+        "edges": [{
+            "source_key": "intro", "target_key": "practice", "relation_type": "next",
+            "confidence": -1, "evidence_chunk_ids": [1],
+        }],
+    })
+    assert [node.confidence for node in value.nodes] == [0, 100]
+    assert value.edges[0].confidence == 0

@@ -55,6 +55,12 @@ $env:AIEDU_MAX_UPLOAD_BYTES = '10485760'
 # Local infrastructure must never be routed through a Windows/system proxy.
 # urllib/httpx also consult the Windows proxy registry when HTTP_PROXY is absent.
 $localNoProxy = @('localhost', '127.0.0.1', '::1')
+try {
+    $aiProviderHost = ([Uri]$env:AIEDU_AI_BASE_URL).Host
+    if ($aiProviderHost) { $localNoProxy += $aiProviderHost }
+} catch {
+    # Settings validation will report an invalid provider URL with more context.
+}
 $existingNoProxy = @($env:NO_PROXY -split ',' | ForEach-Object { $_.Trim() } | Where-Object { $_ })
 $env:NO_PROXY = (@($existingNoProxy + $localNoProxy) | Select-Object -Unique) -join ','
 $env:UV_PYTHON_INSTALL_DIR = 'D:\applications\aiedu-runtimes\python'

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 AgentName = Literal[
@@ -122,6 +122,11 @@ class CourseMapNodeDraft(BaseModel):
     confidence: int = Field(default=0, ge=0, le=100)
     evidence_chunk_ids: list[int] = Field(default_factory=list, max_length=20)
 
+    @field_validator("confidence", mode="before")
+    @classmethod
+    def clamp_confidence(cls, value):
+        return max(0, min(100, int(value or 0)))
+
 
 class CourseMapEdgeDraft(BaseModel):
     source_key: str
@@ -129,6 +134,11 @@ class CourseMapEdgeDraft(BaseModel):
     relation_type: Literal["contains", "next", "related"]
     confidence: int = Field(default=0, ge=0, le=100)
     evidence_chunk_ids: list[int] = Field(default_factory=list, max_length=20)
+
+    @field_validator("confidence", mode="before")
+    @classmethod
+    def clamp_confidence(cls, value):
+        return max(0, min(100, int(value or 0)))
 
 
 class CourseMapDraft(BaseModel):

@@ -325,7 +325,7 @@ def _course_map_materials(db, offering_id: int, resource_ids: list[int]) -> tupl
         "source_role": "outline" if resource.resource_type == "syllabus" else "supporting",
         "heading_path": chunk.heading_path, "page_number": chunk.page_number,
         "slide_number": chunk.slide_number, "position": chunk.position,
-        "text": chunk.text[:2500],
+        "text": chunk.text,
     } for chunk, resource in selected_pairs]
     strategy = {
         "mode": mode,
@@ -348,7 +348,7 @@ def execute_tools(state: WorkflowState) -> WorkflowState:
         if state["kind"] == "assignment.draft" and offering_id:
             brief, delegations = _course_brief(db, offering_id, query, include_class=True)
             tools["course_context"] = brief
-        elif offering_id:
+        elif offering_id and state["kind"] != "course_map.generate":
             tools["citations"] = _citations(search_course(offering_id, query, limit=6, db=db))
         if state["kind"] == "practice.generate" and offering_id and state.get("owner_id"):
             profile = profile_view(db, int(state["owner_id"]), offering_id)
