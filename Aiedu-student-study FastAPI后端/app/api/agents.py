@@ -15,6 +15,9 @@ from app.models import (
     AgentRun,
     AgentRunStep,
     Assignment,
+    CourseMapEdge,
+    CourseMapNode,
+    CourseMapVersion,
     CourseOffering,
     Enrollment,
     JobStatus,
@@ -69,16 +72,63 @@ def generate_assignment_draft(offering_id: int, payload: AssignmentDraftRequest,
         raise AppError(429, "出题任务过于频繁，请稍后再试")
     offering = offering_for_user(db, offering_id, user)
     ids = set(payload.knowledge_point_ids)
+    selected_node_ids = set(payload.course_map_node_ids)
+    selected_chapter_names: list[str] = []
+    if selected_node_ids:
+        selected_nodes = db.scalars(select(CourseMapNode).join(
+            CourseMapVersion, CourseMapVersion.id == CourseMapNode.version_id
+        ).where(
+            CourseMapNode.id.in_(selected_node_ids),
+            CourseMapVersion.offering_id == offering_id,
+            CourseMapVersion.status == "published",
+        )).all()
+        if {node.id for node in selected_nodes} != selected_node_ids:
+            raise Conflict("包含未发布或不属于该教学班的课程路线章节")
+        version_ids = {node.version_id for node in selected_nodes}
+        if len(version_ids) != 1:
+            raise Conflict("所选章节必须来自同一个已发布课程路线版本")
+        version_id = next(iter(version_ids))
+        all_nodes = db.scalars(select(CourseMapNode).where(
+            CourseMapNode.version_id == version_id
+        )).all()
+        nodes_by_id = {node.id: node for node in all_nodes}
+        children: dict[int, set[int]] = {}
+        for edge in db.scalars(select(CourseMapEdge).where(
+            CourseMapEdge.version_id == version_id,
+            CourseMapEdge.relation_type == "contains",
+        )).all():
+            children.setdefault(edge.source_node_id, set()).add(edge.target_node_id)
+        expanded_node_ids: set[int] = set()
+        for node in selected_nodes:
+            selected_chapter_names.append(node.name)
+            pending = list(children.get(node.id, set()))
+            descendants: set[int] = set()
+            while pending:
+                current = pending.pop()
+                if current in descendants:
+                    continue
+                descendants.add(current)
+                pending.extend(children.get(current, set()))
+            expanded_node_ids.update(descendants or {node.id})
+        ids.update(nodes_by_id[node_id].knowledge_point_id for node_id in expanded_node_ids
+                   if node_id in nodes_by_id and nodes_by_id[node_id].knowledge_point_id)
     if ids:
         valid = set(db.scalars(select(KnowledgePoint.id).where(
             KnowledgePoint.course_id == offering.course_id, KnowledgePoint.id.in_(ids)
         )).all())
         if valid != ids:
             raise Conflict("包含不属于该课程的知识点")
+    input_data = payload.model_dump(exclude={"idempotency_key"})
+    input_data["knowledge_point_ids"] = sorted(ids)
+    input_data["selected_chapter_names"] = selected_chapter_names
+    if ids:
+        input_data["selected_knowledge_point_names"] = list(db.scalars(select(KnowledgePoint.name).where(
+            KnowledgePoint.id.in_(ids)
+        )).all())
     job, run = queue_agent(
         db, kind="assignment.draft", resource_type="offering", resource_id=offering_id,
         owner=user, idempotency_key=payload.idempotency_key,
-        input_data=payload.model_dump(exclude={"idempotency_key"}),
+        input_data=input_data,
     )
     db.commit()
     return ok({"job_id": job.id, "agent_run_id": run.id, "status": job.status.value}, request.state.request_id)

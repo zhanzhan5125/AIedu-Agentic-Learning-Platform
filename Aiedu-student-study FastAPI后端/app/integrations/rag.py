@@ -529,6 +529,73 @@ def search_course(
             session.close()
 
 
+def search_course_supporting(
+    offering_id: int, query: str, limit: int = 4, db: Session | None = None,
+    resource_ids: Sequence[int] | None = None,
+) -> list[dict]:
+    """Retrieve a small, chapter-specific set from textbook/courseware only.
+
+    Course-map generation deliberately uses lexical retrieval here. The resources
+    have already been embedded during indexing, while this local lookup avoids one
+    extra embedding request per chapter and keeps route generation bounded.
+    """
+    from app.db import SessionLocal
+    from app.models import CourseResource, ProcessingStatus, ResourceChunk
+
+    owns_session = db is None
+    session = db or SessionLocal()
+    try:
+        statement = (
+            select(ResourceChunk, CourseResource)
+            .join(CourseResource, CourseResource.id == ResourceChunk.resource_id)
+            .where(
+                ResourceChunk.offering_id == offering_id,
+                CourseResource.deleted_at.is_(None),
+                CourseResource.processing_status == ProcessingStatus.ready,
+                CourseResource.resource_type.in_(["textbook", "courseware"]),
+            )
+            .order_by(ResourceChunk.id)
+        )
+        if resource_ids:
+            statement = statement.where(CourseResource.id.in_(list(resource_ids)))
+        rows = session.execute(statement).all()
+        query_tokens = _tokenize(query)
+        if not rows or not query_tokens:
+            return []
+
+        documents = [_tokenize(chunk.text) for chunk, _ in rows]
+        document_frequency: Counter[str] = Counter()
+        for tokens in documents:
+            document_frequency.update(set(tokens))
+        average_length = sum(len(tokens) for tokens in documents) / max(1, len(documents))
+        scored: list[tuple[float, Any, Any]] = []
+        for (chunk, resource), tokens in zip(rows, documents, strict=True):
+            frequencies = Counter(tokens)
+            score = 0.0
+            for token in query_tokens:
+                frequency = frequencies[token]
+                if not frequency:
+                    continue
+                idf = math.log(
+                    1 + (len(documents) - document_frequency[token] + 0.5) /
+                    (document_frequency[token] + 0.5)
+                )
+                denominator = frequency + 1.5 * (
+                    1 - 0.75 + 0.75 * len(tokens) / max(1, average_length)
+                )
+                score += idf * frequency * 2.5 / denominator
+            if score > 0:
+                scored.append((score, chunk, resource))
+        scored.sort(key=lambda item: item[0], reverse=True)
+        return [{
+            **_chunk_result(chunk, resource.title, round(score, 4), "bm25_support"),
+            "resource_type": resource.resource_type,
+        } for score, chunk, resource in scored[:limit]]
+    finally:
+        if owns_session:
+            session.close()
+
+
 def delete_resource_vectors(resource_id: int) -> None:
     from qdrant_client import models
 

@@ -10,14 +10,14 @@ from sqlalchemy import select
 
 from app.ai.contracts import (
     AgentPlan, AssignmentDraftResult, AssignmentQuestionDraft, Citation,
-    CourseContextBrief, CourseMapDraft, CourseMapEdgeDraft, CourseMapNodeDraft,
-    GradingSuggestion, GradeSuggestionItem, PlanStep,
+    ChapterKnowledgeBatch, CourseChapterPlan, CourseContextBrief, CourseMapDraft,
+    CourseMapEdgeDraft, CourseMapNodeDraft, GradingSuggestion, GradeSuggestionItem, PlanStep,
     StudentLearningBrief, ValidationResult,
 )
 from app.core.config import get_settings
 from app.db import SessionLocal
 from app.integrations.ai_provider import structured_completion
-from app.integrations.rag import search_course
+from app.integrations.rag import search_course, search_course_supporting
 from app.models import (
     Answer, Assignment, AssignmentQuestion, Course, CourseOffering,
     CourseResource, KnowledgePoint, ProcessingStatus, Question, ResourceChunk, Submission,
@@ -157,6 +157,13 @@ def make_plan(state: WorkflowState) -> WorkflowState:
             PlanStep(id="2", action="检索相关课程资料", tool="search_course_materials", reason="题目需要课程依据"),
             PlanStep(id="3", action="生成个性化练习并校验", tool="create_practice_session", reason="生成可直接进入练习会话的结构化内容"),
         ]
+    elif kind == "course_map.generate":
+        steps = [
+            PlanStep(id="1", action="从教学大纲提取章节骨架", tool="get_course_resources", reason="章节范围和顺序应由大纲决定"),
+            PlanStep(id="2", action="按章节检索教材和课件", tool="search_course_materials", reason="只取与当前章节相关的辅助内容"),
+            PlanStep(id="3", action="分批生成章节知识点", tool=None, reason="形成可教学、可出题的两级路线"),
+            PlanStep(id="4", action="校验章节层级和知识点数量", tool="validate_course_map", reason="确保发布后可直接用于章节选题"),
+        ]
     else:
         steps = [
             PlanStep(id="1", action="读取业务上下文", tool="get_course_resources", reason="确认任务范围"),
@@ -238,7 +245,7 @@ def _student_brief(profile: dict) -> dict:
 
 
 COURSE_MAP_SYLLABUS_LIMIT = 72
-COURSE_MAP_SUPPORT_LIMIT = 32
+COURSE_MAP_SUPPORT_LIMIT = 20
 COURSE_MAP_INFERRED_LIMIT = 96
 
 
@@ -259,6 +266,16 @@ def _sample_evenly(items: list[Any], limit: int) -> list[Any]:
         return items[:limit]
     indexes = [round(index * (len(items) - 1) / (limit - 1)) for index in range(limit)]
     return [items[index] for index in indexes]
+
+
+def _course_map_prompt_text(text: str, limit: int = 1400) -> str:
+    value = re.sub(r"[ \t]+", " ", text or "").strip()
+    if len(value) <= limit:
+        return value
+    lower = limit // 2
+    boundaries = [value.rfind(mark, lower, limit) for mark in ("。", "！", "？", ". ", "\n")]
+    end = max(boundaries)
+    return value[:(end + 1 if end >= lower else limit)].rstrip() + "……"
 
 
 def _take_balanced(groups: list[list[Any]], limit: int) -> list[Any]:
@@ -325,7 +342,7 @@ def _course_map_materials(db, offering_id: int, resource_ids: list[int]) -> tupl
         "source_role": "outline" if resource.resource_type == "syllabus" else "supporting",
         "heading_path": chunk.heading_path, "page_number": chunk.page_number,
         "slide_number": chunk.slide_number, "position": chunk.position,
-        "text": chunk.text,
+        "text": _course_map_prompt_text(chunk.text),
     } for chunk, resource in selected_pairs]
     strategy = {
         "mode": mode,
@@ -343,7 +360,11 @@ def execute_tools(state: WorkflowState) -> WorkflowState:
     tools: dict[str, Any] = {}
     delegations: list[dict[str, Any]] = []
     offering_id = state.get("offering_id")
-    query = " ".join(state.get("input_data", {}).get("keywords") or []) or state.get("prompt") or "课程核心知识点"
+    input_data = state.get("input_data", {})
+    query_terms = (input_data.get("keywords") or
+                   input_data.get("selected_knowledge_point_names") or
+                   input_data.get("selected_chapter_names") or [])
+    query = " ".join(query_terms) or state.get("prompt") or "课程核心知识点"
     with SessionLocal() as db:
         if state["kind"] == "assignment.draft" and offering_id:
             brief, delegations = _course_brief(db, offering_id, query, include_class=True)
@@ -458,30 +479,315 @@ def _fallback_course_map(state: WorkflowState) -> CourseMapDraft:
     strategy = state.get("tool_results", {}).get("course_map_strategy", {})
     outline_chunks = [chunk for chunk in chunks if chunk.get("source_role") == "outline"]
     backbone_chunks = outline_chunks or chunks
-    grouped: dict[str, list[dict]] = {}
+    grouped: dict[str, dict[str, list[dict]]] = {}
     for chunk in backbone_chunks:
-        heading = (chunk.get("heading_path") or "").split(" > ")[-1].strip()
-        if not heading:
-            heading = (chunk.get("text") or "课程知识点").splitlines()[0][:40]
-        grouped.setdefault(heading, []).append(chunk)
-    nodes = []
-    for index, (heading, evidence) in enumerate(list(grouped.items())[:30], 1):
-        nodes.append(CourseMapNodeDraft(
-            node_key=f"node-{index}", name=heading,
-            description=(evidence[0].get("text") or "")[:500], position=index,
-            confidence=70, evidence_chunk_ids=[item["chunk_id"] for item in evidence[:5]],
-        ))
-    edges = [CourseMapEdgeDraft(
-        source_key=nodes[index - 1].node_key, target_key=nodes[index].node_key,
+        path = [value.strip() for value in (chunk.get("heading_path") or "").split(" > ")
+                if value.strip()]
+        fallback_name = (chunk.get("text") or "课程知识点").splitlines()[0][:40]
+        chapter_name = path[0] if len(path) > 1 else (path[0] if path else fallback_name)
+        point_name = path[-1] if len(path) > 1 else f"{chapter_name}核心知识"
+        grouped.setdefault(chapter_name, {}).setdefault(point_name, []).append(chunk)
+    nodes: list[CourseMapNodeDraft] = []
+    edges: list[CourseMapEdgeDraft] = []
+    chapter_nodes: list[CourseMapNodeDraft] = []
+    position = 1
+    for chapter_index, (chapter_name, points) in enumerate(list(grouped.items())[:15], 1):
+        normalized_points = list(points.items())[:4]
+        if len(normalized_points) < 2:
+            evidence = normalized_points[0][1] if normalized_points else []
+            existing_names = {name for name, _ in normalized_points}
+            for suffix in ("基础概念", "实践应用"):
+                name = f"{chapter_name}{suffix}"
+                if name not in existing_names:
+                    normalized_points.append((name, evidence))
+                if len(normalized_points) >= 2:
+                    break
+        chapter_evidence = [item for values in points.values() for item in values]
+        chapter = CourseMapNodeDraft(
+            node_key=f"chapter-{chapter_index}", name=chapter_name,
+            description=f"{chapter_name}章节概要，包含 {len(normalized_points)} 个知识点。", position=position,
+            confidence=70, evidence_chunk_ids=[item["chunk_id"] for item in chapter_evidence[:5]],
+        )
+        nodes.append(chapter)
+        chapter_nodes.append(chapter)
+        position += 1
+        for point_index, (point_name, evidence) in enumerate(normalized_points, 1):
+            point = CourseMapNodeDraft(
+                node_key=f"kp-{chapter_index}-{point_index}", name=point_name,
+                description=(evidence[0].get("text") or "")[:500], position=position,
+                confidence=65, evidence_chunk_ids=[item["chunk_id"] for item in evidence[:5]],
+            )
+            nodes.append(point)
+            position += 1
+            edges.append(CourseMapEdgeDraft(
+                source_key=chapter.node_key, target_key=point.node_key,
+                relation_type="contains", confidence=70,
+                evidence_chunk_ids=point.evidence_chunk_ids[:2],
+            ))
+    edges.extend(CourseMapEdgeDraft(
+        source_key=chapter_nodes[index - 1].node_key, target_key=chapter_nodes[index].node_key,
         relation_type="next", confidence=60,
-        evidence_chunk_ids=nodes[index].evidence_chunk_ids[:2],
-    ) for index in range(1, len(nodes))]
+        evidence_chunk_ids=chapter_nodes[index].evidence_chunk_ids[:2],
+    ) for index in range(1, len(chapter_nodes)))
     return CourseMapDraft(
         title=("课程知识路线草稿" if outline_chunks else "课程知识路线（资料推断草稿）"),
         summary=("以教学大纲为路线骨架生成；教材和课件仅作为补充资料，发布前需教师审核。"
                  if strategy.get("mode") == "syllabus_first" else
                  "未找到已索引教学大纲，本路线由教材和课件推断，发布前需教师重点审核。"),
         nodes=nodes, edges=edges,
+    )
+
+
+def _merge_model_metadata(items: list[dict], *, mode: str,
+                          failed_batches: int = 0) -> dict:
+    usage = {"prompt": 0, "completion": 0, "total": 0}
+    for item in items:
+        for key in usage:
+            usage[key] += int((item.get("token_usage") or {}).get(key) or 0)
+    return {
+        "model": next((item.get("model") for item in items if item.get("model")), None),
+        "latency_ms": sum(int(item.get("latency_ms") or 0) for item in items),
+        "token_usage": usage,
+        "generation_mode": mode,
+        "model_call_count": len(items),
+        "failed_batches": failed_batches,
+    }
+
+
+def _fallback_batch_points(chapter: dict, support: list[dict]) -> list[dict]:
+    """Keep a usable route when one small knowledge-point request fails."""
+    names: list[str] = []
+    for item in support:
+        heading = (item.get("heading_path") or "").split(" > ")[-1].strip()
+        if heading and heading != chapter["name"] and heading not in names:
+            names.append(heading[:80])
+    for suffix in ("核心概念", "基本方法"):
+        candidate = f"{chapter['name']}{suffix}"
+        if candidate not in names:
+            names.append(candidate)
+    evidence = [int(item["chunk_id"]) for item in support[:2] if item.get("chunk_id")]
+    return [{
+        "chapter_key": chapter["chapter_key"],
+        "name": name,
+        "summary": f"理解并能够应用{chapter['name']}中的{name}。",
+        "evidence_chunk_ids": evidence,
+    } for name in names[:2]]
+
+
+def _model_course_map(state: WorkflowState, *, previous_draft: dict | None = None,
+                      issues: list[str] | None = None) -> tuple[dict, dict]:
+    """Generate a map in bounded stages: syllabus chapters, then retrieved KPs."""
+    del previous_draft, issues  # Reflection is deterministic for this bounded pipeline.
+    strategy = state.get("tool_results", {}).get("course_map_strategy", {})
+    material_chunks = state.get("tool_results", {}).get("course_map_chunks", [])
+    outline_chunks = [item for item in material_chunks if item.get("source_role") == "outline"]
+    backbone = outline_chunks or material_chunks
+    if not backbone:
+        raise ValueError("所选课程资料尚未生成可用切片，请先完成资料索引")
+
+    chapter_input = [{
+        "chunk_id": item["chunk_id"],
+        "heading_path": item.get("heading_path"),
+        "page_number": item.get("page_number"),
+        "position": item.get("position"),
+        "text": _course_map_prompt_text(item.get("text") or "", 800),
+    } for item in backbone[:60]]
+    metadata_items: list[dict] = []
+    try:
+        chapter_plan, chapter_metadata = structured_completion(
+            CourseChapterPlan,
+            system_prompt=(
+                "你是教师课程助手。当前步骤只负责从教学大纲提取课程章节骨架，"
+                "不要生成细粒度知识点，也不要扩写教材内容。章节名称和顺序必须忠于大纲；"
+                "合并重复标题，忽略考核方式、师资、教材清单等非教学章节。"
+                "每个章节引用实际支持它的 syllabus_chunk_ids；没有教学大纲时，"
+                "才可从现有资料标题推断章节。最多 15 个章节。"
+            ),
+            user_prompt=json.dumps({
+                "mode": strategy.get("mode"),
+                "outline_chunks": chapter_input,
+            }, ensure_ascii=False, default=str),
+            max_tokens=2600, timeout_seconds=90,
+        )
+        metadata_items.append(chapter_metadata)
+    except Exception:
+        fallback = _fallback_course_map(state).model_dump()
+        return fallback, _merge_model_metadata(
+            metadata_items, mode="deterministic-fallback", failed_batches=1,
+        )
+
+    valid_backbone_ids = {int(item["chunk_id"]) for item in backbone}
+    chapters: list[dict] = []
+    seen_names: set[str] = set()
+    for item in sorted(chapter_plan.chapters, key=lambda value: value.position)[:15]:
+        name = re.sub(r"\s+", " ", item.name).strip()
+        if not name or name in seen_names:
+            continue
+        seen_names.add(name)
+        chapters.append({
+            "chapter_key": f"chapter-{len(chapters) + 1}",
+            "name": name,
+            "summary": item.summary.strip(),
+            "position": len(chapters) + 1,
+            "syllabus_chunk_ids": [
+                chunk_id for chunk_id in item.syllabus_chunk_ids
+                if chunk_id in valid_backbone_ids
+            ][:5],
+        })
+    if not chapters:
+        fallback = _fallback_course_map(state).model_dump()
+        return fallback, _merge_model_metadata(
+            metadata_items, mode="deterministic-fallback", failed_batches=1,
+        )
+
+    selected_resource_ids = state.get("input_data", {}).get("resource_ids") or None
+    support_by_chapter: dict[str, list[dict]] = {}
+    with SessionLocal() as db:
+        for chapter in chapters:
+            support_by_chapter[chapter["chapter_key"]] = search_course_supporting(
+                int(state["offering_id"]),
+                f"{chapter['name']} {chapter['summary']}",
+                limit=4, db=db, resource_ids=selected_resource_ids,
+            )
+
+    # Make retrieved IDs visible to the validator and evidence API, without
+    # putting unrelated textbook pages into the model prompt.
+    known_chunk_ids = {item["chunk_id"] for item in material_chunks}
+    for rows in support_by_chapter.values():
+        for item in rows:
+            if item.get("chunk_id") in known_chunk_ids:
+                continue
+            material_chunks.append({
+                "chunk_id": item.get("chunk_id"), "resource_id": item.get("resource_id"),
+                "resource_title": item.get("title"),
+                "resource_type": item.get("resource_type"), "source_role": "supporting",
+                "heading_path": item.get("heading_path"),
+                "page_number": item.get("page_number"),
+                "slide_number": item.get("slide_number"), "position": item.get("position"),
+                "text": _course_map_prompt_text(item.get("text") or ""),
+            })
+            known_chunk_ids.add(item.get("chunk_id"))
+
+    points_by_chapter: dict[str, list[dict]] = {item["chapter_key"]: [] for item in chapters}
+    failed_batches = 0
+    for offset in range(0, len(chapters), 3):
+        batch = chapters[offset:offset + 3]
+        batch_support = {
+            chapter["chapter_key"]: [{
+                "chunk_id": item.get("chunk_id"),
+                "resource_type": item.get("resource_type"),
+                "title": item.get("title"),
+                "heading_path": item.get("heading_path"),
+                "text": _course_map_prompt_text(item.get("text") or "", 900),
+            } for item in support_by_chapter[chapter["chapter_key"]]]
+            for chapter in batch
+        }
+        try:
+            generated, batch_metadata = structured_completion(
+                ChapterKnowledgeBatch,
+                system_prompt=(
+                    "你是教师课程助手。针对每个给定章节生成 2 至 4 个具体、可教学、可出题的知识点。"
+                    "章节边界已由大纲确定，不得新增或改名章节。教材/课件检索片段仅用于帮助细化知识点；"
+                    "不要复制大段原文。chapter_key 必须原样返回。evidence_chunk_ids 只能引用该章节"
+                    "supporting_chunks 中真实出现的 chunk_id；没有合适依据时可为空。"
+                ),
+                user_prompt=json.dumps({
+                    "chapters": batch,
+                    "supporting_chunks": batch_support,
+                }, ensure_ascii=False, default=str),
+                max_tokens=2400, timeout_seconds=90,
+            )
+            metadata_items.append(batch_metadata)
+            for item in generated.knowledge_points:
+                if item.chapter_key not in points_by_chapter:
+                    continue
+                allowed_ids = {
+                    int(row["chunk_id"]) for row in support_by_chapter[item.chapter_key]
+                    if row.get("chunk_id")
+                }
+                points_by_chapter[item.chapter_key].append({
+                    "chapter_key": item.chapter_key,
+                    "name": item.name.strip(), "summary": item.summary.strip(),
+                    "evidence_chunk_ids": [
+                        chunk_id for chunk_id in item.evidence_chunk_ids
+                        if chunk_id in allowed_ids
+                    ][:4],
+                })
+        except Exception:
+            failed_batches += 1
+
+        for chapter in batch:
+            key = chapter["chapter_key"]
+            unique: list[dict] = []
+            names: set[str] = set()
+            for item in points_by_chapter[key]:
+                if item["name"] and item["name"] not in names:
+                    names.add(item["name"])
+                    unique.append(item)
+            if len(unique) < 2:
+                for item in _fallback_batch_points(chapter, support_by_chapter[key]):
+                    if item["name"] not in names:
+                        names.add(item["name"])
+                        unique.append(item)
+                    if len(unique) >= 2:
+                        break
+            points_by_chapter[key] = unique[:4]
+
+    nodes: list[CourseMapNodeDraft] = []
+    edges: list[CourseMapEdgeDraft] = []
+    position = 1
+    cited_types: set[str] = set()
+    for chapter_index, chapter in enumerate(chapters, 1):
+        chapter_node = CourseMapNodeDraft(
+            node_key=chapter["chapter_key"], name=chapter["name"],
+            description=chapter["summary"], position=position, confidence=90,
+            evidence_chunk_ids=chapter["syllabus_chunk_ids"],
+        )
+        nodes.append(chapter_node)
+        position += 1
+        for point_index, point in enumerate(points_by_chapter[chapter["chapter_key"]], 1):
+            point_key = f"kp-{chapter_index}-{point_index}"
+            evidence_ids = point["evidence_chunk_ids"]
+            for row in support_by_chapter[chapter["chapter_key"]]:
+                if row.get("chunk_id") in evidence_ids and row.get("resource_type"):
+                    cited_types.add(str(row["resource_type"]))
+            nodes.append(CourseMapNodeDraft(
+                node_key=point_key, name=point["name"], description=point["summary"],
+                position=position, confidence=82 if evidence_ids else 72,
+                evidence_chunk_ids=evidence_ids,
+            ))
+            position += 1
+            edges.append(CourseMapEdgeDraft(
+                source_key=chapter_node.node_key, target_key=point_key,
+                relation_type="contains", confidence=90,
+                evidence_chunk_ids=evidence_ids[:2],
+            ))
+        if chapter_index > 1:
+            edges.append(CourseMapEdgeDraft(
+                source_key=chapters[chapter_index - 2]["chapter_key"],
+                target_key=chapter_node.node_key, relation_type="next", confidence=90,
+                evidence_chunk_ids=chapter_node.evidence_chunk_ids[:2],
+            ))
+
+    source_text = []
+    if "textbook" in cited_types:
+        source_text.append("教材")
+    if "courseware" in cited_types:
+        source_text.append("课件")
+    if outline_chunks:
+        summary = "章节结构来自教学大纲"
+        if source_text:
+            summary += f"，并按章节检索{'和'.join(source_text)}细化知识点"
+        summary += "。请教师审核后发布。"
+    else:
+        summary = "未找到教学大纲，章节由现有课程资料推断。请教师重点审核后发布。"
+    draft = CourseMapDraft(
+        title=chapter_plan.title, summary=summary, nodes=nodes, edges=edges,
+    ).model_dump()
+    return draft, _merge_model_metadata(
+        metadata_items,
+        mode="staged-model" if not failed_batches else "staged-model-with-fallback",
+        failed_batches=failed_batches,
     )
 
 
@@ -504,26 +810,10 @@ def compose_result(state: WorkflowState) -> WorkflowState:
         draft["mode"] = "model" if metadata else "deterministic-fallback"
     elif state["kind"] == "course_map.generate":
         if settings.enable_llm and settings.ai_api_key:
-            strategy = state.get("tool_results", {}).get("course_map_strategy", {})
-            value, metadata = structured_completion(
-                CourseMapDraft,
-                system_prompt=(
-                    "你是教师课程助手智能体，负责生成可审核的课程知识路线。"
-                    "当 generation_strategy.mode 为 syllabus_first 时，必须以 source_role=outline 的教学大纲"
-                    "决定核心节点、范围和教学顺序；教材或课件只能补充解释、先修关系和证据，不能改变大纲范围。"
-                    "每个核心节点都必须至少引用一个真实的大纲 chunk_id，可同时引用辅助资料。"
-                    "当 mode 为 inferred_from_materials 时，才允许从教材或课件推断路线，并在标题和摘要中明确写明"
-                    "‘资料推断草稿’。关系只能是 contains、next、related，不得引用输入之外的 chunk_id。"
-                ),
-                user_prompt=json.dumps({
-                    "generation_strategy": strategy,
-                    "material_chunks": state.get("tool_results", {}).get("course_map_chunks", []),
-                }, ensure_ascii=False, default=str),
-            )
-            draft = value.model_dump()
+            draft, metadata = _model_course_map(state)
         else:
             draft = _fallback_course_map(state).model_dump()
-        draft["mode"] = "model" if metadata else "deterministic-fallback"
+        draft["mode"] = metadata.get("generation_mode", "model") if metadata else "deterministic-fallback"
     else:
         draft = {"mode": "deterministic-fallback", "summary": "已完成课程上下文读取与资料检索。",
                  "citations": state.get("tool_results", {}).get("citations", [])}
@@ -531,7 +821,8 @@ def compose_result(state: WorkflowState) -> WorkflowState:
               "token_usage": metadata.get("token_usage") or state.get("token_usage", {})}
     result["steps"] = _step(
         result, "compose_result", tool_name="structured_llm" if metadata else "deterministic_fallback",
-        summary={"mode": draft.get("mode"), "schema": state["task_type"]}, started=started,
+        summary={"mode": draft.get("mode"), "schema": state["task_type"],
+                 "model_call_count": metadata.get("model_call_count")}, started=started,
     )
     return result
 
@@ -581,23 +872,38 @@ def _validate(state: WorkflowState) -> ValidationResult:
             available = {item["chunk_id"] for item in material_chunks}
             outline_ids = {item["chunk_id"] for item in material_chunks
                            if item.get("source_role") == "outline"}
+            resource_type_by_chunk = {item["chunk_id"]: item.get("resource_type")
+                                      for item in material_chunks}
             cited = {chunk_id for node in course_map.nodes for chunk_id in node.evidence_chunk_ids}
             cited.update(chunk_id for edge in course_map.edges for chunk_id in edge.evidence_chunk_ids)
-            if not cited:
-                issues.append("课程路线节点缺少资料证据")
             if cited - available:
                 issues.append("课程路线引用了无效资料切片")
-            nodes_without_evidence = [node.name for node in course_map.nodes if not node.evidence_chunk_ids]
-            if nodes_without_evidence:
-                issues.append("部分路线节点没有资料证据")
-            if outline_ids:
-                nodes_without_outline = [node.name for node in course_map.nodes
-                                         if not (set(node.evidence_chunk_ids) & outline_ids)]
-                if nodes_without_outline:
-                    issues.append("部分核心节点没有教学大纲依据")
-            evidence_sufficient = bool(cited) and not (cited - available) and not nodes_without_evidence
-            if outline_ids:
-                evidence_sufficient = evidence_sufficient and not nodes_without_outline
+            contains_edges = [edge for edge in course_map.edges if edge.relation_type == "contains"]
+            chapter_keys = {edge.source_key for edge in contains_edges}
+            knowledge_keys = {edge.target_key for edge in contains_edges}
+            if not contains_edges:
+                issues.append("课程路线必须包含‘章节 → 知识点’的分层关系")
+            child_counts = {
+                key: sum(1 for edge in contains_edges if edge.source_key == key)
+                for key in chapter_keys
+            }
+            if any(count < 2 or count > 4 for count in child_counts.values()):
+                issues.append("每个章节应包含 2 至 4 个知识点")
+            ungrouped = [node.name for node in course_map.nodes
+                         if node.node_key not in chapter_keys and node.node_key not in knowledge_keys]
+            if ungrouped:
+                issues.append("存在未归属章节的知识点")
+            cited_types = {resource_type_by_chunk[chunk_id] for chunk_id in cited
+                           if chunk_id in resource_type_by_chunk}
+            summary = course_map.summary or ""
+            if "教材" in summary and "textbook" not in cited_types:
+                issues.append("路线摘要声称使用教材，但实际证据没有教材引用")
+            if "课件" in summary and "courseware" not in cited_types:
+                issues.append("路线摘要声称使用课件，但实际证据没有课件引用")
+            # Evidence is useful for traceability, but is deliberately not a
+            # publication blocker: chapters and usable knowledge points are the
+            # primary course-map product.
+            evidence_sufficient = bool(outline_ids & cited) if outline_ids else bool(cited)
         except Exception as exc:
             issues.append(f"课程路线结构无效：{str(exc)[:200]}")
             evidence_sufficient = False
@@ -659,6 +965,9 @@ def reflect_once(state: WorkflowState) -> WorkflowState:
             "Reflection 后仍需教师确认：" + "；".join(issues)[:400]
             if issues else "批阅建议已经过证据复核，仍需教师最终确认"
         )
+    elif state["kind"] == "course_map.generate" and issues:
+        draft = _fallback_course_map(state).model_dump()
+        draft["mode"] = "deterministic-reflection-fallback"
     reflected = {**state, "draft": draft, "reflection_count": 1}
     reflected["validation"] = _validate(reflected).model_dump()
     reflected["steps"] = _step(

@@ -27,7 +27,7 @@ def _json_payload(value: str) -> dict:
 
 def structured_completion(
     schema: type[StructuredModel], *, system_prompt: str, user_prompt: str,
-    max_tokens: int = 3000,
+    max_tokens: int = 3000, timeout_seconds: float = 60,
 ) -> tuple[StructuredModel, dict]:
     """Call an OpenAI-compatible model and validate one bounded repair attempt."""
     settings = get_settings()
@@ -39,7 +39,7 @@ def structured_completion(
     client = OpenAI(
         api_key=settings.ai_api_key,
         base_url=settings.ai_base_url,
-        timeout=60,
+        timeout=timeout_seconds,
         max_retries=1,
     )
     schema_json = json.dumps(schema.model_json_schema(), ensure_ascii=False)

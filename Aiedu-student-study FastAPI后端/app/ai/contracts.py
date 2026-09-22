@@ -160,6 +160,31 @@ class CourseMapDraft(BaseModel):
         return self
 
 
+class CourseChapterPlanItem(BaseModel):
+    chapter_key: str = Field(min_length=1, max_length=64, pattern=r"^[A-Za-z0-9_.-]+$")
+    name: str = Field(min_length=1, max_length=200)
+    summary: str = Field(min_length=1, max_length=1000)
+    position: int = Field(default=0, ge=0)
+    syllabus_chunk_ids: list[int] = Field(default_factory=list, max_length=8)
+
+
+class CourseChapterPlan(BaseModel):
+    title: str = Field(default="课程知识路线", min_length=1, max_length=200)
+    summary: str | None = Field(default=None, max_length=2000)
+    chapters: list[CourseChapterPlanItem] = Field(min_length=1, max_length=20)
+
+
+class ChapterKnowledgePointItem(BaseModel):
+    chapter_key: str = Field(min_length=1, max_length=64)
+    name: str = Field(min_length=1, max_length=200)
+    summary: str = Field(min_length=1, max_length=1000)
+    evidence_chunk_ids: list[int] = Field(default_factory=list, max_length=8)
+
+
+class ChapterKnowledgeBatch(BaseModel):
+    knowledge_points: list[ChapterKnowledgePointItem] = Field(default_factory=list, max_length=12)
+
+
 class ValidationResult(BaseModel):
     valid: bool
     issues: list[str] = Field(default_factory=list, max_length=20)

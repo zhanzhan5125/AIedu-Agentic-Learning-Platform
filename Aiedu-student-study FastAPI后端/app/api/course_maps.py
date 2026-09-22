@@ -4,7 +4,7 @@ from datetime import datetime
 import re
 from typing import Literal
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Query, Request
 from pydantic import BaseModel, Field, model_validator
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
@@ -108,6 +108,7 @@ def _evidence_view(db: Session, *, node_id: int | None = None, edge_id: int | No
         CourseMapEvidence.edge_id == edge_id)
     return [{
         "chunk_id": chunk.id, "resource_id": resource.id, "title": resource.title,
+        "resource_type": resource.resource_type,
         "position": chunk.position, "heading_path": chunk.heading_path,
         "page_number": chunk.page_number, "slide_number": chunk.slide_number,
         "excerpt": _evidence_excerpt(db, chunk),
@@ -119,6 +120,8 @@ def _view(db: Session, version: CourseMapVersion) -> dict:
         CourseMapNode.version_id == version.id).order_by(CourseMapNode.position, CourseMapNode.id)).all()
     edges = db.scalars(select(CourseMapEdge).where(CourseMapEdge.version_id == version.id)).all()
     by_id = {node.id: node for node in nodes}
+    chapter_ids = {edge.source_node_id for edge in edges if edge.relation_type == "contains"}
+    knowledge_point_ids = {edge.target_node_id for edge in edges if edge.relation_type == "contains"}
     return {
         "id": version.id, "course_id": version.course_id, "offering_id": version.offering_id,
         "version": version.version, "status": version.status, "title": version.title,
@@ -127,6 +130,8 @@ def _view(db: Session, version: CourseMapVersion) -> dict:
         "nodes": [{
             "id": node.id, "node_key": node.node_key, "name": node.name,
             "description": node.description, "position": node.position,
+            "node_type": ("chapter" if node.id in chapter_ids else
+                          "knowledge_point" if node.id in knowledge_point_ids else "topic"),
             "confidence": node.confidence, "knowledge_point_id": node.knowledge_point_id,
             "evidence": _evidence_view(db, node_id=node.id),
         } for node in nodes],
@@ -142,6 +147,7 @@ def _view(db: Session, version: CourseMapVersion) -> dict:
 
 @router.get("/offerings/{offering_id}/course-map")
 def get_course_map(offering_id: int, request: Request, user: User = Depends(current_user),
+                   map_status: Literal["latest", "published"] = Query(default="latest", alias="status"),
                    db: Session = Depends(get_db)):
     offering = db.get(CourseOffering, offering_id)
     if offering is None:
@@ -158,6 +164,8 @@ def get_course_map(offering_id: int, request: Request, user: User = Depends(curr
         statuses = ["draft", "published"]
     else:
         raise Forbidden("无权查看课程路线")
+    if map_status == "published":
+        statuses = ["published"]
     version = db.scalar(select(CourseMapVersion).where(
         CourseMapVersion.offering_id == offering_id,
         CourseMapVersion.status.in_(statuses),

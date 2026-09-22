@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime, timedelta
 
 from app.db import SessionLocal
-from app.models import (AgentRun, Answer, Assignment, AssignmentQuestion, AssignmentStatus, Course,
+from app.models import (AIJob, AgentRun, Answer, Assignment, AssignmentQuestion, AssignmentStatus, Course,
                         CourseOffering, CourseResource, Enrollment, KnowledgePoint, Notification,
                         OfferingStatus, ProcessingStatus, Question, ResourceChunk, Role,
                         ScheduledNotification, Submission, SubmissionStatus, User)
@@ -571,12 +571,42 @@ def test_course_map_draft_has_evidence_and_requires_publish(client, auth):
     course_map = client.get(f"/api/v1/offerings/{offering_id}/course-map",
                             headers=headers(token)).json()["data"]
     assert course_map["status"] == "draft"
-    assert len(course_map["nodes"]) == 2
+    assert len(course_map["nodes"]) == 6
+    assert [node["name"] for node in course_map["nodes"] if node["node_type"] == "chapter"] == ["第一章", "第二章"]
+    assert [node["name"] for node in course_map["nodes"] if node["node_type"] == "knowledge_point"] == [
+        "排序", "第一章基础概念", "查找", "第二章基础概念",
+    ]
     assert course_map["nodes"][0]["evidence"][0]["page_number"] == 1
     published = client.post(f"/api/v1/teacher/course-map-versions/{course_map['id']}/publish",
                             headers=headers(token))
     assert published.status_code == 200
-    assert published.json()["data"]["status"] == "published"
+    published_map = published.json()["data"]
+    assert published_map["status"] == "published"
+    chapter = next(node for node in published_map["nodes"] if node["name"] == "第一章")
+    child = next(node for node in published_map["nodes"] if node["name"] == "排序")
+    with SessionLocal() as db:
+        child_point = db.get(KnowledgePoint, child["knowledge_point_id"])
+        assert child_point.parent_id == chapter["knowledge_point_id"]
+
+    assignment = client.post(
+        f"/api/v1/teacher/offerings/{offering_id}/assignment-drafts",
+        headers=headers(token),
+        json={"course_map_node_ids": [chapter["id"]], "question_count": 1, "difficulty": 2,
+              "question_kinds": ["short_answer"], "idempotency_key": "chapter-assignment-001"},
+    )
+    assert assignment.status_code == 202
+    with SessionLocal() as db:
+        job = db.get(AIJob, assignment.json()["data"]["job_id"])
+        assert job.input_data["selected_chapter_names"] == ["第一章"]
+        chapter_children = {
+            edge["target_key"] for edge in published_map["edges"]
+            if edge["relation_type"] == "contains" and edge["source_key"] == chapter["node_key"]
+        }
+        expected_ids = {
+            node["knowledge_point_id"] for node in published_map["nodes"]
+            if node["node_key"] in chapter_children
+        }
+        assert set(job.input_data["knowledge_point_ids"]) == expected_ids
 
 
 def test_course_map_uses_syllabus_as_backbone_even_when_textbook_was_uploaded_first(client, auth):
@@ -632,7 +662,8 @@ def test_course_map_uses_syllabus_as_backbone_even_when_textbook_was_uploaded_fi
     course_map = client.get(
         f"/api/v1/offerings/{offering_id}/course-map", headers=headers(token)
     ).json()["data"]
-    assert [node["name"] for node in course_map["nodes"]] == ["课程目标", "程序结构", "函数与指针"]
+    assert [node["name"] for node in course_map["nodes"] if node["node_type"] == "chapter"] == ["教学大纲"]
+    assert [node["name"] for node in course_map["nodes"] if node["node_type"] == "knowledge_point"] == ["课程目标", "程序结构", "函数与指针"]
     assert all(
         evidence["title"] == "程序设计课程大纲"
         for node in course_map["nodes"]

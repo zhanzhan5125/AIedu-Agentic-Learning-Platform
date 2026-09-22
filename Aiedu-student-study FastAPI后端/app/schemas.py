@@ -149,6 +149,7 @@ class QuestionKnowledgeBinding(BaseModel):
 class AssignmentDraftRequest(BaseModel):
     keywords: list[str] = Field(default_factory=list, max_length=20)
     knowledge_point_ids: list[int] = Field(default_factory=list, max_length=20)
+    course_map_node_ids: list[int] = Field(default_factory=list, max_length=20)
     question_count: int = Field(default=5, ge=1, le=30)
     difficulty: int = Field(default=2, ge=1, le=5)
     question_kinds: list[Literal["short_answer", "single_choice", "multiple_choice", "programming"]] = Field(
