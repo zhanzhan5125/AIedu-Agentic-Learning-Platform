@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 from time import perf_counter
 from typing import Any, TypedDict
 
@@ -19,7 +20,7 @@ from app.integrations.ai_provider import structured_completion
 from app.integrations.rag import search_course
 from app.models import (
     Answer, Assignment, AssignmentQuestion, Course, CourseOffering,
-    KnowledgePoint, Question, ResourceChunk, Submission,
+    CourseResource, KnowledgePoint, ProcessingStatus, Question, ResourceChunk, Submission,
 )
 from app.services.insights import class_insights
 from app.services.learning import profile_view
@@ -236,6 +237,107 @@ def _student_brief(profile: dict) -> dict:
     ).model_dump()
 
 
+COURSE_MAP_SYLLABUS_LIMIT = 72
+COURSE_MAP_SUPPORT_LIMIT = 32
+COURSE_MAP_INFERRED_LIMIT = 96
+
+
+def _usable_course_map_chunk(chunk: ResourceChunk) -> bool:
+    """Drop obvious empty/TOC noise without excluding short syllabus headings."""
+    text = re.sub(r"\s+", " ", chunk.text or "").strip()
+    if len(text) < 4:
+        return False
+    dotted_leaders = len(re.findall(r"\.{3,}|…{2,}", text))
+    number_count = len(re.findall(r"\d+", text))
+    return not (dotted_leaders >= 2 and number_count >= 3)
+
+
+def _sample_evenly(items: list[Any], limit: int) -> list[Any]:
+    if len(items) <= limit:
+        return items
+    if limit <= 1:
+        return items[:limit]
+    indexes = [round(index * (len(items) - 1) / (limit - 1)) for index in range(limit)]
+    return [items[index] for index in indexes]
+
+
+def _take_balanced(groups: list[list[Any]], limit: int) -> list[Any]:
+    """Round-robin resources so one large textbook cannot starve later uploads."""
+    selected: list[Any] = []
+    position = 0
+    while len(selected) < limit:
+        added = False
+        for group in groups:
+            if position < len(group):
+                selected.append(group[position])
+                added = True
+                if len(selected) == limit:
+                    break
+        if not added:
+            break
+        position += 1
+    return selected
+
+
+def _course_map_materials(db, offering_id: int, resource_ids: list[int]) -> tuple[list[dict], dict]:
+    resource_query = select(CourseResource).where(
+        CourseResource.offering_id == offering_id,
+        CourseResource.processing_status == ProcessingStatus.ready,
+        CourseResource.deleted_at.is_(None),
+    )
+    if resource_ids:
+        resource_query = resource_query.where(CourseResource.id.in_(resource_ids))
+    resources = db.scalars(resource_query.order_by(CourseResource.id)).all()
+
+    grouped: dict[str, list[list[tuple[ResourceChunk, CourseResource]]]] = {
+        "syllabus": [], "supporting": [],
+    }
+    source_rows: list[dict] = []
+    for resource in resources:
+        rows = db.scalars(select(ResourceChunk).where(
+            ResourceChunk.offering_id == offering_id,
+            ResourceChunk.resource_id == resource.id,
+        ).order_by(ResourceChunk.position)).all()
+        usable = [row for row in rows if _usable_course_map_chunk(row)] or list(rows)
+        role = "syllabus" if resource.resource_type == "syllabus" else "supporting"
+        per_resource_limit = (COURSE_MAP_SYLLABUS_LIMIT if role == "syllabus"
+                              else COURSE_MAP_INFERRED_LIMIT)
+        pairs = _sample_evenly([(row, resource) for row in usable], per_resource_limit)
+        grouped[role].append(pairs)
+        source_rows.append({
+            "resource_id": resource.id, "title": resource.title,
+            "resource_type": resource.resource_type, "usable_chunks": len(usable),
+            "role": "outline" if role == "syllabus" else "supporting",
+        })
+
+    syllabus_pairs = _take_balanced(grouped["syllabus"], COURSE_MAP_SYLLABUS_LIMIT)
+    if syllabus_pairs:
+        support_pairs = _take_balanced(grouped["supporting"], COURSE_MAP_SUPPORT_LIMIT)
+        selected_pairs = syllabus_pairs + support_pairs
+        mode = "syllabus_first"
+    else:
+        selected_pairs = _take_balanced(grouped["supporting"], COURSE_MAP_INFERRED_LIMIT)
+        mode = "inferred_from_materials"
+
+    chunks = [{
+        "chunk_id": chunk.id, "resource_id": resource.id,
+        "resource_title": resource.title, "resource_type": resource.resource_type,
+        "source_role": "outline" if resource.resource_type == "syllabus" else "supporting",
+        "heading_path": chunk.heading_path, "page_number": chunk.page_number,
+        "slide_number": chunk.slide_number, "position": chunk.position,
+        "text": chunk.text[:2500],
+    } for chunk, resource in selected_pairs]
+    strategy = {
+        "mode": mode,
+        "rule": ("教学大纲决定节点与教学顺序，教材和课件只能补充说明与证据"
+                 if mode == "syllabus_first" else
+                 "未找到已索引教学大纲，路线由教材和课件推断，必须标记为推断草稿"),
+        "outline_chunk_ids": [item["chunk_id"] for item in chunks if item["source_role"] == "outline"],
+        "sources": source_rows,
+    }
+    return chunks, strategy
+
+
 def execute_tools(state: WorkflowState) -> WorkflowState:
     started = perf_counter()
     tools: dict[str, Any] = {}
@@ -270,15 +372,9 @@ def execute_tools(state: WorkflowState) -> WorkflowState:
                 tools["missing_question_ids"] = sorted(assigned_ids - {q.id for _, q in rows})
         if state["kind"] == "course_map.generate" and offering_id:
             resource_ids = state.get("input_data", {}).get("resource_ids") or []
-            query = select(ResourceChunk).where(ResourceChunk.offering_id == offering_id)
-            if resource_ids:
-                query = query.where(ResourceChunk.resource_id.in_(resource_ids))
-            chunks = db.scalars(query.order_by(ResourceChunk.resource_id, ResourceChunk.position).limit(120)).all()
-            tools["course_map_chunks"] = [{
-                "chunk_id": chunk.id, "heading_path": chunk.heading_path,
-                "page_number": chunk.page_number, "slide_number": chunk.slide_number,
-                "text": chunk.text[:2500],
-            } for chunk in chunks]
+            chunks, strategy = _course_map_materials(db, offering_id, resource_ids)
+            tools["course_map_chunks"] = chunks
+            tools["course_map_strategy"] = strategy
     result = {**state, "tool_results": tools, "delegations": delegations}
     result["steps"] = _step(
         result, "execute_tools", tool_name="bounded_tool_executor",
@@ -359,8 +455,11 @@ def _fallback_course_map(state: WorkflowState) -> CourseMapDraft:
     chunks = state.get("tool_results", {}).get("course_map_chunks", [])
     if not chunks:
         raise ValueError("所选课程资料尚未生成可用切片，请先完成资料索引")
+    strategy = state.get("tool_results", {}).get("course_map_strategy", {})
+    outline_chunks = [chunk for chunk in chunks if chunk.get("source_role") == "outline"]
+    backbone_chunks = outline_chunks or chunks
     grouped: dict[str, list[dict]] = {}
-    for chunk in chunks:
+    for chunk in backbone_chunks:
         heading = (chunk.get("heading_path") or "").split(" > ")[-1].strip()
         if not heading:
             heading = (chunk.get("text") or "课程知识点").splitlines()[0][:40]
@@ -378,8 +477,10 @@ def _fallback_course_map(state: WorkflowState) -> CourseMapDraft:
         evidence_chunk_ids=nodes[index].evidence_chunk_ids[:2],
     ) for index in range(1, len(nodes))]
     return CourseMapDraft(
-        title="课程知识路线草稿",
-        summary="依据已完成索引的教学大纲、课件和教材标题结构生成，发布前需教师审核。",
+        title=("课程知识路线草稿" if outline_chunks else "课程知识路线（资料推断草稿）"),
+        summary=("以教学大纲为路线骨架生成；教材和课件仅作为补充资料，发布前需教师审核。"
+                 if strategy.get("mode") == "syllabus_first" else
+                 "未找到已索引教学大纲，本路线由教材和课件推断，发布前需教师重点审核。"),
         nodes=nodes, edges=edges,
     )
 
@@ -403,12 +504,21 @@ def compose_result(state: WorkflowState) -> WorkflowState:
         draft["mode"] = "model" if metadata else "deterministic-fallback"
     elif state["kind"] == "course_map.generate":
         if settings.enable_llm and settings.ai_api_key:
+            strategy = state.get("tool_results", {}).get("course_map_strategy", {})
             value, metadata = structured_completion(
                 CourseMapDraft,
-                system_prompt=("你是教师课程助手智能体。请从课程资料切片提炼一条可教学的课程知识路线。"
-                               "关系只能是 contains、next、related，每个节点必须引用真实 chunk_id。"),
-                user_prompt=json.dumps(state.get("tool_results", {}).get("course_map_chunks", []),
-                                       ensure_ascii=False, default=str),
+                system_prompt=(
+                    "你是教师课程助手智能体，负责生成可审核的课程知识路线。"
+                    "当 generation_strategy.mode 为 syllabus_first 时，必须以 source_role=outline 的教学大纲"
+                    "决定核心节点、范围和教学顺序；教材或课件只能补充解释、先修关系和证据，不能改变大纲范围。"
+                    "每个核心节点都必须至少引用一个真实的大纲 chunk_id，可同时引用辅助资料。"
+                    "当 mode 为 inferred_from_materials 时，才允许从教材或课件推断路线，并在标题和摘要中明确写明"
+                    "‘资料推断草稿’。关系只能是 contains、next、related，不得引用输入之外的 chunk_id。"
+                ),
+                user_prompt=json.dumps({
+                    "generation_strategy": strategy,
+                    "material_chunks": state.get("tool_results", {}).get("course_map_chunks", []),
+                }, ensure_ascii=False, default=str),
             )
             draft = value.model_dump()
         else:
@@ -467,14 +577,27 @@ def _validate(state: WorkflowState) -> ValidationResult:
     elif kind == "course_map.generate":
         try:
             course_map = CourseMapDraft.model_validate(draft)
-            available = {item["chunk_id"] for item in state.get("tool_results", {}).get("course_map_chunks", [])}
+            material_chunks = state.get("tool_results", {}).get("course_map_chunks", [])
+            available = {item["chunk_id"] for item in material_chunks}
+            outline_ids = {item["chunk_id"] for item in material_chunks
+                           if item.get("source_role") == "outline"}
             cited = {chunk_id for node in course_map.nodes for chunk_id in node.evidence_chunk_ids}
             cited.update(chunk_id for edge in course_map.edges for chunk_id in edge.evidence_chunk_ids)
             if not cited:
                 issues.append("课程路线节点缺少资料证据")
             if cited - available:
                 issues.append("课程路线引用了无效资料切片")
-            evidence_sufficient = bool(cited) and not (cited - available)
+            nodes_without_evidence = [node.name for node in course_map.nodes if not node.evidence_chunk_ids]
+            if nodes_without_evidence:
+                issues.append("部分路线节点没有资料证据")
+            if outline_ids:
+                nodes_without_outline = [node.name for node in course_map.nodes
+                                         if not (set(node.evidence_chunk_ids) & outline_ids)]
+                if nodes_without_outline:
+                    issues.append("部分核心节点没有教学大纲依据")
+            evidence_sufficient = bool(cited) and not (cited - available) and not nodes_without_evidence
+            if outline_ids:
+                evidence_sufficient = evidence_sufficient and not nodes_without_outline
         except Exception as exc:
             issues.append(f"课程路线结构无效：{str(exc)[:200]}")
             evidence_sufficient = False

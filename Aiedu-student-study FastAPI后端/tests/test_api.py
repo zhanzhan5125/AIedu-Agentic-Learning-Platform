@@ -579,6 +579,68 @@ def test_course_map_draft_has_evidence_and_requires_publish(client, auth):
     assert published.json()["data"]["status"] == "published"
 
 
+def test_course_map_uses_syllabus_as_backbone_even_when_textbook_was_uploaded_first(client, auth):
+    with SessionLocal.begin() as db:
+        teacher = db.query(User).filter_by(role=Role.teacher).one()
+        course = Course(number="CS210", name="大纲优先路线测试")
+        db.add(course)
+        db.flush()
+        offering = CourseOffering(course_id=course.id, teacher_id=teacher.id, year=2026,
+                                  term=1, status=OfferingStatus.active)
+        db.add(offering)
+        db.flush()
+        textbook = CourseResource(
+            offering_id=offering.id, uploader_id=teacher.id, title="C语言教材",
+            resource_type="textbook", original_name="textbook.pdf",
+            object_key="tests/course-map/textbook.pdf", mime_type="application/pdf",
+            size=1000, sha256="d" * 64, processing_status=ProcessingStatus.ready,
+            chunk_count=130,
+        )
+        syllabus = CourseResource(
+            offering_id=offering.id, uploader_id=teacher.id, title="程序设计课程大纲",
+            resource_type="syllabus", original_name="syllabus.pdf",
+            object_key="tests/course-map/syllabus.pdf", mime_type="application/pdf",
+            size=200, sha256="e" * 64, processing_status=ProcessingStatus.ready,
+            chunk_count=3,
+        )
+        db.add_all([textbook, syllabus])
+        db.flush()
+        db.add_all([
+            ResourceChunk(resource_id=textbook.id, offering_id=offering.id, position=index,
+                          block_type="paragraph", heading_path=f"教材章节 > 章节 {index + 1}",
+                          page_number=index + 1, text=f"教材中的详细知识内容 {index + 1}",
+                          token_count=10, content_hash=f"{index + 1000:064x}")
+            for index in range(130)
+        ])
+        db.add_all([
+            ResourceChunk(resource_id=syllabus.id, offering_id=offering.id, position=index,
+                          block_type="heading", heading_path=f"教学大纲 > {name}",
+                          page_number=index + 1, text=f"教学要求：{name}。",
+                          token_count=10, content_hash=f"{index + 2000:064x}")
+            for index, name in enumerate(["课程目标", "程序结构", "函数与指针"])
+        ])
+        offering_id = offering.id
+
+    token = auth(client, "teacher", "teacher")
+    created = client.post(
+        f"/api/v1/teacher/offerings/{offering_id}/course-map-drafts",
+        headers=headers(token),
+        json={"resource_ids": [], "idempotency_key": "course-map-syllabus-first-001"},
+    )
+    assert created.status_code == 202
+    assert run_local_once() == 1
+    course_map = client.get(
+        f"/api/v1/offerings/{offering_id}/course-map", headers=headers(token)
+    ).json()["data"]
+    assert [node["name"] for node in course_map["nodes"]] == ["课程目标", "程序结构", "函数与指针"]
+    assert all(
+        evidence["title"] == "程序设计课程大纲"
+        for node in course_map["nodes"]
+        for evidence in node["evidence"]
+    )
+    assert "以教学大纲为路线骨架" in course_map["summary"]
+
+
 def test_student_cannot_broadcast_but_can_contact_course_teacher(client, auth):
     with SessionLocal.begin() as db:
         teacher = db.query(User).filter_by(role=Role.teacher).one()
