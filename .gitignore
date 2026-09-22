@@ -1,0 +1,44 @@
+# Secrets and local configuration
+.env
+.env.ai
+!.env.example
+!.env.ai.example
+*.pem
+*.key
+
+# Local data and user uploads
+*.db
+*.sqlite*
+AIedu.sql
+uploads/
+models/
+logs/
+*.log
+
+# Python
+**/.venv/
+**/__pycache__/
+**/.pytest_cache/
+**/.mypy_cache/
+**/.ruff_cache/
+*.py[cod]
+
+# Node / build output
+**/node_modules/
+**/dist/
+**/.cache/
+*.zip
+
+# IDE / OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Repository consolidation backup and legacy implementation
+backups/
+Aiedu-student-study 后端/
+
+# Runtime artifacts
+Aiedu-student-study FastAPI后端/.fastapi.*.log
+Aiedu-student-study FastAPI后端/.uv-cache/

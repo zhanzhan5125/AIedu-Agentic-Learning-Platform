@@ -1,0 +1,8 @@
+{
+  "namesrvAddr": "namesrv:9876",
+  "proxyMode": "local",
+  "grpcServerPort": 8081,
+  "localServeAddr": "127.0.0.1",
+  "useEndpointPortFromRequest": true,
+  "remotingAccessAddr": "127.0.0.1"
+}

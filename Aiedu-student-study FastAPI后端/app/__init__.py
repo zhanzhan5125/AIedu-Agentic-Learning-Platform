@@ -1,0 +1,2 @@
+"""AIedu FastAPI backend."""
+
