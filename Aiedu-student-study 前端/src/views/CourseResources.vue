@@ -23,7 +23,7 @@
           </el-tooltip>
         </template>
       </el-table-column>
-      <el-table-column label="上传时间" min-width="180">
+      <el-table-column label="索引完成时间" min-width="180">
         <template slot-scope="scope">
           <el-tooltip content="资料成功写入向量数据库的时间" placement="top">
             <span>{{ formatTime(scope.row.indexed_at) }}</span>
@@ -124,7 +124,7 @@ export default {
     },
     formatSize(value) { return value > 1024 * 1024 ? `${(value / 1024 / 1024).toFixed(1)} MB` : `${Math.ceil(value / 1024)} KB` },
     formatTime(value) {
-      if (!value) return '等待入库'
+      if (!value) return '—'
       return new Date(value).toLocaleString('zh-CN', { hour12: false })
     },
     statusText(value) { return ({ uploaded: '等待处理', scanning: '安全检查', parsing: '解析中', indexing: '索引中', ready: '可用', failed: '处理失败' })[value] || value },

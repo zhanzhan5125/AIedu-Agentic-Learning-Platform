@@ -268,6 +268,12 @@ def _process_resource(payload: dict) -> None:
             object_storage.delete(resource.object_key)
             delete_resource_vectors(resource.id)
             return
+        # Upload and delete events are durable and may be consumed later or by
+        # different workers.  A stale ingest event must never resurrect or
+        # spend embedding quota on a resource that the teacher already deleted.
+        if resource.deleted_at is not None or resource.processing_status == ProcessingStatus.deleted:
+            logger.info("Skip indexing deleted resource %s", resource.id)
+            return
         try:
             resource.processing_status = ProcessingStatus.parsing
             db.commit()
@@ -323,8 +329,12 @@ def _process_resource(payload: dict) -> None:
 def process_resource(payload: dict) -> None:
     resource_id = int(payload["resource_id"])
     with runtime_cache.lock(f"resource-index:{resource_id}", ttl_seconds=600) as acquired:
-        if acquired:
-            _process_resource(payload)
+        if not acquired:
+            # Let RocketMQ redeliver instead of acknowledging an event whose
+            # work never ran.  This also protects delete events from being lost
+            # while another worker is still indexing the same resource.
+            raise RuntimeError(f"资料 {resource_id} 正由其他 Worker 处理，请稍后重试")
+        _process_resource(payload)
 
 
 def process_teaching_event(payload: dict) -> None:

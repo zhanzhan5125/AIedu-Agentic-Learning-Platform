@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import io
 import zipfile
+from contextlib import contextmanager
+from datetime import datetime
 
 import pytest
 
@@ -9,6 +11,9 @@ from app.db import SessionLocal
 from app.integrations.rag import chunks, embed_texts
 from app.models import (Course, CourseOffering, CourseResource, Enrollment,
                         OfferingStatus, OutboxEvent, ProcessingStatus, Role, User)
+from app.worker import _process_resource, process_resource
+
+
 def _headers(token: str) -> dict[str, str]:
     return {"Authorization": f"Bearer {token}"}
 
@@ -78,3 +83,41 @@ def test_chunking_retains_overlap_and_missing_embedding_key_is_explicit():
     assert all(0 < len(value) <= 120 for value in values)
     with pytest.raises(RuntimeError, match="AIEDU_AI_API_KEY"):
         embed_texts(["课程资料"])
+
+
+def test_deleted_resource_skips_stale_ingest(monkeypatch):
+    with SessionLocal.begin() as db:
+        teacher = db.query(User).filter_by(role=Role.teacher).one()
+        course = Course(number="CS-DELETED-RAG", name="删除资料测试")
+        db.add(course)
+        db.flush()
+        offering = CourseOffering(course_id=course.id, teacher_id=teacher.id, year=2026,
+                                  term=1, status=OfferingStatus.active)
+        db.add(offering)
+        db.flush()
+        resource = CourseResource(
+            offering_id=offering.id, uploader_id=teacher.id, title="已删除教材",
+            resource_type="textbook", original_name="deleted.pdf", object_key="deleted.pdf",
+            mime_type="application/pdf", size=10, sha256="a" * 64, version=1,
+            processing_status=ProcessingStatus.deleted, deleted_at=datetime.now(),
+        )
+        db.add(resource)
+        db.flush()
+        resource_id = resource.id
+
+    monkeypatch.setattr("app.worker.object_storage.get",
+                        lambda _: pytest.fail("不应读取已删除资料"))
+    monkeypatch.setattr("app.worker.index_resource",
+                        lambda *_, **__: pytest.fail("不应索引已删除资料"))
+
+    _process_resource({"event_type": "resource.ingest", "resource_id": resource_id})
+
+
+def test_resource_lock_contention_is_retried(monkeypatch):
+    @contextmanager
+    def unavailable_lock(*_, **__):
+        yield False
+
+    monkeypatch.setattr("app.worker.runtime_cache.lock", unavailable_lock)
+    with pytest.raises(RuntimeError, match="其他 Worker"):
+        process_resource({"event_type": "resource.delete", "resource_id": 99})
