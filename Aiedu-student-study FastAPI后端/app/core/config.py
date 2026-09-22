@@ -29,6 +29,8 @@ class Settings(BaseSettings):
     rocketmq_endpoint: str = "localhost:8081"
     rocketmq_topic: str = "aiedu-ai-jobs"
     rocketmq_log_dir: str = "./logs/rocketmq_python"
+    rocketmq_worker_concurrency: int = 4
+    rocketmq_invisible_duration_seconds: int = 1800
     ai_base_url: str = "https://api.openai.com/v1"
     ai_api_key: str = ""
     llm_model: str = "qwen-plus"

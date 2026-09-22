@@ -2,18 +2,23 @@ from __future__ import annotations
 
 import hashlib
 import io
+import logging
 import math
 import re
 from collections import Counter
 from collections.abc import Iterable, Sequence
 from dataclasses import asdict, dataclass
 from functools import lru_cache
+from time import perf_counter
 from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
+
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -253,10 +258,25 @@ def embed_texts(texts: Sequence[str]) -> list[list[float]]:
     batch_size = max(1, settings.embedding_batch_size)
     for offset in range(0, len(texts), batch_size):
         batch = list(texts[offset:offset + batch_size])
-        response = client.embeddings.create(
-            model=settings.embedding_model,
-            input=batch,
-            dimensions=settings.embedding_dimensions,
+        batch_number = offset // batch_size + 1
+        batch_total = math.ceil(len(texts) / batch_size)
+        started = perf_counter()
+        logger.info(
+            "Embedding batch %s/%s: %s chunks with %s",
+            batch_number, batch_total, len(batch), settings.embedding_model,
+        )
+        try:
+            response = client.embeddings.create(
+                model=settings.embedding_model,
+                input=batch,
+                dimensions=settings.embedding_dimensions,
+            )
+        except Exception:
+            logger.exception("Embedding batch %s/%s failed", batch_number, batch_total)
+            raise
+        logger.info(
+            "Embedding batch %s/%s completed in %sms",
+            batch_number, batch_total, round((perf_counter() - started) * 1000),
         )
         ordered = sorted(response.data, key=lambda item: item.index)
         if len(ordered) != len(batch):
@@ -272,7 +292,15 @@ def embed_texts(texts: Sequence[str]) -> list[list[float]]:
 def _qdrant_client(timeout: int = 10):
     from qdrant_client import QdrantClient
 
-    return QdrantClient(url=get_settings().qdrant_url, timeout=timeout)
+    settings = get_settings()
+    local = re.match(r"^https?://(?:localhost|127\.0\.0\.1|\[::1\])(?::|/|$)", settings.qdrant_url)
+    return QdrantClient(
+        url=settings.qdrant_url,
+        timeout=timeout,
+        # httpx otherwise consults the Windows proxy registry and may route a
+        # localhost Qdrant request through the user's HTTP proxy.
+        trust_env=not bool(local),
+    )
 
 
 def _ensure_collection(client) -> None:

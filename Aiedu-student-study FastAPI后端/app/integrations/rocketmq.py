@@ -4,6 +4,7 @@ import json
 import logging
 import os
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from collections.abc import Callable
 from contextlib import contextmanager
 from pathlib import Path
@@ -97,23 +98,41 @@ class RocketMQAdapter:
             # trigger ReceiveMessageActivity's settings-null error (50001).
             # The first settings refresh happens after roughly one second.
             time.sleep(2)
-            while True:
-                try:
-                    messages = consumer.receive(16, 15)
-                except Exception as exc:
-                    # A clean broker has no route for the topic until the first
-                    # producer send (or an administrator creates it). Keep the
-                    # worker alive while RocketMQ becomes ready/topic appears.
-                    logger.warning("RocketMQ receive unavailable; retrying: %s", exc)
-                    time.sleep(5)
-                    continue
-                for message in messages:
+            concurrency = max(1, self.settings.rocketmq_worker_concurrency)
+            invisible_duration = max(60, self.settings.rocketmq_invisible_duration_seconds)
+            with ThreadPoolExecutor(max_workers=concurrency,
+                                    thread_name_prefix="aiedu-resource-worker") as executor:
+                while True:
                     try:
-                        handler(json.loads(bytes(message.body).decode("utf-8")))
-                    except Exception:
-                        # Do not acknowledge: RocketMQ will redeliver according to broker policy.
+                        messages = consumer.receive(concurrency, invisible_duration)
+                    except Exception as exc:
+                        # A clean broker has no route for the topic until the first
+                        # producer send (or an administrator creates it). Keep the
+                        # worker alive while RocketMQ becomes ready/topic appears.
+                        logger.warning("RocketMQ receive unavailable; retrying: %s", exc)
+                        time.sleep(5)
                         continue
-                    consumer.ack(message)
+                    futures = {
+                        executor.submit(
+                            handler, json.loads(bytes(message.body).decode("utf-8"))
+                        ): message
+                        for message in messages
+                    }
+                    for future in as_completed(futures):
+                        message = futures[future]
+                        try:
+                            future.result()
+                        except Exception:
+                            # Do not acknowledge: RocketMQ will redeliver according to broker policy.
+                            logger.exception("RocketMQ event failed; waiting for redelivery")
+                            continue
+                        try:
+                            consumer.ack(message)
+                        except Exception as exc:
+                            # Processing is idempotent through ConsumerInbox. An expired
+                            # receipt handle must not terminate the entire worker; the
+                            # redelivered message will be acknowledged on its next pass.
+                            logger.warning("RocketMQ acknowledgement failed; message will redeliver: %s", exc)
         finally:
             consumer.shutdown()
 

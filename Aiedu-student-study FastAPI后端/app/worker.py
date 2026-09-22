@@ -321,6 +321,10 @@ def _process_resource(payload: dict) -> None:
             resource.indexed_at = datetime.now()
             resource.error_message = None
         except Exception as exc:
+            logger.exception(
+                "Resource %s failed while status=%s",
+                resource.id, resource.processing_status.value,
+            )
             resource.processing_status = ProcessingStatus.failed
             resource.error_message = str(exc)[:2000]
         db.commit()
@@ -395,6 +399,10 @@ def run_local_once() -> int:
 
 
 def run() -> None:
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s %(levelname)s %(name)s %(message)s",
+    )
     settings = get_settings()
     if settings.enable_mq:
         def outbox_loop() -> None:
