@@ -216,6 +216,7 @@ def get_agent_run(run_id: int, request: Request, user: User = Depends(current_us
     run = db.get(AgentRun, run_id)
     if run is None or (run.owner_id != user.id and user.role != Role.manager):
         raise NotFound("智能体运行记录不存在")
+    job = db.scalar(select(AIJob).where(AIJob.agent_run_id == run.id))
     return ok({"id": run.id, "kind": run.kind, "agent_name": run.agent_name,
                "task_type": run.task_type, "parent_run_id": run.parent_run_id,
                "resource_type": run.resource_type,
@@ -225,6 +226,9 @@ def get_agent_run(run_id: int, request: Request, user: User = Depends(current_us
                "token_usage": run.token_usage, "plan": run.plan,
                "reflection_count": run.reflection_count,
                "result": run.result, "error": run.error,
+               "attempts": job.attempts if job else 0,
+               "max_attempts": job.max_attempts if job else 0,
+               "last_error": job.error_message if job else None,
                "created_at": run.created_at, "updated_at": run.updated_at}, request.state.request_id)
 
 

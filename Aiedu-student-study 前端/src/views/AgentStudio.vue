@@ -31,6 +31,7 @@
           <el-col :span="15"><el-card><div slot="header" class="result-title"><span>智能体运行结果</span><el-tag v-if="run.status">{{ run.status }}</el-tag></div>
             <el-empty v-if="!run.id" description="提交任务后可查看结构化结果和执行轨迹" />
             <template v-else>
+              <el-alert v-if="run.status==='queued'&&run.attempts" :title="`模型请求正在重试（${run.attempts}/${run.max_attempts}）`" :description="run.last_error||'上一次请求未完成'" type="warning" :closable="false" show-icon />
               <el-alert v-if="run.result" title="以下内容是草稿，发布前必须由教师审核" type="warning" :closable="false" />
               <div class="run-meta" v-if="run.agent_name">{{ run.agent_name }} · {{ run.task_type }} · Reflection {{ run.reflection_count || 0 }} 次</div>
               <div v-for="(q,index) in questions" :key="index" class="question"><b>{{ index + 1 }}. {{ q.prompt }}</b><p>参考标准：{{ q.reference_answer }}</p><span>难度 {{ q.difficulty }} · {{ q.score }} 分 · 引用 {{ (q.citations || []).length }} 条</span></div>

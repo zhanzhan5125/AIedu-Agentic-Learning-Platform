@@ -451,6 +451,7 @@ def _fallback_grading(state: WorkflowState) -> GradingSuggestion:
 
 
 def _model_assignment(state: WorkflowState) -> tuple[dict, dict]:
+    settings = get_settings()
     value, metadata = structured_completion(
         AssignmentDraftResult,
         system_prompt=("你是 AIedu 教师出题/批阅智能体的出题模式。只能依据给定课程资料生成题目，"
@@ -458,6 +459,10 @@ def _model_assignment(state: WorkflowState) -> tuple[dict, dict]:
         user_prompt=json.dumps({"teacher_requirements": state.get("input_data", {}),
                                 "course_context": state.get("tool_results", {})},
                                ensure_ascii=False, default=str),
+        # Assignment JSON is much larger than a chat answer. Let the gateway
+        # finish one request, while job-level retries remain visible/auditable.
+        timeout_seconds=settings.assignment_llm_timeout_seconds,
+        max_retries=0,
     )
     return value.model_dump(), metadata
 

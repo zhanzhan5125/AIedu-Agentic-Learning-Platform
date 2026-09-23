@@ -34,6 +34,7 @@ class Settings(BaseSettings):
     ai_base_url: str = "https://api.openai.com/v1"
     ai_api_key: str = ""
     llm_model: str = "qwen-plus"
+    assignment_llm_timeout_seconds: int = Field(default=180, ge=30, le=600)
     enable_mq: bool = False
     enable_llm: bool = False
     upload_dir: str = "./uploads"

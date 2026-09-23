@@ -236,8 +236,25 @@ def _process_job(payload: dict) -> None:
                 job.progress = 0
                 if run:
                     run.status = JobStatus.queued
+                # A failed RocketMQ message stays invisible for the full task
+                # lease (30 minutes in development). Create a fresh durable
+                # event and acknowledge the old one so transient model errors
+                # retry promptly without shortening the lease for long jobs.
+                db.add(OutboxEvent(
+                    topic=get_settings().rocketmq_topic,
+                    tag=job.kind,
+                    aggregate_id=f"{job.id}:retry:{job.attempts}",
+                    payload={
+                        "event_type": "ai.job", "job_id": job.id,
+                        "retry_attempt": job.attempts,
+                    },
+                ))
                 db.commit()
-                raise
+                logger.warning(
+                    "AI job %s queued for prompt retry %s/%s: %s",
+                    job.id, job.attempts, job.max_attempts, exc,
+                )
+                return
             job.status = JobStatus.failed
             if run:
                 run.status = JobStatus.failed

@@ -44,6 +44,7 @@ $env:AIEDU_ENABLE_LLM = if ($values['AIEDU_ENABLE_LLM']) { $values['AIEDU_ENABLE
 $env:AIEDU_AI_BASE_URL = if ($values['AIEDU_AI_BASE_URL']) { $values['AIEDU_AI_BASE_URL'] } else { 'https://api.openai.com/v1' }
 $env:AIEDU_AI_API_KEY = $values['AIEDU_AI_API_KEY']
 $env:AIEDU_LLM_MODEL = $values['AIEDU_LLM_MODEL']
+$env:AIEDU_ASSIGNMENT_LLM_TIMEOUT_SECONDS = if ($values['AIEDU_ASSIGNMENT_LLM_TIMEOUT_SECONDS']) { $values['AIEDU_ASSIGNMENT_LLM_TIMEOUT_SECONDS'] } else { '180' }
 $env:AIEDU_QDRANT_COLLECTION = if ($values['AIEDU_QDRANT_COLLECTION']) { $values['AIEDU_QDRANT_COLLECTION'] } else { 'aiedu_course_resources_v2' }
 $env:AIEDU_EMBEDDING_MODEL = 'text-embedding-3-large'
 $env:AIEDU_EMBEDDING_DIMENSIONS = if ($values['AIEDU_EMBEDDING_DIMENSIONS']) { $values['AIEDU_EMBEDDING_DIMENSIONS'] } else { '3072' }

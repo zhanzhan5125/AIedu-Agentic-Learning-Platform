@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 from app.db import SessionLocal
 from app.models import (AIJob, AgentRun, Answer, Assignment, AssignmentQuestion, AssignmentStatus, Course,
                         CourseOffering, CourseResource, Enrollment, KnowledgePoint, Notification,
-                        OfferingStatus, ProcessingStatus, Question, ResourceChunk, Role,
+                        JobStatus, OfferingStatus, OutboxEvent, ProcessingStatus, Question, ResourceChunk, Role,
                         ScheduledNotification, Submission, SubmissionStatus, User)
 from app.services.learning import profile_view, refresh_student_mastery, upsert_evidence
 from app.services.submissions import auto_submit_expired_drafts
@@ -163,6 +163,71 @@ def test_publish_submit_and_ai_job_are_idempotent(client, auth):
     status = client.get(f"/api/v1/jobs/{first_job['data']['job_id']}", headers=headers(teacher_token)).json()
     assert status["data"]["status"] == "succeeded"
     assert status["data"]["progress"] == 100
+
+
+def test_transient_ai_failure_creates_prompt_durable_retry(monkeypatch):
+    with SessionLocal.begin() as db:
+        teacher = db.query(User).filter_by(role=Role.teacher).one()
+        run = AgentRun(
+            kind="assignment.summary", agent_name="teacher_course_assistant",
+            task_type="assignment_summary", owner_id=teacher.id,
+            resource_type="assignment", resource_id=1, status=JobStatus.queued,
+        )
+        db.add(run)
+        db.flush()
+        job = AIJob(
+            kind="assignment.summary", owner_id=teacher.id,
+            resource_type="assignment", resource_id=1, status=JobStatus.queued,
+            input_data={}, idempotency_key="retry-job-001", agent_run_id=run.id,
+        )
+        db.add(job)
+        db.flush()
+        db.add(OutboxEvent(
+            topic="test-ai-jobs", tag=job.kind, aggregate_id=str(job.id),
+            payload={"event_type": "ai.job", "job_id": job.id},
+        ))
+        job_id, run_id = job.id, run.id
+
+    calls = 0
+
+    def flaky_workflow(*_args, **_kwargs):
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            raise TimeoutError("模型响应超时")
+        return {
+            "agent_name": "teacher_course_assistant", "task_type": "assignment_summary",
+            "plan": {"goal": "测试重试", "steps": []},
+            "result": {"summary": "重试成功"},
+            "validation": {"valid": True}, "reflection_count": 0,
+            "steps": [], "delegations": [], "token_usage": {},
+        }
+
+    monkeypatch.setattr("app.worker.run_workflow", flaky_workflow)
+    assert run_local_once() == 1
+    with SessionLocal() as db:
+        job = db.get(AIJob, job_id)
+        run = db.get(AgentRun, run_id)
+        retry_events = db.query(OutboxEvent).filter(
+            OutboxEvent.published_at.is_(None),
+            OutboxEvent.aggregate_id == f"{job_id}:retry:1",
+        ).all()
+        assert job.status == JobStatus.queued
+        assert run.status == JobStatus.queued
+        assert job.attempts == 1
+        assert job.error_message == "模型响应超时"
+        assert len(retry_events) == 1
+
+    assert run_local_once() == 1
+    with SessionLocal() as db:
+        job = db.get(AIJob, job_id)
+        run = db.get(AgentRun, run_id)
+        assert job.status == JobStatus.succeeded
+        assert job.progress == 100
+        assert job.attempts == 1
+        assert job.error_message is None
+        assert run.status == JobStatus.succeeded
+        assert run.result["summary"] == "重试成功"
 
 
 def test_saved_snapshot_can_be_edited_and_submit_uses_current_answers(client, auth):
