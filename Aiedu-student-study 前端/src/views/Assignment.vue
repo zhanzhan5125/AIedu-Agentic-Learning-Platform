@@ -109,7 +109,7 @@ export default {
       }
       this.loading = true
       try {
-        const res = await apiV1.get('/teacher/assignments', { params: { offering_id: offeringId } })
+        const res = await apiV1.get('/teacher/assignments', { params: { offering_id: offeringId, include_drafts: false } })
         const records = (res.data && res.data.records) || []
         this.total = res.data?.total || records.length
         this.tableData = records.map(item => ({

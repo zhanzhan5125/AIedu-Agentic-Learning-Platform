@@ -5,7 +5,8 @@ from datetime import datetime, timedelta
 from app.db import SessionLocal
 from app.models import (AIJob, AgentRun, Answer, Assignment, AssignmentQuestion, AssignmentStatus, Course,
                         CourseOffering, CourseResource, Enrollment, KnowledgePoint, Notification,
-                        JobStatus, OfferingStatus, OutboxEvent, ProcessingStatus, Question, ResourceChunk, Role,
+                        JobStatus, OfferingStatus, OutboxEvent, ProcessingStatus, Question,
+                        QuestionKnowledgePoint, ResourceChunk, Role,
                         ScheduledNotification, Submission, SubmissionStatus, User)
 from app.services.learning import profile_view, refresh_student_mastery, upsert_evidence
 from app.services.submissions import auto_submit_expired_drafts
@@ -163,6 +164,108 @@ def test_publish_submit_and_ai_job_are_idempotent(client, auth):
     status = client.get(f"/api/v1/jobs/{first_job['data']['job_id']}", headers=headers(teacher_token)).json()
     assert status["data"]["status"] == "succeeded"
     assert status["data"]["progress"] == 100
+
+
+def test_agent_assignment_drafts_can_be_listed_edited_and_deleted(client, auth):
+    with SessionLocal.begin() as db:
+        teacher = db.query(User).filter_by(role=Role.teacher).one()
+        course = Course(number="CS-DRAFT", name="草稿版本测试")
+        db.add(course)
+        db.flush()
+        offering = CourseOffering(
+            course_id=course.id, teacher_id=teacher.id, year=2026, term=1,
+            status=OfferingStatus.active,
+        )
+        db.add(offering)
+        db.flush()
+        first_point = KnowledgePoint(course_id=course.id, code="DRAFT-1", name="变量")
+        second_point = KnowledgePoint(course_id=course.id, code="DRAFT-2", name="常量")
+        db.add_all([first_point, second_point])
+        db.flush()
+        assignment = Assignment(
+            offering_id=offering.id, title="AI 草稿", status=AssignmentStatus.draft,
+            origin="agent",
+        )
+        question = Question(
+            kind="short_answer", prompt="什么是变量？", reference_answer="可变化的数据",
+            score=10, difficulty=2,
+        )
+        db.add_all([assignment, question])
+        db.flush()
+        db.add(AssignmentQuestion(
+            assignment_id=assignment.id, question_id=question.id, position=1,
+        ))
+        db.add(QuestionKnowledgePoint(
+            question_id=question.id, knowledge_point_id=first_point.id, weight=100,
+        ))
+        offering_id, assignment_id = offering.id, assignment.id
+        first_point_id, second_point_id = first_point.id, second_point.id
+        old_question_id = question.id
+
+    teacher_token = auth(client, "teacher", "teacher")
+    listed = client.get(
+        f"/api/v1/teacher/assignments?offering_id={offering_id}&status=draft&origin=agent",
+        headers=headers(teacher_token),
+    )
+    assert listed.status_code == 200
+    record = listed.json()["data"]["records"][0]
+    assert record["id"] == assignment_id
+    assert record["origin"] == "agent"
+    assert record["created_at"] and record["updated_at"]
+    published_only = client.get(
+        f"/api/v1/teacher/assignments?offering_id={offering_id}&include_drafts=false",
+        headers=headers(teacher_token),
+    ).json()["data"]
+    assert published_only["records"] == []
+
+    detail = client.get(
+        f"/api/v1/teacher/assignments/{assignment_id}",
+        headers=headers(teacher_token),
+    ).json()["data"]
+    assert detail["version"] == 1
+    assert detail["questions"][0]["knowledge_point_ids"] == [first_point_id]
+
+    updated = client.put(
+        f"/api/v1/teacher/assignments/{assignment_id}",
+        headers=headers(teacher_token),
+        json={
+            "title": "第一章练习草稿",
+            "questions": [
+                {
+                    "kind": "short_answer", "prompt": "变量与常量有何区别？",
+                    "reference_answer": "变量可修改，常量不可修改", "score": 15,
+                    "difficulty": 3,
+                    "knowledge_point_ids": [first_point_id, second_point_id],
+                },
+                {
+                    "kind": "short_answer", "prompt": "如何定义常量？",
+                    "reference_answer": "使用 const 或宏", "score": 5,
+                    "difficulty": 2, "knowledge_point_ids": [second_point_id],
+                },
+            ],
+        },
+    )
+    assert updated.status_code == 200
+    assert updated.json()["data"] == {
+        "id": assignment_id, "version": 2, "total_score": 20,
+    }
+    detail = client.get(
+        f"/api/v1/teacher/assignments/{assignment_id}",
+        headers=headers(teacher_token),
+    ).json()["data"]
+    assert detail["title"] == "第一章练习草稿"
+    assert detail["questions"][0]["knowledge_point_ids"] == [
+        first_point_id, second_point_id,
+    ]
+
+    deleted = client.delete(
+        f"/api/v1/teacher/assignments/{assignment_id}",
+        headers=headers(teacher_token),
+    )
+    assert deleted.status_code == 200
+    with SessionLocal() as db:
+        assert db.get(Assignment, assignment_id) is None
+        assert db.get(Question, old_question_id) is None
 
 
 def test_transient_ai_failure_creates_prompt_durable_retry(monkeypatch):

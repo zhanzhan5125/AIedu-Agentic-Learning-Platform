@@ -3,8 +3,8 @@
     <div class="page-heading"><h2>课程多智能体工作台</h2><p>四个业务智能体按边界协作；所有计划、工具调用、委派和校验均可追溯。</p></div>
     <el-tabs v-model="activeTab">
       <el-tab-pane label="出题智能体" name="assignment">
-        <el-row :gutter="20">
-          <el-col :span="9"><el-card><div slot="header">生成作业草稿</div>
+        <el-row :gutter="16" class="assignment-workspace">
+          <el-col :span="7"><el-card><div slot="header">生成新草稿</div>
             <el-form label-position="top">
               <el-form-item label="关键词"><el-input v-model="keywords" placeholder="例如：递归、二叉树、复杂度" /></el-form-item>
               <el-form-item label="按已发布课程路线选择章节">
@@ -28,14 +28,55 @@
               <el-button type="primary" :loading="submitting" @click="generateAssignment">由出题智能体生成</el-button>
             </el-form>
           </el-card></el-col>
-          <el-col :span="15"><el-card><div slot="header" class="result-title"><span>智能体运行结果</span><el-tag v-if="run.status">{{ run.status }}</el-tag></div>
-            <el-empty v-if="!run.id" description="提交任务后可查看结构化结果和执行轨迹" />
-            <template v-else>
-              <el-alert v-if="run.status==='queued'&&run.attempts" :title="`模型请求正在重试（${run.attempts}/${run.max_attempts}）`" :description="run.last_error||'上一次请求未完成'" type="warning" :closable="false" show-icon />
-              <el-alert v-if="run.result" title="以下内容是草稿，发布前必须由教师审核" type="warning" :closable="false" />
-              <div class="run-meta" v-if="run.agent_name">{{ run.agent_name }} · {{ run.task_type }} · Reflection {{ run.reflection_count || 0 }} 次</div>
-              <div v-for="(q,index) in questions" :key="index" class="question"><b>{{ index + 1 }}. {{ q.prompt }}</b><p>参考标准：{{ q.reference_answer }}</p><span>难度 {{ q.difficulty }} · {{ q.score }} 分 · 引用 {{ (q.citations || []).length }} 条</span></div>
-              <el-timeline><el-timeline-item v-for="step in steps" :key="step.position" :timestamp="`${step.duration_ms || 0}ms`"><b>{{ step.node_name }}</b> · {{ step.tool_name || '内部节点' }}<small>{{ step.step_type }}</small></el-timeline-item></el-timeline>
+          <el-col :span="5"><el-card class="draft-sidebar" v-loading="draftListLoading">
+            <div slot="header" class="result-title"><span>草稿暂存</span><el-tag size="mini">{{ drafts.length }}</el-tag></div>
+            <el-empty v-if="!draftListLoading&&!drafts.length" description="尚无 AI 作业草稿" :image-size="70" />
+            <div v-for="draft in drafts" :key="draft.id" class="draft-item" :class="{active:selectedDraft&&selectedDraft.id===draft.id}" @click="selectDraft(draft.id)">
+              <div class="draft-item-title"><b>{{ draft.title }}</b><el-button type="text" icon="el-icon-delete" @click.stop="deleteDraft(draft)" /></div>
+              <small>{{ formatTime(draft.updated_at) }}</small>
+              <div><el-tag size="mini" type="warning">草稿</el-tag><span>v{{ draft.version }} · {{ draft.total_score }} 分</span></div>
+            </div>
+          </el-card></el-col>
+          <el-col :span="12"><el-card class="draft-editor" v-loading="draftLoading">
+            <div slot="header" class="result-title">
+              <span>草稿编辑区</span>
+              <div v-if="selectedDraft">
+                <el-button v-if="!draftEditing" size="mini" @click="startDraftEdit">编辑</el-button>
+                <el-button v-if="draftEditing" size="mini" @click="cancelDraftEdit">取消</el-button>
+                <el-button v-if="draftEditing" size="mini" type="primary" :loading="draftSaving" @click="saveDraft">保存新版本</el-button>
+              </div>
+            </div>
+            <el-alert v-if="submitting" title="正在生成新的作业草稿" :description="run.status==='queued'?'任务已排队，完成后会自动加入左侧草稿栏':'智能体正在检索资料并生成题目'" type="info" :closable="false" show-icon />
+            <el-alert v-else-if="run.status==='failed'" title="草稿生成失败" :description="run.error||run.last_error||'请检查模型与 Worker 状态后重试'" type="error" :closable="false" show-icon />
+            <el-empty v-if="!selectedDraft&&!submitting" description="从左侧选择历史草稿，或生成一个新草稿" />
+            <template v-if="selectedDraft&&draftForm">
+              <el-input v-if="draftEditing" v-model="draftForm.title" maxlength="200" show-word-limit class="draft-title-input" />
+              <h3 v-else class="draft-title">{{ selectedDraft.title }}</h3>
+              <div class="draft-meta"><el-tag size="small" type="warning">未发布</el-tag><span>版本 v{{ selectedDraft.version }}</span><span>{{ selectedDraft.questions.length }} 题</span><span>共 {{ selectedDraft.total_score }} 分</span><span>更新于 {{ formatTime(selectedDraft.updated_at) }}</span></div>
+              <el-alert title="草稿仅教师可见，编辑保存后仍不会自动发布" type="warning" :closable="false" />
+              <div v-for="(q,index) in draftForm.questions" :key="q.id||`new-${index}`" class="question draft-question">
+                <template v-if="draftEditing">
+                  <div class="question-toolbar"><b>第 {{ index + 1 }} 题</b><div>
+                    <el-select v-model="q.kind" size="mini"><el-option label="简答题" value="short_answer" /><el-option label="单选题" value="single_choice" /><el-option label="多选题" value="multiple_choice" /><el-option label="编程题" value="programming" /></el-select>
+                    <el-input-number v-model="q.score" size="mini" :min="1" :max="1000" />
+                    <el-rate v-model="q.difficulty" class="inline-rate" />
+                    <el-button type="text" class="danger-action" @click="removeDraftQuestion(index)">删除</el-button>
+                  </div></div>
+                  <el-input v-model="q.prompt" type="textarea" :rows="2" placeholder="题目内容" />
+                  <el-input v-model="q.reference_answer" type="textarea" :rows="3" placeholder="参考答案或评分标准" class="answer-input" />
+                </template>
+                <template v-else>
+                  <b>{{ index + 1 }}. {{ q.prompt }}</b><p>参考答案：{{ q.reference_answer || '暂未填写' }}</p>
+                  <div class="question-meta"><span>{{ kindLabel(q.kind) }} · 难度 {{ q.difficulty }} · {{ q.score }} 分</span><el-tag v-for="pointId in q.knowledge_point_ids" :key="pointId" size="mini" type="info">{{ knowledgePointName(pointId) }}</el-tag></div>
+                </template>
+              </div>
+              <el-button v-if="draftEditing" icon="el-icon-plus" class="add-question" @click="addDraftQuestion">添加题目</el-button>
+              <el-collapse v-if="run.id&&steps.length" class="run-trace">
+                <el-collapse-item title="查看本草稿的智能体运行轨迹" name="trace">
+                  <div class="run-meta" v-if="run.agent_name">{{ run.agent_name }} · {{ run.task_type }}</div>
+                  <el-timeline><el-timeline-item v-for="step in steps" :key="step.position" :timestamp="`${step.duration_ms || 0}ms`"><b>{{ step.node_name }}</b> · {{ step.tool_name || '内部节点' }}<small>{{ step.step_type }}</small></el-timeline-item></el-timeline>
+                </el-collapse-item>
+              </el-collapse>
             </template>
           </el-card></el-col>
         </el-row>
@@ -87,25 +128,37 @@ import apiV1 from '@/utils/apiV1'
 import * as echarts from 'echarts'
 
 export default {
-  data(){return{activeTab:'assignment',keywords:'',selectedChapterIds:[],count:5,difficulty:2,submitting:false,run:{},steps:[],timer:null,courseMap:null,publishedCourseMap:null,mapGenerating:false,mapSaving:false,editing:false,selectedNode:null,chart:null}},
+  data(){return{activeTab:'assignment',keywords:'',selectedChapterIds:[],count:5,difficulty:2,submitting:false,run:{},steps:[],timer:null,drafts:[],selectedDraft:null,draftForm:null,draftListLoading:false,draftLoading:false,draftEditing:false,draftSaving:false,courseMap:null,publishedCourseMap:null,mapGenerating:false,mapSaving:false,editing:false,selectedNode:null,chart:null}},
   computed:{
     course(){return this.$store.getters.getCourse||{}},
     offeringId(){return Number(this.course.id||this.course.offeringId||this.course.courseCode)||null},
-    questions(){return (this.run.result&&this.run.result.questions)||[]},
     chapterNodes(){return this.hierarchicalNodes(this.courseMap)},
     publishedChapters(){return this.hierarchicalNodes(this.publishedCourseMap)}
   },
-  created(){this.loadCourseMap();this.loadPublishedCourseMap()},
+  created(){this.loadCourseMap();this.loadPublishedCourseMap();this.loadAssignmentDrafts()},
   mounted(){window.addEventListener('resize',this.resizeCourseMap)},
   watch:{
     activeTab(value){if(value==='courseMap')this.$nextTick(this.renderCourseMap)},
-    offeringId(value,previous){if(value&&value!==previous){this.selectedChapterIds=[];this.loadCourseMap();this.loadPublishedCourseMap()}}
+    offeringId(value,previous){if(value&&value!==previous){this.selectedChapterIds=[];this.run={};this.steps=[];this.selectedDraft=null;this.draftForm=null;this.loadCourseMap();this.loadPublishedCourseMap();this.loadAssignmentDrafts()}}
   },
   beforeDestroy(){if(this.timer)clearTimeout(this.timer);window.removeEventListener('resize',this.resizeCourseMap);if(this.chart)this.chart.dispose()},
   methods:{
     errorMessage(error){return error&&error.response&&error.response.data&&error.response.data.msg||error&&error.message},
-    async generateAssignment(){if(!this.offeringId)return this.$message.warning('请先选择课程');this.submitting=true;try{const key=`draft-${this.offeringId}-${Date.now()}`;const res=await apiV1.post(`/teacher/offerings/${this.offeringId}/assignment-drafts`,{keywords:this.keywords.split(/[，,\s]+/).filter(Boolean),course_map_node_ids:this.selectedChapterIds,question_count:this.count,difficulty:this.difficulty,question_kinds:['short_answer'],knowledge_point_ids:[],idempotency_key:key});this.run={id:res.data.agent_run_id,status:res.data.status};this.pollAssignment()}catch(error){this.$message.error(this.errorMessage(error)||'智能出题任务创建失败');this.submitting=false}},
-    async pollAssignment(){const res=await apiV1.get(`/agent-runs/${this.run.id}`);this.run=res.data;if(['succeeded','failed','cancelled'].includes(this.run.status)){this.submitting=false;this.steps=(await apiV1.get(`/agent-runs/${this.run.id}/steps`)).data||[];return}this.timer=setTimeout(()=>this.pollAssignment(),1200)},
+    async generateAssignment(){if(!this.offeringId)return this.$message.warning('请先选择课程');this.submitting=true;try{const key=`draft-${this.offeringId}-${Date.now()}`;const res=await apiV1.post(`/teacher/offerings/${this.offeringId}/assignment-drafts`,{keywords:this.keywords.split(/[，,\s]+/).filter(Boolean),course_map_node_ids:this.selectedChapterIds,question_count:this.count,difficulty:this.difficulty,question_kinds:['short_answer'],knowledge_point_ids:[],idempotency_key:key});this.run={id:res.data.agent_run_id,status:res.data.status};this.steps=[];this.pollAssignment()}catch(error){this.$message.error(this.errorMessage(error)||'智能出题任务创建失败');this.submitting=false}},
+    async pollAssignment(){try{const res=await apiV1.get(`/agent-runs/${this.run.id}`);this.run=res.data;if(['succeeded','failed','cancelled'].includes(this.run.status)){this.submitting=false;this.steps=(await apiV1.get(`/agent-runs/${this.run.id}/steps`)).data||[];if(this.run.status==='succeeded'&&this.run.result&&this.run.result.assignment_id){await this.loadAssignmentDrafts(this.run.result.assignment_id);this.$message.success('新草稿已暂存，可随时返回继续编辑')}else if(this.run.status==='failed'){this.$message.error(this.run.error||'智能出题失败')}return}this.timer=setTimeout(()=>this.pollAssignment(),1200)}catch(error){this.submitting=false;this.$message.error(this.errorMessage(error)||'读取任务状态失败')}},
+    async loadAssignmentDrafts(preferredId){if(!this.offeringId)return;this.draftListLoading=true;try{const res=await apiV1.get('/teacher/assignments',{params:{offering_id:this.offeringId,status:'draft',origin:'agent'}});this.drafts=(res.data&&res.data.records)||[];const target=preferredId||this.selectedDraft&&this.selectedDraft.id||this.drafts[0]&&this.drafts[0].id;if(target&&this.drafts.some(item=>item.id===target))await this.openDraft(target);else{this.selectedDraft=null;this.draftForm=null}}catch(error){this.drafts=[];this.$message.error(this.errorMessage(error)||'草稿列表加载失败')}finally{this.draftListLoading=false}},
+    async selectDraft(id){if(this.draftEditing&&this.selectedDraft&&this.selectedDraft.id!==id){try{await this.$confirm('当前修改尚未保存，切换草稿将放弃这些修改。','切换草稿',{type:'warning'})}catch(_){return}}await this.openDraft(id)},
+    async openDraft(id){this.draftLoading=true;try{const detail=(await apiV1.get(`/teacher/assignments/${id}`)).data;this.selectedDraft=detail;this.draftForm=JSON.parse(JSON.stringify(detail));this.draftEditing=false;if(detail.agent_run_id)await this.loadDraftRun(detail.agent_run_id);else{this.run={};this.steps=[]}}catch(error){this.$message.error(this.errorMessage(error)||'草稿读取失败')}finally{this.draftLoading=false}},
+    async loadDraftRun(runId){try{const [runRes,stepsRes]=await Promise.all([apiV1.get(`/agent-runs/${runId}`),apiV1.get(`/agent-runs/${runId}/steps`)]);this.run=runRes.data||{};this.steps=stepsRes.data||[]}catch(_){this.run={};this.steps=[]}},
+    startDraftEdit(){this.draftForm=JSON.parse(JSON.stringify(this.selectedDraft));this.draftEditing=true},
+    cancelDraftEdit(){this.draftForm=JSON.parse(JSON.stringify(this.selectedDraft));this.draftEditing=false},
+    addDraftQuestion(){this.draftForm.questions.push({kind:'short_answer',prompt:'',reference_answer:'',score:10,difficulty:2,knowledge_point_ids:[]})},
+    removeDraftQuestion(index){this.draftForm.questions.splice(index,1)},
+    async saveDraft(){const title=(this.draftForm.title||'').trim();if(!title)return this.$message.warning('请填写草稿标题');if(this.draftForm.questions.some(item=>!(item.prompt||'').trim()||Number(item.score)<=0))return this.$message.warning('请补全题目内容和有效分值');this.draftSaving=true;try{await apiV1.put(`/teacher/assignments/${this.selectedDraft.id}`,{title,questions:this.draftForm.questions.map(item=>({kind:item.kind,prompt:item.prompt.trim(),reference_answer:(item.reference_answer||'').trim()||null,score:Number(item.score),difficulty:Number(item.difficulty)||0,knowledge_point_ids:item.knowledge_point_ids||[]}))});await this.loadAssignmentDrafts(this.selectedDraft.id);this.$message.success('草稿新版本已保存')}catch(error){this.$message.error(this.errorMessage(error)||'草稿保存失败')}finally{this.draftSaving=false}},
+    async deleteDraft(draft){try{await this.$confirm(`删除“${draft.title}”后无法恢复，确认删除？`,'删除草稿',{type:'warning'});await apiV1.delete(`/teacher/assignments/${draft.id}`);if(this.selectedDraft&&this.selectedDraft.id===draft.id){this.selectedDraft=null;this.draftForm=null;this.run={};this.steps=[]}await this.loadAssignmentDrafts();this.$message.success('草稿已删除')}catch(error){if(error!=='cancel')this.$message.error(this.errorMessage(error)||'草稿删除失败')}},
+    formatTime(value){if(!value)return'--';const date=new Date(value);return Number.isNaN(date.getTime())?value:date.toLocaleString('zh-CN',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'})},
+    kindLabel(value){return{short_answer:'简答题',single_choice:'单选题',multiple_choice:'多选题',programming:'编程题'}[value]||value},
+    knowledgePointName(id){const node=(this.publishedCourseMap&&this.publishedCourseMap.nodes||[]).find(item=>Number(item.knowledge_point_id)===Number(id));return node?node.name:`知识点 ${id}`},
     async loadCourseMap(){if(!this.offeringId)return;try{this.courseMap=(await apiV1.get(`/offerings/${this.offeringId}/course-map`)).data;this.selectedNode=this.courseMap&&this.courseMap.nodes[0];if(this.activeTab==='courseMap')this.$nextTick(this.renderCourseMap)}catch(_){this.courseMap=null}},
     async loadPublishedCourseMap(){if(!this.offeringId)return;try{this.publishedCourseMap=(await apiV1.get(`/offerings/${this.offeringId}/course-map?status=published`)).data}catch(_){this.publishedCourseMap=null}},
     async generateCourseMap(){if(!this.offeringId)return this.$message.warning('请先选择课程');this.mapGenerating=true;try{const res=await apiV1.post(`/teacher/offerings/${this.offeringId}/course-map-drafts`,{resource_ids:[],idempotency_key:`course-map-${this.offeringId}-${Date.now()}`});await this.pollMapRun(res.data.agent_run_id)}catch(error){this.$message.error(this.errorMessage(error)||'课程路线生成失败')}finally{this.mapGenerating=false}},
@@ -124,5 +177,5 @@ export default {
 </script>
 
 <style scoped>
-.page-shell{padding:32px 48px;min-height:80vh;background:#f6f8fb}.page-heading{margin-bottom:20px}h2{margin:0 0 8px}p{color:#7b8794}.result-title{display:flex;justify-content:space-between;align-items:center}.question{padding:16px 0;border-bottom:1px solid #edf0f3}.question span,.run-meta{color:#7b8794;font-size:13px}.run-meta{margin:14px 0}.el-timeline{margin-top:24px}.el-timeline small{display:block;color:#9aa5b1}.chapter-selector{display:flex;flex-direction:column;gap:9px}.assignment-chapter{padding:10px 12px;border:1px solid #e4e7ed;border-radius:8px;background:#fbfcfe}.chapter-selector small{margin-left:8px;color:#909399;font-weight:400}.assignment-points{display:flex;flex-wrap:wrap;gap:5px 12px;margin:8px 0 0 24px;color:#697582;font-size:12px;line-height:1.5}.assignment-points span::before{content:'·';margin-right:5px;color:#409eff;font-weight:700}.assignment-points.empty{color:#a7afb8}.map-layout{display:grid;grid-template-columns:360px minmax(480px,1fr);gap:20px}.map-summary{margin-bottom:14px;color:#66717d;line-height:1.7}.chapter-group{margin-bottom:10px}.map-node{display:flex;align-items:center;gap:10px;padding:12px;border:1px solid #dfe5ec;border-radius:8px;margin-bottom:5px;cursor:pointer;background:#fff}.map-node.active,.knowledge-point.active{border-color:#409eff;background:#ecf5ff}.map-node>span{display:flex;width:24px;height:24px;border-radius:50%;background:#409eff;color:#fff;align-items:center;justify-content:center}.map-node b{flex:1}.knowledge-point{display:flex;align-items:center;gap:9px;margin:3px 0 3px 22px;padding:7px 10px;border:1px solid transparent;border-radius:6px;color:#56616d;cursor:pointer}.knowledge-point i{width:7px;height:7px;border-radius:50%;background:#8abcf0}.order-actions{margin-left:auto;white-space:nowrap}.map-chart{height:420px;background:#fbfcfe;border-radius:8px}.evidence-card{margin-top:14px}.evidence-card [slot=header]{display:flex;align-items:center;gap:8px}.point-summary{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin:14px 0}.point-summary .el-tag{cursor:pointer}.source-collapse{margin-top:16px}.evidence-item{padding:10px 0;border-top:1px solid #edf0f3}.evidence-item small{display:block;color:#7b8794;margin-top:5px;line-height:1.5}.el-input{flex:1}
+.page-shell{padding:32px 48px;min-height:80vh;background:#f6f8fb}.page-heading{margin-bottom:20px}h2{margin:0 0 8px}p{color:#7b8794}.result-title{display:flex;justify-content:space-between;align-items:center}.assignment-workspace>.el-col>.el-card{min-height:610px}.draft-sidebar{max-height:760px;overflow:auto}.draft-item{padding:12px;margin-bottom:9px;border:1px solid #e4e7ed;border-radius:8px;cursor:pointer;background:#fbfcfe;transition:.2s}.draft-item:hover,.draft-item.active{border-color:#409eff;background:#ecf5ff}.draft-item-title{display:flex;align-items:flex-start;justify-content:space-between;gap:6px}.draft-item-title b{font-size:13px;line-height:1.5}.draft-item small{display:block;margin:5px 0 8px;color:#909399}.draft-item span{margin-left:7px;color:#697582;font-size:12px}.draft-title{margin:14px 0}.draft-title-input{margin:14px 0 10px}.draft-meta{display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:14px;color:#7b8794;font-size:13px}.question{padding:16px 0;border-bottom:1px solid #edf0f3}.question p{line-height:1.7}.question span,.run-meta{color:#7b8794;font-size:13px}.question-toolbar{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}.question-toolbar>div{display:flex;align-items:center;gap:8px}.question-toolbar .el-select{width:100px}.inline-rate{display:inline-flex}.danger-action{color:#f56c6c}.answer-input{margin-top:9px}.question-meta{display:flex;align-items:center;flex-wrap:wrap;gap:7px}.add-question{width:100%;margin-top:14px}.run-trace{margin-top:18px}.run-meta{margin:10px 0}.el-timeline{margin-top:18px}.el-timeline small{display:block;color:#9aa5b1}.chapter-selector{display:flex;flex-direction:column;gap:9px}.assignment-chapter{padding:10px 12px;border:1px solid #e4e7ed;border-radius:8px;background:#fbfcfe}.chapter-selector small{margin-left:8px;color:#909399;font-weight:400}.assignment-points{display:flex;flex-wrap:wrap;gap:5px 12px;margin:8px 0 0 24px;color:#697582;font-size:12px;line-height:1.5}.assignment-points span::before{content:'·';margin-right:5px;color:#409eff;font-weight:700}.assignment-points.empty{color:#a7afb8}.map-layout{display:grid;grid-template-columns:360px minmax(480px,1fr);gap:20px}.map-summary{margin-bottom:14px;color:#66717d;line-height:1.7}.chapter-group{margin-bottom:10px}.map-node{display:flex;align-items:center;gap:10px;padding:12px;border:1px solid #dfe5ec;border-radius:8px;margin-bottom:5px;cursor:pointer;background:#fff}.map-node.active,.knowledge-point.active{border-color:#409eff;background:#ecf5ff}.map-node>span{display:flex;width:24px;height:24px;border-radius:50%;background:#409eff;color:#fff;align-items:center;justify-content:center}.map-node b{flex:1}.knowledge-point{display:flex;align-items:center;gap:9px;margin:3px 0 3px 22px;padding:7px 10px;border:1px solid transparent;border-radius:6px;color:#56616d;cursor:pointer}.knowledge-point i{width:7px;height:7px;border-radius:50%;background:#8abcf0}.order-actions{margin-left:auto;white-space:nowrap}.map-chart{height:420px;background:#fbfcfe;border-radius:8px}.evidence-card{margin-top:14px}.evidence-card [slot=header]{display:flex;align-items:center;gap:8px}.point-summary{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin:14px 0}.point-summary .el-tag{cursor:pointer}.source-collapse{margin-top:16px}.evidence-item{padding:10px 0;border-top:1px solid #edf0f3}.evidence-item small{display:block;color:#7b8794;margin-top:5px;line-height:1.5}.el-input{flex:1}@media(max-width:1200px){.assignment-workspace>.el-col{width:100%;margin-bottom:16px}.map-layout{grid-template-columns:1fr}}
 </style>

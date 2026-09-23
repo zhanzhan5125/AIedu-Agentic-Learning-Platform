@@ -68,6 +68,7 @@ class QuestionCreate(BaseModel):
     reference_answer: str | None = Field(default=None, max_length=100_000)
     score: int = Field(gt=0, le=1000)
     difficulty: int = Field(default=0, ge=0, le=5)
+    knowledge_point_ids: list[int] = Field(default_factory=list, max_length=20)
 
 
 class AssignmentReplace(BaseModel):

@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 import csv
 import io
 
-from fastapi import APIRouter, Depends, Request, Response, status
+from fastapi import APIRouter, Depends, Query, Request, Response, status
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
@@ -22,6 +22,7 @@ from app.models import (
     Enrollment,
     Notification,
     OutboxEvent,
+    KnowledgePoint,
     Question,
     QuestionKnowledgePoint,
     Role,
@@ -78,23 +79,62 @@ def teacher_assignment(db: Session, assignment_id: int, teacher_id: int) -> Assi
     return assignment
 
 
+def validate_knowledge_points(
+    db: Session, assignment: Assignment, knowledge_point_ids: list[int],
+) -> set[int]:
+    ids = set(knowledge_point_ids)
+    if not ids:
+        return ids
+    course_id = db.scalar(select(CourseOffering.course_id).where(
+        CourseOffering.id == assignment.offering_id
+    ))
+    valid = set(db.scalars(select(KnowledgePoint.id).where(
+        KnowledgePoint.course_id == course_id,
+        KnowledgePoint.id.in_(ids),
+    )).all())
+    if valid != ids:
+        raise Conflict("包含不属于该课程的知识点")
+    return ids
+
+
+def bind_question_knowledge_points(
+    db: Session, question_id: int, knowledge_point_ids: set[int],
+) -> None:
+    for knowledge_point_id in sorted(knowledge_point_ids):
+        db.add(QuestionKnowledgePoint(
+            question_id=question_id, knowledge_point_id=knowledge_point_id, weight=100,
+        ))
+
+
 @router.get("/teacher/assignments")
 def list_teacher_assignments(
     offering_id: int,
     request: Request,
+    assignment_status: AssignmentStatus | None = Query(default=None, alias="status"),
+    origin: str | None = Query(default=None, max_length=32),
+    include_drafts: bool = Query(default=True),
     user: User = Depends(require_roles(Role.teacher)),
     db: Session = Depends(get_db),
 ):
     owns = db.scalar(select(CourseOffering.id).where(CourseOffering.id == offering_id, CourseOffering.teacher_id == user.id))
     if not owns:
         raise Forbidden("无权访问该课程")
-    rows = db.scalars(select(Assignment).where(Assignment.offering_id == offering_id).order_by(Assignment.id.desc())).all()
+    query = select(Assignment).where(Assignment.offering_id == offering_id)
+    if assignment_status is not None:
+        query = query.where(Assignment.status == assignment_status)
+    elif not include_drafts:
+        query = query.where(Assignment.status != AssignmentStatus.draft)
+    if origin:
+        query = query.where(Assignment.origin == origin)
+    rows = db.scalars(query.order_by(Assignment.updated_at.desc(), Assignment.id.desc())).all()
     records = []
     for row in rows:
         records.append({
             "id": row.id, "title": row.title, "version": row.version,
             "status": row.status.value, "start_at": row.start_at, "end_at": row.end_at,
-            "total_score": row.total_score, **submission_counts(db, row),
+            "total_score": row.total_score, "origin": row.origin,
+            "agent_run_id": row.agent_run_id, "created_at": row.created_at,
+            "updated_at": row.updated_at, **submission_counts(db, row),
         })
     return ok({"total": len(records), "page": 1, "page_size": len(records) or 1, "records": records}, request.state.request_id)
 
@@ -113,6 +153,13 @@ def get_teacher_assignment(
         .where(AssignmentQuestion.assignment_id == assignment_id)
         .order_by(AssignmentQuestion.position)
     ).all()
+    question_ids = [question.id for _, question in rows]
+    point_rows = db.execute(select(
+        QuestionKnowledgePoint.question_id, QuestionKnowledgePoint.knowledge_point_id,
+    ).where(QuestionKnowledgePoint.question_id.in_(question_ids))).all() if question_ids else []
+    point_ids_by_question: dict[int, list[int]] = {}
+    for question_id, knowledge_point_id in point_rows:
+        point_ids_by_question.setdefault(question_id, []).append(knowledge_point_id)
     questions = [{
         "id": question.id,
         "position": position,
@@ -121,14 +168,20 @@ def get_teacher_assignment(
         "reference_answer": question.reference_answer,
         "score": question.score,
         "difficulty": question.difficulty,
+        "knowledge_point_ids": sorted(point_ids_by_question.get(question.id, [])),
     } for position, question in rows]
     return ok({
         "id": assignment.id,
         "title": assignment.title,
+        "version": assignment.version,
         "status": assignment.status.value,
         "start_at": assignment.start_at,
         "end_at": assignment.end_at,
         "total_score": assignment.total_score,
+        "origin": assignment.origin,
+        "agent_run_id": assignment.agent_run_id,
+        "created_at": assignment.created_at,
+        "updated_at": assignment.updated_at,
         "questions": questions,
         **submission_counts(db, assignment),
     }, request.state.request_id)
@@ -159,11 +212,13 @@ def add_question(assignment_id: int, payload: QuestionCreate, request: Request,
         raise Conflict("已发布作业不能直接修改题目")
     max_position = db.scalar(select(func.max(AssignmentQuestion.position)).where(
         AssignmentQuestion.assignment_id == assignment_id)) or 0
-    question = Question(**payload.model_dump())
+    point_ids = validate_knowledge_points(db, assignment, payload.knowledge_point_ids)
+    question = Question(**payload.model_dump(exclude={"knowledge_point_ids"}))
     db.add(question)
     db.flush()
     db.add(AssignmentQuestion(assignment_id=assignment_id, question_id=question.id,
                               position=max_position + 1))
+    bind_question_knowledge_points(db, question.id, point_ids)
     assignment.total_score += question.score
     db.commit()
     return ok({"id": question.id, "position": max_position + 1}, request.state.request_id)
@@ -175,6 +230,19 @@ def delete_assignment(assignment_id: int, request: Request,
     assignment = teacher_assignment(db, assignment_id, user.id)
     if assignment.status != AssignmentStatus.draft:
         raise Conflict("只有草稿作业可以删除")
+    old_question_ids = db.scalars(select(AssignmentQuestion.question_id).where(
+        AssignmentQuestion.assignment_id == assignment_id
+    )).all()
+    db.query(AssignmentQuestion).filter(
+        AssignmentQuestion.assignment_id == assignment_id
+    ).delete(synchronize_session=False)
+    if old_question_ids:
+        db.query(QuestionKnowledgePoint).filter(
+            QuestionKnowledgePoint.question_id.in_(old_question_ids)
+        ).delete(synchronize_session=False)
+        db.query(Question).filter(Question.id.in_(old_question_ids)).delete(
+            synchronize_session=False
+        )
     db.delete(assignment)
     db.commit()
     return ok(None, request.state.request_id)
@@ -196,11 +264,13 @@ def replace_assignment(assignment_id: int, payload: AssignmentReplace, request: 
     assignment.title = payload.title.strip()
     assignment.total_score = 0
     for position, item in enumerate(payload.questions, 1):
-        question = Question(**item.model_dump())
+        point_ids = validate_knowledge_points(db, assignment, item.knowledge_point_ids)
+        question = Question(**item.model_dump(exclude={"knowledge_point_ids"}))
         db.add(question)
         db.flush()
         db.add(AssignmentQuestion(assignment_id=assignment.id, question_id=question.id,
                                   position=position))
+        bind_question_knowledge_points(db, question.id, point_ids)
         assignment.total_score += question.score
     assignment.version += 1
     db.commit()
