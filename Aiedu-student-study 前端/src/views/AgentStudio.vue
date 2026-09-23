@@ -132,7 +132,7 @@
         </el-card>
       </el-tab-pane>
     </el-tabs>
-    <el-dialog title="发布作业" :visible.sync="publishDialogVisible" width="480px" :close-on-click-modal="false">
+    <el-dialog title="发布作业" :visible.sync="publishDialogVisible" width="480px" :close-on-click-modal="false" append-to-body>
       <el-alert title="发布后将向本课程学生开放，题目不能再直接覆盖修改" type="warning" :closable="false" show-icon />
       <el-form label-position="top" class="publish-form">
         <el-form-item label="作业开放时间">
