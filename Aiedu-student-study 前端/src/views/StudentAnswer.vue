@@ -289,7 +289,14 @@ export default {
         this.total_score = detail.total_score || this.tableData.reduce((sum, item) => sum + item.score, 0)
         this.isDisabled = !this.isBeforeDeadline(detail.end_at)
         if (this.totalItem > 0) {
-          this.changeProblem(this.tableData[0].porder)
+          // 首次加载只展示数据库中的答案，不能走“切题前保存当前编辑器”逻辑。
+          // 此时编辑器仍为空，调用 changeProblem 会把第一题已保存的答案覆盖为空字符串。
+          const firstQuestion = this.tableData[0]
+          this.p_now = firstQuestion.porder
+          this.check()
+          this.p_main = firstQuestion.main
+          this.score = firstQuestion.score
+          this.content = this.escapeHTML(firstQuestion.stuAns)
         } else {
           this.$message.info('该作业暂时没有题目')
         }

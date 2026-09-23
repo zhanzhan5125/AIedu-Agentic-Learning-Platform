@@ -369,6 +369,28 @@ def test_saved_snapshot_can_be_edited_and_submit_uses_current_answers(client, au
     })
     assert first.status_code == second.status_code == 200
 
+    rich_answer = r"""一个C语言源程序通常由以下几个主要部分组成：
+
+1. **预处理指令**\
+   以 `#` 开头，如 `#include <stdio.h>`、`#define` 等。\
+   作用：在编译之前由预处理器处理，用于包含头文件、定义宏、条件编译等。
+
+2. **全局声明**\
+   包括全局变量声明、函数原型声明、结构体/联合体/枚举声明等。
+
+3. **函数定义**\
+   一个C程序必须有且只能有一个 `main` 函数。
+
+4. **注释**\
+   以 `/* ... */` 或 `//` 表示。"""
+    rich_saved = client.put(save_url, headers=headers(student_token), json={
+        "answers": [{"question_id": question_id, "content": rich_answer}]
+    })
+    assert rich_saved.status_code == 200
+    rich_reloaded = client.get(f"/api/v1/student/assignments/{assignment_id}",
+                               headers=headers(student_token)).json()["data"]
+    assert rich_reloaded["questions"][0]["answer"] == rich_answer
+
     submitted = client.post(f"/api/v1/student/assignments/{assignment_id}/submit",
                             headers=headers(student_token), json={
         "answers": [{"question_id": question_id, "content": "页面当前版本"}]
