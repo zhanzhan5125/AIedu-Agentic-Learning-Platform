@@ -5,7 +5,7 @@
       <el-select v-else v-model="selectedOffering" clearable placeholder="全部课程" @change="loadThreads"><el-option v-for="c in courses" :key="c.id" :label="c.title" :value="c.id" /></el-select>
       <el-button v-if="selectedOffering" class="new-button" plain type="primary" size="small" @click="openDirectDialog">发起课程私聊</el-button>
       <el-button v-if="isTeacher && selectedOffering" class="new-button" type="primary" size="small" @click="announcementVisible=true">发布课程公告</el-button>
-      <div v-for="item in notifications" :key="`n-${item.id}`" class="thread" :class="{active:active&&active.notificationId===item.id}" @click="openNotification(item)"><b>{{ item.title }}</b><p>{{ item.body }}</p><el-badge v-if="!item.is_read" value="新" /></div>
+      <div v-for="item in notifications" :key="`n-${item.id}`" class="thread" :class="{active:active&&active.notificationId===item.id}" @click="openNotification(item)"><b>{{ item.title }}</b><small v-if="!isCourseScope">{{ courseTitle(item.offering_id) }}</small><p>{{ item.body }}</p><el-badge v-if="!item.is_read" value="新" /></div>
       <div v-for="item in threads" :key="item.id" class="thread" :class="{active:active&&active.id===item.id}" @click="openThread(item)"><b>{{ item.title || kindText(item.kind) }}</b><small v-if="!isCourseScope">{{ courseTitle(item.offering_id) }}</small><p>{{ item.last_message || '暂无消息' }}</p><el-badge v-if="item.unread_count" :value="item.unread_count" /></div>
     </aside>
     <main><template v-if="active"><header><h3>{{ active.title || kindText(active.kind) }}</h3></header>
