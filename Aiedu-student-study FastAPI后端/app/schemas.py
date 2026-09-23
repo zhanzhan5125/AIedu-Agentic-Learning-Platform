@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from app.models import AssignmentStatus, JobStatus, OfferingStatus, Role, SubmissionStatus
 
@@ -154,9 +154,17 @@ class AssignmentDraftRequest(BaseModel):
     question_count: int = Field(default=5, ge=1, le=30)
     difficulty: int = Field(default=2, ge=1, le=5)
     question_kinds: list[Literal["short_answer", "single_choice", "multiple_choice", "programming"]] = Field(
-        default_factory=lambda: ["short_answer"]
+        default_factory=lambda: ["short_answer"], min_length=1, max_length=4
     )
     idempotency_key: str = Field(min_length=8, max_length=128)
+
+    @model_validator(mode="after")
+    def validate_question_kind_coverage(self):
+        if len(set(self.question_kinds)) != len(self.question_kinds):
+            raise ValueError("question_kinds cannot contain duplicates")
+        if len(self.question_kinds) > self.question_count:
+            raise ValueError("question_count must cover every selected question kind")
+        return self
 
 
 class PracticeJobRequest(BaseModel):

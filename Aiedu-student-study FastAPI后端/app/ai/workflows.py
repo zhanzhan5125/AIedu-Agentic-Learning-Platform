@@ -423,17 +423,52 @@ def _fallback_questions(state: WorkflowState) -> AssignmentDraftResult:
         "diagnostic": "当前没有已确认薄弱点，针对证据不足知识点生成诊断练习。",
         "comprehensive_review": "当前画像证据充分且无薄弱点，生成综合巩固练习。",
     }.get(data.get("practice_mode"), "依据教师约束、课程资料和学习画像生成；发布或使用前必须人工确认。")
-    return AssignmentDraftResult(
-        rationale=mode_text,
-        questions=[AssignmentQuestionDraft(
-            kind=kinds[index % len(kinds)],
-            prompt=f"请结合“{keywords[index % len(keywords)]}”说明第 {index + 1} 个关键概念，并给出一个应用示例。",
-            reference_answer="应包含准确的概念定义、清晰的推理过程和与题意一致的应用示例。",
-            rubric=["概念定义准确", "推理过程完整", "应用示例与概念一致"],
+
+    def question_content(question_kind: str, keyword: str, number: int) -> tuple[str, str, list[str]]:
+        if question_kind == "single_choice":
+            return (
+                f"第 {number} 题：关于“{keyword}”，下列说法正确的是？\nA. 符合该概念的正确表述\nB. 与该概念相反的表述\nC. 无关概念的表述\nD. 常见误解的表述",
+                "A。教师应结合课程资料复核并细化四个选项。",
+                ["选择正确选项", "能够说明判断依据"],
+            )
+        if question_kind == "multiple_choice":
+            return (
+                f"第 {number} 题：关于“{keyword}”，下列哪些说法正确？（多选）\nA. 正确特征一\nB. 正确特征二\nC. 常见错误表述\nD. 无关表述",
+                "A、B。教师应结合课程资料复核并细化四个选项。",
+                ["完整选择正确选项", "未选择明显错误项", "能够说明判断依据"],
+            )
+        if question_kind == "programming":
+            return (
+                f"请编写程序解决与“{keyword}”相关的第 {number} 个应用问题，说明输入、输出与核心算法。",
+                "参考程序应能正确处理题目约束，并包含清晰的输入输出说明和关键步骤解释。",
+                ["程序能够正确运行", "算法逻辑正确", "边界情况处理合理", "代码结构清晰"],
+            )
+        return (
+            f"请结合“{keyword}”说明第 {number} 个关键概念，并给出一个应用示例。",
+            "应包含准确的概念定义、清晰的推理过程和与题意一致的应用示例。",
+            ["概念定义准确", "推理过程完整", "应用示例与概念一致"],
+        )
+
+    question_values = []
+    for index in range(count):
+        question_kind = kinds[index % len(kinds)]
+        prompt, answer, rubric = question_content(
+            question_kind, keywords[index % len(keywords)], index + 1,
+        )
+        question_values.append(AssignmentQuestionDraft(
+            kind=question_kind, prompt=prompt, reference_answer=answer, rubric=rubric,
             score=10, difficulty=difficulty, knowledge_point_ids=knowledge_ids,
             citations=[Citation.model_validate(item) for item in citations[:2]],
-        ) for index in range(count)],
+        ))
+    return AssignmentDraftResult(
+        rationale=mode_text,
+        questions=question_values,
     )
+
+
+def _has_complete_choice_options(prompt: str) -> bool:
+    return all(re.search(rf"(?:^|\s){label}\s*[.．、:：)]", prompt, re.MULTILINE)
+               for label in "ABCD")
 
 
 def _fallback_grading(state: WorkflowState) -> GradingSuggestion:
@@ -458,7 +493,9 @@ def _model_assignment(state: WorkflowState) -> tuple[dict, dict]:
         AssignmentDraftResult,
         system_prompt=(
             "你是 AIedu 教师出题/批阅智能体的出题模式。只能依据给定课程资料生成题目，"
-            "严格满足题量、题型、难度和知识点要求，整套题不得重复。每题提供答案、"
+            "严格满足题量、题型、难度和知识点要求，question_kinds 是教师允许且要求覆盖的题型；"
+            "当题量不少于题型数量时，每种所选题型至少生成一道。整套题不得重复。"
+            "单选题和多选题必须在 prompt 中完整列出 A、B、C、D 四个选项，并在答案中明确正确选项。每题提供答案、"
             "2至4条简短 Rubric 与最多2条引用。题干控制在300字内，参考答案控制在500字内。"
         ),
         user_prompt=json.dumps({
@@ -853,6 +890,17 @@ def _validate(state: WorkflowState) -> ValidationResult:
         allowed_kinds = set(state.get("input_data", {}).get("question_kinds") or [])
         if allowed_kinds and any(item.get("kind") not in allowed_kinds for item in questions):
             issues.append("包含教师未要求的题型")
+        actual_kinds = {item.get("kind") for item in questions}
+        if allowed_kinds and expected >= len(allowed_kinds):
+            missing_kinds = allowed_kinds - actual_kinds
+            if missing_kinds:
+                issues.append("未覆盖教师选择的全部题型：" + "、".join(sorted(missing_kinds)))
+        choice_questions = [item for item in questions if item.get("kind") in {
+            "single_choice", "multiple_choice",
+        }]
+        if any(not _has_complete_choice_options(item.get("prompt", ""))
+               for item in choice_questions):
+            issues.append("选择题缺少完整的 A、B、C、D 选项")
         if any(not item.get("reference_answer") or int(item.get("score", 0)) <= 0 for item in questions):
             issues.append("存在不可判定或分值无效的题目")
         if len({item.get("prompt") for item in questions}) != len(questions):
@@ -964,6 +1012,35 @@ def reflect_once(state: WorkflowState) -> WorkflowState:
             if item.get("prompt") in seen:
                 item["prompt"] = f"{item['prompt']}（变式 {index + 1}）"
             seen.add(item["prompt"])
+        missing_kinds = [value for value in allowed
+                         if value not in {item.get("kind") for item in questions}]
+        fallback_questions = _fallback_questions(state).model_dump()["questions"]
+        fallback_offsets: dict[str, int] = {}
+
+        def next_fallback(question_kind: str) -> dict | None:
+            candidates = [item for item in fallback_questions
+                          if item.get("kind") == question_kind]
+            if not candidates:
+                return None
+            offset = fallback_offsets.get(question_kind, 0)
+            fallback_offsets[question_kind] = offset + 1
+            return dict(candidates[offset % len(candidates)])
+
+        for missing_kind in missing_kinds:
+            replacement = next_fallback(missing_kind)
+            if replacement:
+                replace_index = next((index for index in range(len(questions) - 1, -1, -1)
+                                      if sum(1 for item in questions
+                                             if item.get("kind") == questions[index].get("kind")) > 1),
+                                     len(questions) - 1)
+                questions[replace_index] = replacement
+        for index, item in enumerate(questions):
+            if item.get("kind") in {"single_choice", "multiple_choice"} and not (
+                _has_complete_choice_options(item.get("prompt", ""))
+            ):
+                replacement = next_fallback(item.get("kind"))
+                if replacement:
+                    questions[index] = replacement
         draft["questions"] = questions
     elif state["kind"] == "grading.single":
         maximums = {item["answer_id"]: item["max_score"]

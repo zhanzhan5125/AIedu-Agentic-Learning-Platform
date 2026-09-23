@@ -3,11 +3,14 @@ from __future__ import annotations
 from types import SimpleNamespace
 
 import openai
+import pytest
 from pydantic import BaseModel
 
 from app.ai.contracts import CourseMapDraft
+from app.ai import workflows
 from app.integrations import ai_provider
 from app.integrations.ai_provider import _json_payload
+from app.schemas import AssignmentDraftRequest
 
 
 def _login(client, role: str, account: str) -> str:
@@ -122,3 +125,90 @@ def test_structured_completion_prefers_strict_json_schema(monkeypatch):
     assert captured["response_format"]["json_schema"]["strict"] is True
     assert metadata["structured_output_mode"] == "json_schema"
     assert metadata["json_repair_applied"] is False
+
+
+def test_assignment_fallback_covers_selected_question_kinds():
+    state = {
+        "input_data": {
+            "question_count": 4,
+            "question_kinds": [
+                "short_answer", "single_choice", "multiple_choice", "programming",
+            ],
+            "difficulty": 4,
+            "keywords": ["循环"],
+            "knowledge_point_ids": [1, 2],
+        },
+        "tool_results": {"course_context": {"citations": []}},
+    }
+
+    result = workflows._fallback_questions(state)
+
+    assert [item.kind for item in result.questions] == [
+        "short_answer", "single_choice", "multiple_choice", "programming",
+    ]
+    assert all(item.difficulty == 4 for item in result.questions)
+    for item in result.questions[1:3]:
+        assert workflows._has_complete_choice_options(item.prompt)
+
+
+def test_assignment_validation_rejects_missing_selected_kind():
+    state = {
+        "kind": "assignment.draft",
+        "input_data": {
+            "question_count": 2,
+            "question_kinds": ["short_answer", "programming"],
+        },
+        "draft": {
+            "questions": [
+                {
+                    "kind": "short_answer", "prompt": "问题一", "reference_answer": "答案一",
+                    "score": 10, "citations": [{"title": "资料", "excerpt": "依据"}],
+                },
+                {
+                    "kind": "short_answer", "prompt": "问题二", "reference_answer": "答案二",
+                    "score": 10, "citations": [{"title": "资料", "excerpt": "依据"}],
+                },
+            ],
+        },
+    }
+
+    validation = workflows._validate(state)
+
+    assert validation.valid is False
+    assert any("未覆盖教师选择的全部题型" in issue for issue in validation.issues)
+
+
+def test_assignment_reflection_repairs_choice_options_without_duplicates():
+    state = {
+        "kind": "assignment.draft",
+        "input_data": {
+            "question_count": 2,
+            "question_kinds": ["single_choice"],
+            "keywords": ["数组"],
+        },
+        "tool_results": {"course_context": {"citations": []}},
+        "draft": {
+            "questions": [
+                {"kind": "single_choice", "prompt": "不完整选择题一", "reference_answer": "A", "score": 10},
+                {"kind": "single_choice", "prompt": "不完整选择题二", "reference_answer": "A", "score": 10},
+            ],
+        },
+        "validation": {"issues": ["选择题缺少完整的 A、B、C、D 选项"]},
+        "reflection_count": 0,
+        "steps": [],
+    }
+
+    reflected = workflows.reflect_once(state)
+    prompts = [item["prompt"] for item in reflected["draft"]["questions"]]
+
+    assert len(set(prompts)) == 2
+    assert all(workflows._has_complete_choice_options(prompt) for prompt in prompts)
+
+
+def test_assignment_request_requires_enough_questions_for_selected_kinds():
+    with pytest.raises(ValueError):
+        AssignmentDraftRequest(
+            question_count=1,
+            question_kinds=["short_answer", "programming"],
+            idempotency_key="mixed-kind-test",
+        )
