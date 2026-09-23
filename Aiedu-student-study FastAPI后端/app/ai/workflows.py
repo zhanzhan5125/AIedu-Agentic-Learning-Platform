@@ -239,7 +239,7 @@ def _student_brief(profile: dict) -> dict:
         actions = ["完成综合巩固练习，保持已掌握知识点"]
     return StudentLearningBrief(
         summary=f"{len(mastered)} 个知识点已掌握，{len(weak)} 个薄弱，{len(insufficient)} 个证据不足。",
-        weak_points=weak, insufficient_points=insufficient, mastered_points=mastered,
+        weak_points=weak[:20], insufficient_points=insufficient[:20], mastered_points=mastered[:20],
         recommended_actions=actions,
     ).model_dump()
 

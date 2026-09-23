@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 from time import perf_counter
 
 from sqlalchemy.orm import Session
@@ -12,10 +13,21 @@ from app.core.config import get_settings
 from app.integrations.ai_provider import structured_completion
 from app.integrations.rag import search_course
 from app.integrations.web_search import web_search
+from app.models import Course, CourseOffering, User
 from app.services.learning import profile_view
 
 
-PERSONAL_MARKERS = ("我的", "我哪里", "薄弱", "学情", "掌握", "怎么复习", "如何复习", "复习计划", "适合我")
+PERSONAL_IDENTITY_MARKERS = ("我是谁", "我的名字", "我叫什么", "认识我", "知道我是谁")
+PROFILE_MARKERS = (
+    "我的学情", "学习画像", "我的掌握", "掌握情况", "薄弱", "证据不足", "画像覆盖率",
+    "复习计划", "怎么复习", "如何复习", "适合我", "根据我的", "结合我的", "个性化", "诊断练习",
+)
+SELF_REFERENCES = ("我", "自己")
+LEARNING_DIFFICULTY_MARKERS = (
+    "不会", "不懂", "没掌握", "总是错", "总是出错", "经常错", "经常出错", "老是错", "老是出错",
+    "容易错", "容易出错", "跟不上", "记不住", "做不好", "困难", "卡在",
+)
+PROFILE_FOLLOWUP_MARKERS = ("具体呢", "为什么呢", "怎么改善", "怎么提高", "哪些方面", "然后呢", "接下来呢")
 CURRENT_MARKERS = ("今天", "最新", "当前", "新闻", "现在发生", "实时")
 RESOURCE_MARKERS = ("哪一页", "哪个课件", "资料里", "出处", "定位")
 GREETING_WORDS = {"你好", "您好", "嗨", "哈喽", "hello", "hi", "hey", "在吗"}
@@ -24,6 +36,30 @@ GREETING_WORDS = {"你好", "您好", "嗨", "哈喽", "hello", "hi", "hey", "�
 def _is_greeting(question: str) -> bool:
     normalized = "".join(question.split()).strip("，。！？!?~～.").lower()
     return normalized in GREETING_WORDS
+
+
+def _is_personal_identity(question: str) -> bool:
+    normalized = "".join(question.split())
+    return any(marker in normalized for marker in PERSONAL_IDENTITY_MARKERS)
+
+
+def _contains_profile_signal(text: str) -> bool:
+    normalized = "".join(text.split())
+    if _is_personal_identity(normalized) or any(marker in normalized for marker in PROFILE_MARKERS):
+        return True
+    return (any(marker in normalized for marker in SELF_REFERENCES)
+            and any(marker in normalized for marker in LEARNING_DIFFICULTY_MARKERS))
+
+
+def _needs_learning_profile(question: str, conversation_memory: dict | None) -> bool:
+    if _contains_profile_signal(question):
+        return True
+    normalized = "".join(question.split()).strip("，。！？!?~～.")
+    if len(normalized) > 16 or not any(marker in normalized for marker in PROFILE_FOLLOWUP_MARKERS):
+        return False
+    recent = (conversation_memory or {}).get("recent_messages", [])
+    recent_user_messages = [item.get("content", "") for item in recent if item.get("role") == "user"]
+    return any(_contains_profile_signal(item) for item in recent_user_messages[-2:])
 
 
 def _citation(row: dict) -> dict:
@@ -36,7 +72,20 @@ def _citation(row: dict) -> dict:
     ).model_dump()
 
 
-def _learning_brief(db: Session, student_id: int, offering_id: int) -> dict:
+def _point_relevance(name: str, question: str) -> int:
+    normalized_name = re.sub(r"\s+", "", name)
+    normalized_question = re.sub(r"\s+", "", question)
+    if normalized_name in normalized_question:
+        return 100
+    return max((len(piece) for piece in (
+        normalized_name[index:index + 2] for index in range(max(0, len(normalized_name) - 1))
+    ) if piece in normalized_question), default=0)
+
+
+def _learning_brief(db: Session, student_id: int, offering_id: int, question: str = "") -> dict:
+    student = db.get(User, student_id)
+    offering = db.get(CourseOffering, offering_id)
+    course = db.get(Course, offering.course_id) if offering else None
     profile = profile_view(db, student_id, offering_id)
     points = profile.get("knowledge_points", [])
     weak = [item["name"] for item in points if item["state"] == "weak"]
@@ -45,11 +94,44 @@ def _learning_brief(db: Session, student_id: int, offering_id: int) -> dict:
     actions = ([f"先复习 {name}" for name in weak[:5]] or
                [f"先用诊断练习补充 {name} 的学习证据" for name in insufficient[:5]] or
                ["完成一次综合巩固练习"])
+    state_order = {"weak": 0, "insufficient_data": 1, "mastered": 2}
+    detail_rows = sorted(points, key=lambda item: (
+        -_point_relevance(item["name"], question), state_order.get(item["state"], 3),
+        item.get("mastery_score", 0),
+    ))[:20]
+    point_details = [{
+        "name": item["name"], "chapter_name": item.get("chapter_name"),
+        "state": item["state"], "mastery_score": item.get("mastery_score", 0),
+        "recent_evidence": [
+            f"{'作业' if evidence['source_type'] == 'assignment' else '诊断练习'} {evidence['score']} 分"
+            for evidence in item.get("evidence", [])[:5]
+        ],
+    } for item in detail_rows]
     return StudentLearningBrief(
         summary=f"已掌握 {len(mastered)} 个，薄弱 {len(weak)} 个，证据不足 {len(insufficient)} 个。",
-        weak_points=weak, insufficient_points=insufficient, mastered_points=mastered,
-        recommended_actions=actions,
+        student_name=student.display_name if student else None,
+        course_name=course.name if course else None,
+        weak_points=weak[:20], insufficient_points=insufficient[:20], mastered_points=mastered[:20],
+        recommended_actions=actions, point_details=point_details,
     ).model_dump()
+
+
+def _profile_fallback_answer(brief: dict) -> str:
+    details = brief.get("point_details") or []
+    weak = [item for item in details if item.get("state") == "weak"]
+    if weak:
+        lines = []
+        for item in weak[:3]:
+            chapter = f"（{item['chapter_name']}）" if item.get("chapter_name") else ""
+            evidence = "、".join(item.get("recent_evidence") or []) or "暂无可展示的近期得分"
+            lines.append(f"{item['name']}{chapter}：掌握度 {item['mastery_score']}，依据为 {evidence}")
+        return "根据你的学习画像，目前较薄弱的是：" + "；".join(lines) + "。"
+    insufficient = [item for item in details if item.get("state") == "insufficient_data"]
+    if insufficient:
+        names = "、".join(item["name"] for item in insufficient[:5])
+        return (f"当前还不能可靠判断你具体弱在哪里。{names} 等知识点的学习证据不足，"
+                "建议先完成一次诊断练习，再根据结果定位薄弱环节。")
+    return f"根据当前学习画像：{brief['summary']} " + "；".join(brief["recommended_actions"])
 
 
 def _step(name: str, tool: str | None, started: float, summary: dict, step_type: str = "node") -> dict:
@@ -68,11 +150,15 @@ def run_student_qa(
     """A bounded Student QA run with conditional learning-agent delegation."""
     steps: list[dict] = []
     started = perf_counter()
+    identity_request = False
     if guided:
         intent = "assignment_guidance"
     elif _is_greeting(question):
         intent = "chitchat"
-    elif any(marker in question for marker in PERSONAL_MARKERS):
+    elif _is_personal_identity(question):
+        intent = "personalized_learning"
+        identity_request = True
+    elif _needs_learning_profile(question, conversation_memory):
         intent = "personalized_learning"
     elif any(marker in question for marker in CURRENT_MARKERS):
         intent = "current_web"
@@ -93,7 +179,7 @@ def run_student_qa(
     if intent == "personalized_learning":
         plan_steps.append(PlanStep(id="2", action="委派学生学习助手读取精简画像",
                                    tool="delegate_student_learning_assistant", reason="问题明确要求结合个人情况"))
-    if not guided and intent != "chitchat":
+    if not guided and intent != "chitchat" and not identity_request:
         plan_steps.append(PlanStep(id=str(len(plan_steps) + 1), action="检索课程资料",
                                    tool="search_course_materials", reason="以课程内证据回答"))
     plan_steps.append(PlanStep(id=str(len(plan_steps) + 1), action="生成回答并执行证据自检",
@@ -107,7 +193,7 @@ def run_student_qa(
     learning_brief = None
     delegations: list[dict] = []
     if intent == "personalized_learning":
-        learning_brief = _learning_brief(db, student_id, offering_id)
+        learning_brief = _learning_brief(db, student_id, offering_id, question)
         delegations.append({
             "agent_name": "student_learning_assistant", "task_type": "student_learning_brief",
             "plan": AgentPlan(goal="为问答智能体提供最小必要的个人画像摘要", steps=[
@@ -121,10 +207,11 @@ def run_student_qa(
                 "agent_name": "student_learning_assistant", "step_type": "delegation",
                 "tool_name": "get_student_mastery", "duration_ms": 0,
                 "output_summary": {"weak_count": len(learning_brief["weak_points"]),
-                                   "insufficient_count": len(learning_brief["insufficient_points"])},
+                                   "insufficient_count": len(learning_brief["insufficient_points"]),
+                                   "detail_count": len(learning_brief["point_details"])},
             }],
         })
-    if not guided and intent != "chitchat":
+    if not guided and intent != "chitchat" and not identity_request:
         citations = [_citation(row) for row in search_course(offering_id, question, limit=6, db=db)]
         if intent == "current_web" and not citations and get_settings().tavily_api_key:
             citations = [Citation(
@@ -141,6 +228,7 @@ def run_student_qa(
 
     compose_started = perf_counter()
     token_usage = {"prompt": 0, "completion": 0, "total": 0}
+    model_fallback = False
     if guided:
         answer = TutorAnswer(
             intent="assignment_guidance",
@@ -154,21 +242,44 @@ def run_student_qa(
             answer="你好呀，我是问答杏台。你可以问我课程知识、资料位置，也可以让我结合你的学情制定复习建议。",
             evidence_sufficient=True,
         )
-    elif get_settings().enable_llm and get_settings().ai_api_key:
-        answer, metadata = structured_completion(
-            TutorAnswer,
-            system_prompt=("你是 AIedu 学生问答智能体。只能依据给定课程证据和可选的个人画像摘要回答；"
-                           "引用必须支持结论。证据不足时要明确说明。开放作业只做苏格拉底式引导。"),
-            user_prompt=json.dumps({"question": question, "intent": intent,
-                                    "citations": citations, "learning_brief": learning_brief,
-                                    "conversation_memory": conversation_memory or {}},
-                                   ensure_ascii=False, default=str),
+    elif identity_request and learning_brief:
+        student_name = learning_brief.get("student_name") or "当前登录的同学"
+        course_name = learning_brief.get("course_name")
+        course_text = f"，你当前正在学习《{course_name}》" if course_name else ""
+        answer = TutorAnswer(
+            intent="personalized_learning",
+            answer=(f"当然知道，你是{student_name}{course_text}。"
+                    "我刚刚通过学生学习助手读取了你的个人学习画像；"
+                    "如果你愿意，我还可以结合你的掌握情况分析薄弱点或制定复习计划。"),
+            used_learning_profile=True, evidence_sufficient=True,
         )
-        token_usage = metadata.get("token_usage") or token_usage
+    elif get_settings().enable_llm and get_settings().ai_api_key:
+        try:
+            answer, metadata = structured_completion(
+                TutorAnswer,
+                system_prompt=("你是 AIedu 学生问答智能体。只能依据给定课程证据和可选的个人画像摘要回答；"
+                               "涉及学生个人情况时，必须优先使用 learning_brief 中的掌握度与学习证据，"
+                               "不得把个人画像误称为课程资料。引用必须支持结论。证据不足时要明确说明。"
+                               "开放作业只做苏格拉底式引导。"),
+                user_prompt=json.dumps({"question": question, "intent": intent,
+                                        "citations": citations, "learning_brief": learning_brief,
+                                        "conversation_memory": conversation_memory or {}},
+                                       ensure_ascii=False, default=str),
+            )
+            token_usage = metadata.get("token_usage") or token_usage
+        except Exception:
+            if intent != "personalized_learning" or not learning_brief:
+                raise
+            model_fallback = True
+            answer = TutorAnswer(
+                intent="personalized_learning", answer=_profile_fallback_answer(learning_brief),
+                citations=[Citation.model_validate(item) for item in citations],
+                used_learning_profile=True, evidence_sufficient=True,
+            )
     elif intent == "personalized_learning" and learning_brief:
         answer = TutorAnswer(
             intent="personalized_learning",
-            answer=f"根据当前学习画像：{learning_brief['summary']} " + "；".join(learning_brief["recommended_actions"]),
+            answer=_profile_fallback_answer(learning_brief),
             citations=[Citation.model_validate(item) for item in citations],
             used_learning_profile=True, evidence_sufficient=True,
         )
@@ -191,7 +302,8 @@ def run_student_qa(
             evidence_sufficient=False,
         )
     steps.append(_step("compose_result", "structured_llm" if token_usage["total"] else "deterministic_fallback",
-                       compose_started, {"intent": intent, "policy_mode": answer.policy_mode}))
+                       compose_started, {"intent": intent, "policy_mode": answer.policy_mode,
+                                         "model_fallback": model_fallback}))
 
     validation_started = perf_counter()
     issues = []

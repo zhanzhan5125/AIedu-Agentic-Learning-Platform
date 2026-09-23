@@ -250,7 +250,7 @@ def profile_view(db: Session, student_id: int, offering_id: int) -> dict:
             LearningEvidence.offering_id == offering_id,
             LearningEvidence.knowledge_point_id == point.id,
             LearningEvidence.source_type.in_(tuple(SOURCE_WEIGHTS)),
-        ).order_by(LearningEvidence.observed_at.desc()).limit(20)).all()
+        ).order_by(LearningEvidence.observed_at.desc(), LearningEvidence.id.desc()).limit(20)).all()
         mastery_score, confidence = _mastery_values(evidence)
         observation_count = len(evidence)
         state = "insufficient_data"

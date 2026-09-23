@@ -792,7 +792,15 @@ def test_personalized_tutor_delegates_only_to_learning_agent(client, auth):
         db.add(offering)
         db.flush()
         db.add(Enrollment(offering_id=offering.id, student_id=student.id))
-        db.add(KnowledgePoint(course_id=course.id, code="KP-P", name="动态规划"))
+        point = KnowledgePoint(course_id=course.id, code="KP-P", name="动态规划")
+        db.add(point)
+        db.flush()
+        for source_id, score in enumerate((40, 45, 50), 1):
+            upsert_evidence(
+                db, student_id=student.id, offering_id=offering.id,
+                knowledge_point_id=point.id, source_type="assignment", source_id=source_id,
+                score=score, confidence=90,
+            )
         offering_id = offering.id
     token = auth(client, "student", "student")
     conversation_id = client.post("/api/v1/conversations", headers=headers(token),
@@ -807,7 +815,55 @@ def test_personalized_tutor_delegates_only_to_learning_agent(client, auth):
         child = db.query(AgentRun).filter_by(parent_run_id=parent.id).one()
         assert parent.agent_name == "student_qa_agent"
         assert child.agent_name == "student_learning_assistant"
-        assert child.result["insufficient_points"] == ["动态规划"]
+        assert child.result["weak_points"] == ["动态规划"]
+        assert child.result["point_details"][0]["mastery_score"] == 45
+        assert len(child.result["point_details"][0]["recent_evidence"]) == 3
+
+
+def test_tutor_identity_question_delegates_without_rag_or_model(client, auth, monkeypatch):
+    with SessionLocal.begin() as db:
+        teacher = db.query(User).filter_by(role=Role.teacher).one()
+        student = db.query(User).filter_by(role=Role.student).one()
+        course = Course(number="CS208-I", name="身份协作测试课程")
+        db.add(course)
+        db.flush()
+        offering = CourseOffering(course_id=course.id, teacher_id=teacher.id, year=2026,
+                                  term=1, status=OfferingStatus.active)
+        db.add(offering)
+        db.flush()
+        db.add(Enrollment(offering_id=offering.id, student_id=student.id))
+        db.add_all([
+            KnowledgePoint(course_id=course.id, code=f"KP-I-{index:02d}", name=f"身份测试知识点 {index}")
+            for index in range(25)
+        ])
+        offering_id = offering.id
+    monkeypatch.setattr("app.ai.tutor.search_course", lambda *_args, **_kwargs: (
+        _ for _ in ()
+    ).throw(AssertionError("identity question must not retrieve course materials")))
+    monkeypatch.setattr("app.ai.tutor.structured_completion", lambda *_args, **_kwargs: (
+        _ for _ in ()
+    ).throw(AssertionError("identity question must not call the model")))
+    token = auth(client, "student", "student")
+    conversation_id = client.post("/api/v1/conversations", headers=headers(token), json={
+        "offering_id": offering_id, "title": "身份协作",
+    }).json()["data"]["id"]
+
+    response = client.post(f"/api/v1/conversations/{conversation_id}/ask", headers=headers(token),
+                           json={"content": "你知道我是谁吗？",
+                                 "idempotency_key": "personal-identity-001", "hint_level": 0})
+
+    assert response.status_code == 201
+    data = response.json()["data"]
+    assert "你是学生" in data["answer"]
+    assert "身份协作测试课程" in data["answer"]
+    with SessionLocal() as db:
+        parent = db.get(AgentRun, data["agent_run_id"])
+        child = db.query(AgentRun).filter_by(parent_run_id=parent.id).one()
+        assert parent.task_type == "personalized_learning"
+        assert child.agent_name == "student_learning_assistant"
+        assert child.result["student_name"] == "学生"
+        assert child.result["course_name"] == "身份协作测试课程"
+        assert len(child.result["insufficient_points"]) == 20
 
 
 def test_course_map_draft_has_evidence_and_requires_publish(client, auth):
