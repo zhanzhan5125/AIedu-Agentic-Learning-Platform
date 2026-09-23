@@ -129,6 +129,7 @@ export default {
       conversationOfferingId: null,
       conversationLoading: false,
       conversationEnabled: false,
+      conversationSelectionToken: 0,
       suggestions: [
         { title: '梳理核心知识', description: '总结重点并建立知识框架',
           prompt: '请帮我梳理这门课程当前章节的核心知识点，并说明它们之间的关系。', icon: 'el-icon-collection' },
@@ -181,38 +182,46 @@ export default {
       const question = this.text.trim()
       if (!question || this.isSending) return
 
+      this.isSending = true
+      try {
+        await this.ensureConversation()
+      } catch (error) {
+        this.isSending = false
+        this.$message.error(this.requestErrorMessage(error))
+        return
+      }
+
       this.messages.push({ id: this.nextMessageId(), role: 'user', content: question, loading: false })
       const assistantMessage = { id: this.nextMessageId(), role: 'assistant', content: '', loading: true }
       this.messages.push(assistantMessage)
       this.text = ''
-      this.isSending = true
       this.$nextTick(() => {
         this.adjustTextareaHeight()
         this.scrollToBottom()
       })
 
       let serverPersisted = false
+      const conversationId = this.activeConversationId
       try {
-        await this.ensureConversation()
-        const response = await apiV1.post(`/conversations/${this.activeConversationId}/ask`, {
+        const response = await apiV1.post(`/conversations/${conversationId}/ask`, {
             idempotency_key: `chat-${Date.now()}-${Math.random().toString(16).slice(2)}`,
             content: question,
             hint_level: 0
         })
-        assistantMessage.content = response.data.answer
-        assistantMessage.citations = response.data.citations || []
-        assistantMessage.policyMode = response.data.policy_mode
+        const result = response && response.data ? response.data : response
+        this.$set(assistantMessage, 'content', result.answer || '问题已经处理完成。')
+        this.$set(assistantMessage, 'citations', result.citations || [])
+        this.$set(assistantMessage, 'policyMode', result.policy_mode)
         serverPersisted = true
       } catch (error) {
-        assistantMessage.content = '智能问答服务暂时不可用，请稍后再试。'
+        const recovered = conversationId
+          ? await this.recoverPersistedExchange(conversationId, question)
+          : false
+        if (recovered) serverPersisted = true
+        else this.$set(assistantMessage, 'content', this.requestErrorMessage(error))
       } finally {
         assistantMessage.loading = false
-        if (!serverPersisted) {
-          await this.persistMessage('assistant', assistantMessage.content,
-            assistantMessage.content.includes('暂时不可用') ? 'failed' : 'completed')
-        } else {
-          await this.loadConversations()
-        }
+        if (serverPersisted) await this.loadConversations()
         this.isSending = false
         this.$nextTick(() => this.scrollToBottom())
       }
@@ -263,6 +272,7 @@ export default {
           title: '新对话'
         })
         this.conversations.unshift(response.data)
+        this.conversationSelectionToken += 1
         this.activeConversationId = response.data.id
         this.messages = []
         this.text = ''
@@ -277,21 +287,48 @@ export default {
     },
     async selectConversation(item) {
       if (this.isSending || item.id === this.activeConversationId) return
+      const selectionToken = ++this.conversationSelectionToken
+      this.activeConversationId = item.id
+      this.messages = []
       this.conversationLoading = true
       try {
         const response = await apiV1.get(`/conversations/${item.id}/messages`)
-        this.activeConversationId = item.id
-        this.messages = response.data.records.map(message => ({
-          id: `stored-${message.id}`,
-          role: message.role,
-          content: message.content || '',
-          citations: message.citations || [],
-          policyMode: message.policy_mode,
-          loading: false
-        }))
+        if (selectionToken !== this.conversationSelectionToken) return
+        this.messages = this.storedMessages(response.data.records)
         this.$nextTick(() => this.scrollToBottom())
       } finally {
-        this.conversationLoading = false
+        if (selectionToken === this.conversationSelectionToken) this.conversationLoading = false
+      }
+    },
+    storedMessages(records) {
+      return (records || []).map(message => ({
+        id: `stored-${message.id}`,
+        role: message.role,
+        content: message.content || '',
+        citations: message.citations || [],
+        policyMode: message.policy_mode,
+        loading: false
+      }))
+    },
+    async recoverPersistedExchange(conversationId, question) {
+      try {
+        const response = await apiV1.get(`/conversations/${conversationId}/messages`)
+        const records = response.data.records || []
+        let userIndex = -1
+        for (let index = records.length - 1; index >= 0; index -= 1) {
+          if (records[index].role === 'user' && records[index].content === question) {
+            userIndex = index
+            break
+          }
+        }
+        const recovered = userIndex >= 0 && records.slice(userIndex + 1).some(
+          message => message.role === 'assistant' && message.status === 'completed'
+        )
+        if (!recovered || this.activeConversationId !== conversationId) return false
+        this.messages = this.storedMessages(records)
+        return true
+      } catch (_) {
+        return false
       }
     },
     async persistMessage(role, content, status = 'completed') {
@@ -314,6 +351,7 @@ export default {
       await apiV1.delete(`/conversations/${item.id}`)
       this.conversations = this.conversations.filter(row => row.id !== item.id)
       if (this.activeConversationId === item.id) {
+        this.conversationSelectionToken += 1
         this.activeConversationId = null
         this.messages = []
         if (this.conversations.length > 0) await this.selectConversation(this.conversations[0])
@@ -328,6 +366,10 @@ export default {
         return date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
       }
       return `${date.getMonth() + 1}月${date.getDate()}日`
+    },
+    requestErrorMessage(error) {
+      if (!error || !error.response) return '网络连接异常，请稍后再试。'
+      return error.response.data?.msg || error.response.data?.detail || '智能问答服务暂时不可用，请稍后再试。'
     },
     scrollToBottom() {
       const container = this.$refs.messageContainer

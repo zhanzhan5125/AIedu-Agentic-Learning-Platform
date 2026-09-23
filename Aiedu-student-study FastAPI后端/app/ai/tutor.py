@@ -18,6 +18,12 @@ from app.services.learning import profile_view
 PERSONAL_MARKERS = ("我的", "我哪里", "薄弱", "学情", "掌握", "怎么复习", "如何复习", "复习计划", "适合我")
 CURRENT_MARKERS = ("今天", "最新", "当前", "新闻", "现在发生", "实时")
 RESOURCE_MARKERS = ("哪一页", "哪个课件", "资料里", "出处", "定位")
+GREETING_WORDS = {"你好", "您好", "嗨", "哈喽", "hello", "hi", "hey", "在吗"}
+
+
+def _is_greeting(question: str) -> bool:
+    normalized = "".join(question.split()).strip("，。！？!?~～.").lower()
+    return normalized in GREETING_WORDS
 
 
 def _citation(row: dict) -> dict:
@@ -64,6 +70,8 @@ def run_student_qa(
     started = perf_counter()
     if guided:
         intent = "assignment_guidance"
+    elif _is_greeting(question):
+        intent = "chitchat"
     elif any(marker in question for marker in PERSONAL_MARKERS):
         intent = "personalized_learning"
     elif any(marker in question for marker in CURRENT_MARKERS):
@@ -85,7 +93,7 @@ def run_student_qa(
     if intent == "personalized_learning":
         plan_steps.append(PlanStep(id="2", action="委派学生学习助手读取精简画像",
                                    tool="delegate_student_learning_assistant", reason="问题明确要求结合个人情况"))
-    if not guided:
+    if not guided and intent != "chitchat":
         plan_steps.append(PlanStep(id=str(len(plan_steps) + 1), action="检索课程资料",
                                    tool="search_course_materials", reason="以课程内证据回答"))
     plan_steps.append(PlanStep(id=str(len(plan_steps) + 1), action="生成回答并执行证据自检",
@@ -116,7 +124,7 @@ def run_student_qa(
                                    "insufficient_count": len(learning_brief["insufficient_points"])},
             }],
         })
-    if not guided:
+    if not guided and intent != "chitchat":
         citations = [_citation(row) for row in search_course(offering_id, question, limit=6, db=db)]
         if intent == "current_web" and not citations and get_settings().tavily_api_key:
             citations = [Citation(
@@ -136,9 +144,15 @@ def run_student_qa(
     if guided:
         answer = TutorAnswer(
             intent="assignment_guidance",
-            answer=("这段提问与当前开放作业高度相关，我不能直接给出答案。"
-                    "请先写出你已确定的条件、目标和第一步尝试，我会根据你的思路给出下一层提示。"),
+            answer=("这道题与当前开放作业高度相似，请认真做题哟。"
+                    "我不能直接给出答案；你可以先写出自己的思路或第一步尝试，我再给你提示。"),
             policy_mode="guided", evidence_sufficient=True,
+        )
+    elif intent == "chitchat":
+        answer = TutorAnswer(
+            intent="chitchat",
+            answer="你好呀，我是问答杏台。你可以问我课程知识、资料位置，也可以让我结合你的学情制定复习建议。",
+            evidence_sufficient=True,
         )
     elif get_settings().enable_llm and get_settings().ai_api_key:
         answer, metadata = structured_completion(

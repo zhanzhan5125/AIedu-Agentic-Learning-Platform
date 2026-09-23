@@ -99,6 +99,7 @@ def list_messages(
     _owned_conversation(conversation_id, user, db)
     rows = db.scalars(select(ChatMessage).where(
         ChatMessage.conversation_id == conversation_id,
+        ChatMessage.status != MessageStatus.failed,
     ).order_by(ChatMessage.sequence_no)).all()
     records = [{
         "id": row.id,
@@ -191,7 +192,8 @@ def ask_tutor(conversation_id: int, payload: AskRequest, request: Request,
     guided = best_similarity >= 0.72
     started = datetime.now()
     recent_rows = list(reversed(db.scalars(select(ChatMessage).where(
-        ChatMessage.conversation_id == conversation_id
+        ChatMessage.conversation_id == conversation_id,
+        ChatMessage.status != MessageStatus.failed,
     ).order_by(ChatMessage.sequence_no.desc()).limit(8)).all()))
     output = run_student_qa(
         db, student_id=user.id, offering_id=conversation.offering_id,

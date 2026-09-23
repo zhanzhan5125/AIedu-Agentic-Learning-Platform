@@ -699,8 +699,42 @@ def test_tutor_blocks_direct_answer_for_open_assignment(client, auth):
     assert response.status_code == 201
     data = response.json()["data"]
     assert data["policy_mode"] == "guided"
+    assert "请认真做题哟" in data["answer"]
     assert "不能直接给出答案" in data["answer"]
     assert data["matched_assignment_id"] is not None
+
+
+def test_tutor_greeting_skips_retrieval_and_model(client, auth, monkeypatch):
+    with SessionLocal.begin() as db:
+        teacher = db.query(User).filter_by(role=Role.teacher).one()
+        student = db.query(User).filter_by(role=Role.student).one()
+        course = Course(number="CS209", name="问候快速回复测试")
+        db.add(course)
+        db.flush()
+        offering = CourseOffering(course_id=course.id, teacher_id=teacher.id, year=2026,
+                                  term=1, status=OfferingStatus.active)
+        db.add(offering)
+        db.flush()
+        db.add(Enrollment(offering_id=offering.id, student_id=student.id))
+        offering_id = offering.id
+    monkeypatch.setattr("app.ai.tutor.search_course", lambda *_args, **_kwargs: (
+        _ for _ in ()
+    ).throw(AssertionError("greeting must not retrieve course materials")))
+    monkeypatch.setattr("app.ai.tutor.structured_completion", lambda *_args, **_kwargs: (
+        _ for _ in ()
+    ).throw(AssertionError("greeting must not call the model")))
+    token = auth(client, "student", "student")
+    conversation_id = client.post("/api/v1/conversations", headers=headers(token),
+                                  json={"offering_id": offering_id, "title": "问候"}).json()["data"]["id"]
+
+    response = client.post(f"/api/v1/conversations/{conversation_id}/ask", headers=headers(token),
+                           json={"content": "你好！", "idempotency_key": "tutor-greeting-001",
+                                 "hint_level": 0})
+
+    assert response.status_code == 201
+    data = response.json()["data"]
+    assert data["policy_mode"] == "normal"
+    assert "问答杏台" in data["answer"]
 
 
 def test_agent_draft_is_traceable_and_idempotent(client, auth):
