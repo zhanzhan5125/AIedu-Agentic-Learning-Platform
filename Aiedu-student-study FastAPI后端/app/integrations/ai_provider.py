@@ -5,6 +5,7 @@ import re
 from time import perf_counter
 from typing import TypeVar
 
+from json_repair import repair_json
 from pydantic import BaseModel, ValidationError
 
 from app.core.config import get_settings
@@ -13,16 +14,25 @@ from app.core.config import get_settings
 StructuredModel = TypeVar("StructuredModel", bound=BaseModel)
 
 
-def _json_payload(value: str) -> dict:
+def _json_payload(value: str) -> tuple[dict, bool]:
     cleaned = value.strip()
     fenced = re.search(r"```(?:json)?\s*(\{.*\})\s*```", cleaned, re.DOTALL)
     if fenced:
         cleaned = fenced.group(1)
     start = cleaned.find("{")
     end = cleaned.rfind("}")
-    if start < 0 or end < start:
+    if start < 0:
         raise ValueError("模型未返回 JSON 对象")
-    return json.loads(cleaned[start:end + 1])
+    candidate = cleaned[start:end + 1] if end >= start else cleaned[start:]
+    try:
+        payload = json.loads(candidate)
+        repaired = False
+    except json.JSONDecodeError:
+        payload = repair_json(candidate, return_objects=True)
+        repaired = True
+    if not isinstance(payload, dict):
+        raise ValueError("模型未返回 JSON 对象")
+    return payload, repaired
 
 
 def structured_completion(
@@ -51,7 +61,17 @@ def structured_completion(
     ]
     started = perf_counter()
     last_error: Exception | None = None
+    last_diagnostic = "finish_reason=unknown, response_chars=0"
     total_usage = {"prompt": 0, "completion": 0, "total": 0}
+    response_format = {
+        "type": "json_schema",
+        "json_schema": {
+            "name": schema.__name__,
+            "strict": True,
+            "schema": schema.model_json_schema(),
+        },
+    }
+    format_mode = "json_schema"
     for attempt in range(2):
         kwargs = {
             "model": settings.llm_model,
@@ -60,28 +80,46 @@ def structured_completion(
             "max_tokens": max_tokens,
         }
         try:
-            response = client.chat.completions.create(
-                **kwargs, response_format={"type": "json_object"}
-            )
+            response = client.chat.completions.create(**kwargs, response_format=response_format)
         except Exception as exc:
-            # Some OpenAI-compatible gateways do not implement response_format.
-            if attempt == 0 and "response_format" in str(exc):
-                response = client.chat.completions.create(**kwargs)
+            # Keep compatibility with gateways that support JSON mode but not
+            # strict JSON Schema. Transport errors must still surface normally.
+            error_text = str(exc).lower()
+            if attempt == 0 and any(term in error_text for term in (
+                "response_format", "json_schema", "json schema",
+            )):
+                response_format = {"type": "json_object"}
+                format_mode = "json_object"
+                response = client.chat.completions.create(
+                    **kwargs, response_format=response_format,
+                )
             else:
                 raise
-        content = response.choices[0].message.content if response.choices else ""
+        choice = response.choices[0] if response.choices else None
+        content = choice.message.content if choice else ""
+        finish_reason = getattr(choice, "finish_reason", None) if choice else None
+        last_diagnostic = f"finish_reason={finish_reason or 'unknown'}, response_chars={len(content or '')}"
         usage = response.usage
         if usage:
             total_usage["prompt"] += getattr(usage, "prompt_tokens", 0) or 0
             total_usage["completion"] += getattr(usage, "completion_tokens", 0) or 0
             total_usage["total"] += getattr(usage, "total_tokens", 0) or 0
         try:
-            value = schema.model_validate(_json_payload(content or ""))
+            if finish_reason in {
+                "length", "content_filter", "insufficient_system_resource", "aborted",
+            }:
+                raise ValueError(f"模型输出未正常完成：finish_reason={finish_reason}")
+            payload, json_repair_applied = _json_payload(content or "")
+            value = schema.model_validate(payload)
             return value, {
                 "model": getattr(response, "model", None) or settings.llm_model,
                 "latency_ms": round((perf_counter() - started) * 1000),
                 "token_usage": total_usage,
                 "repair_attempted": attempt == 1,
+                "finish_reason": finish_reason,
+                "response_chars": len(content or ""),
+                "structured_output_mode": format_mode,
+                "json_repair_applied": json_repair_applied,
             }
         except (ValueError, json.JSONDecodeError, ValidationError) as exc:
             last_error = exc
@@ -90,10 +128,10 @@ def structured_completion(
                     {"role": "assistant", "content": content or ""},
                     {"role": "user", "content": (
                         f"上一次输出未通过结构校验：{str(exc)[:1000]}。"
-                        "请修复并仅返回完整 JSON 对象。"
+                        "请缩短冗余文字，修复 JSON 语法，并仅返回完整 JSON 对象。"
                     )},
                 ])
-    raise RuntimeError(f"模型结构化输出校验失败：{last_error}")
+    raise RuntimeError(f"模型结构化输出校验失败（{last_diagnostic}）：{last_error}")
 
 
 def provider_status() -> dict:

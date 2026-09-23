@@ -452,15 +452,20 @@ def _fallback_grading(state: WorkflowState) -> GradingSuggestion:
 
 def _model_assignment(state: WorkflowState) -> tuple[dict, dict]:
     settings = get_settings()
+    requirements = dict(state.get("input_data", {}))
+    question_count = int(requirements.get("question_count", 5))
     value, metadata = structured_completion(
         AssignmentDraftResult,
-        system_prompt=("你是 AIedu 教师出题/批阅智能体的出题模式。只能依据给定课程资料生成题目，"
-                       "严格满足题量、题型、难度和知识点要求；每题提供答案、Rubric 与引用。"),
-        user_prompt=json.dumps({"teacher_requirements": state.get("input_data", {}),
-                                "course_context": state.get("tool_results", {})},
-                               ensure_ascii=False, default=str),
-        # Assignment JSON is much larger than a chat answer. Let the gateway
-        # finish one request, while job-level retries remain visible/auditable.
+        system_prompt=(
+            "你是 AIedu 教师出题/批阅智能体的出题模式。只能依据给定课程资料生成题目，"
+            "严格满足题量、题型、难度和知识点要求，整套题不得重复。每题提供答案、"
+            "2至4条简短 Rubric 与最多2条引用。题干控制在300字内，参考答案控制在500字内。"
+        ),
+        user_prompt=json.dumps({
+            "teacher_requirements": requirements,
+            "course_context": state.get("tool_results", {}),
+        }, ensure_ascii=False, default=str),
+        max_tokens=min(16_000, 2_000 + question_count * 1_200),
         timeout_seconds=settings.assignment_llm_timeout_seconds,
         max_retries=0,
     )
@@ -827,7 +832,10 @@ def compose_result(state: WorkflowState) -> WorkflowState:
     result["steps"] = _step(
         result, "compose_result", tool_name="structured_llm" if metadata else "deterministic_fallback",
         summary={"mode": draft.get("mode"), "schema": state["task_type"],
-                 "model_call_count": metadata.get("model_call_count")}, started=started,
+                 "model_call_count": metadata.get("model_call_count"),
+                 "structured_output_mode": metadata.get("structured_output_mode"),
+                 "json_repair_applied": metadata.get("json_repair_applied"),
+                 "model_repair_attempted": metadata.get("repair_attempted")}, started=started,
     )
     return result
 
