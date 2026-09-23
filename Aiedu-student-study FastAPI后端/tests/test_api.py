@@ -4,7 +4,8 @@ from datetime import datetime, timedelta
 
 from app.db import SessionLocal
 from app.models import (AIJob, AgentRun, Answer, Assignment, AssignmentQuestion, AssignmentStatus, Course,
-                        CourseOffering, CourseResource, Enrollment, KnowledgePoint, Notification,
+                        CourseMapEdge, CourseMapNode, CourseMapVersion, CourseOffering, CourseResource,
+                        Enrollment, KnowledgePoint, Notification,
                         JobStatus, OfferingStatus, OutboxEvent, ProcessingStatus, Question,
                         QuestionKnowledgePoint, ResourceChunk, Role,
                         ScheduledNotification, Submission, SubmissionStatus, User)
@@ -583,7 +584,11 @@ def test_mastery_requires_three_confident_observations(client):
                                   term=1, status=OfferingStatus.active)
         db.add(offering)
         db.flush()
-        point = KnowledgePoint(course_id=course.id, code="KP-1", name="递归")
+        chapter = KnowledgePoint(course_id=course.id, code="CH-1", name="函数与递归")
+        db.add(chapter)
+        db.flush()
+        point = KnowledgePoint(course_id=course.id, code="KP-1", name="递归",
+                               parent_id=chapter.id)
         db.add(point)
         db.flush()
         for source_id, score in enumerate((30, 50, 40), 1):
@@ -592,8 +597,76 @@ def test_mastery_requires_three_confident_observations(client):
                             source_id=source_id, score=score, confidence=90)
         refresh_student_mastery(db, student.id, offering.id)
         view = profile_view(db, student.id, offering.id)
+        assert len(view["knowledge_points"]) == 1
+        assert view["knowledge_points"][0]["chapter_name"] == "函数与递归"
         assert view["knowledge_points"][0]["state"] == "weak"
         assert view["knowledge_points"][0]["observation_count"] == 3
+
+
+def test_mastery_uses_normalized_assignment_and_practice_weights(client):
+    with SessionLocal.begin() as db:
+        teacher = db.query(User).filter_by(role=Role.teacher).one()
+        student = db.query(User).filter_by(role=Role.student).one()
+        course = Course(number="CS206", name="加权掌握度测试")
+        db.add(course)
+        db.flush()
+        offering = CourseOffering(course_id=course.id, teacher_id=teacher.id, year=2026,
+                                  term=1, status=OfferingStatus.active)
+        point = KnowledgePoint(course_id=course.id, code="KP-W", name="指针")
+        db.add_all([offering, point])
+        db.flush()
+        upsert_evidence(db, student_id=student.id, offering_id=offering.id,
+                        knowledge_point_id=point.id, source_type="assignment",
+                        source_id=1, score=100, confidence=100)
+        upsert_evidence(db, student_id=student.id, offering_id=offering.id,
+                        knowledge_point_id=point.id, source_type="practice",
+                        source_id=1, score=0, confidence=100)
+        upsert_evidence(db, student_id=student.id, offering_id=offering.id,
+                        knowledge_point_id=point.id, source_type="chat",
+                        source_id=1, score=0, confidence=100)
+        refresh_student_mastery(db, student.id, offering.id)
+        view = profile_view(db, student.id, offering.id)
+
+        assert view["knowledge_points"][0]["mastery_score"] == 70
+        assert view["knowledge_points"][0]["observation_count"] == 2
+        assert [item["source_type"] for item in view["knowledge_points"][0]["evidence"]] == [
+            "practice", "assignment",
+        ]
+
+
+def test_profile_uses_leaf_points_from_published_course_map(client):
+    with SessionLocal.begin() as db:
+        teacher = db.query(User).filter_by(role=Role.teacher).one()
+        student = db.query(User).filter_by(role=Role.student).one()
+        course = Course(number="CS207", name="路线过滤测试")
+        db.add(course)
+        db.flush()
+        offering = CourseOffering(course_id=course.id, teacher_id=teacher.id, year=2026,
+                                  term=1, status=OfferingStatus.active)
+        legacy = KnowledgePoint(course_id=course.id, code="OLD-CH", name="旧章节")
+        chapter = KnowledgePoint(course_id=course.id, code="MAP-CH", name="第一章")
+        point = KnowledgePoint(course_id=course.id, code="MAP-KP", name="变量")
+        db.add_all([offering, legacy, chapter, point])
+        db.flush()
+        version = CourseMapVersion(course_id=course.id, offering_id=offering.id, version=1,
+                                   status="published", title="课程路线", created_by=teacher.id)
+        db.add(version)
+        db.flush()
+        chapter_node = CourseMapNode(version_id=version.id, node_key="chapter", name="第一章",
+                                     position=1, knowledge_point_id=chapter.id)
+        point_node = CourseMapNode(version_id=version.id, node_key="variable", name="变量",
+                                   position=2, knowledge_point_id=point.id)
+        db.add_all([chapter_node, point_node])
+        db.flush()
+        db.add(CourseMapEdge(version_id=version.id, source_node_id=chapter_node.id,
+                             target_node_id=point_node.id, relation_type="contains"))
+        db.flush()
+
+        view = profile_view(db, student.id, offering.id)
+
+        assert [(item["name"], item["chapter_name"]) for item in view["knowledge_points"]] == [
+            ("变量", "第一章"),
+        ]
 
 
 def test_tutor_blocks_direct_answer_for_open_assignment(client, auth):
