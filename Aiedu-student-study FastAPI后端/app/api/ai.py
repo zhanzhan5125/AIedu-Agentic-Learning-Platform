@@ -137,7 +137,8 @@ def grading_job(payload: AIJobCreate, request: Request, user: User = Depends(req
         submission.review_reason = None
     db.commit()
     db.refresh(job)
-    return ok({"job_id": job.id, "status": job.status.value}, request.state.request_id)
+    return ok({"job_id": job.id, "agent_run_id": job.agent_run_id,
+               "status": job.status.value}, request.state.request_id)
 
 
 @router.post("/ai/summary-jobs", status_code=status.HTTP_202_ACCEPTED)

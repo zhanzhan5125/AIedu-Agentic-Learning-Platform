@@ -91,6 +91,7 @@ class GradeSuggestionItem(BaseModel):
     answer_id: int
     score: int = Field(ge=0)
     max_score: int = Field(ge=0)
+    rubric: list[str] = Field(default_factory=list, max_length=8)
     comment: str
     error_type: str | None = None
     evidence_excerpt: str | None = None

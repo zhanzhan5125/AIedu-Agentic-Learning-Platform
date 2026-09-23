@@ -15,7 +15,7 @@ from app.ai.workflows import run_workflow
 from app.core.config import get_settings
 from app.db import SessionLocal
 from app.integrations.rocketmq import rocketmq
-from app.models import (AIJob, AgentRun, AgentRunStep, Assignment, AssignmentInsightSnapshot, AssignmentQuestion,
+from app.models import (AIJob, AgentRun, AgentRunStep, Answer, Assignment, AssignmentInsightSnapshot, AssignmentQuestion,
                         AssignmentStatus, ConsumerInbox, CourseResource, Enrollment,
                         JobStatus, Notification, OutboxEvent, PracticeSession, ProcessingStatus,
                         Question, QuestionKnowledgePoint, ScheduledNotification, Submission,
@@ -214,12 +214,25 @@ def _process_job(payload: dict) -> None:
             if job.kind == "grading.single":
                 submission = db.get(Submission, job.resource_id)
                 if submission is not None:
-                    submission.ai_comment = json.dumps(output["result"], ensure_ascii=False)
+                    grading_result = output["result"]
+                    submission.ai_comment = json.dumps(grading_result, ensure_ascii=False)
                     submission.ai_graded_at = datetime.now()
+                    submission.ai_confidence = int(grading_result.get("confidence") or 0)
+                    validation_issues = output.get("validation", {}).get("issues") or []
                     submission.review_reason = (
-                        "AI 输出未通过完整评分校验，请教师重点复核"
-                        if output.get("needs_review") else None
+                        grading_result.get("review_reason") or
+                        ("AI 输出未通过完整评分校验：" + "；".join(validation_issues)[:400]
+                         if validation_issues else "AI 批阅建议待教师确认")
                     )
+                    answers = {item.id: item for item in db.scalars(select(Answer).where(
+                        Answer.submission_id == submission.id
+                    )).all()}
+                    for item in grading_result.get("items", []):
+                        answer = answers.get(int(item.get("answer_id", 0)))
+                        if answer is None:
+                            continue
+                        answer.ai_comment = item.get("comment")
+                        answer.ai_raw = item
                     # AI 结果始终是建议，默认必须由教师确认后才能成为最终成绩。
                     submission.status = SubmissionStatus.needs_review
             if run:

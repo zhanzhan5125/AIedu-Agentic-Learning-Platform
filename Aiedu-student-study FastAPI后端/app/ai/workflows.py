@@ -384,6 +384,7 @@ def execute_tools(state: WorkflowState) -> WorkflowState:
                 ).all()
                 tools["answers"] = [{
                     "answer_id": answer.id, "question_id": question.id,
+                    "question_kind": question.kind,
                     "question": question.prompt, "student_answer": answer.content or "",
                     "reference_answer": question.reference_answer or "", "max_score": question.score,
                 } for answer, question in rows]
@@ -510,11 +511,40 @@ def _model_assignment(state: WorkflowState) -> tuple[dict, dict]:
 
 
 def _model_grading(state: WorkflowState) -> tuple[dict, dict]:
+    teacher_rules = (state.get("prompt") or "").strip()
     value, metadata = structured_completion(
         GradingSuggestion,
-        system_prompt=("你是 AIedu 教师出题/批阅智能体的批阅模式。评分只能由学生答案、题目、参考答案和分值支持；"
-                       "逐题给出分数、简短评语、错误类型、证据摘录和置信度。不得超过题目分值。"),
-        user_prompt=json.dumps(state.get("tool_results", {}), ensure_ascii=False, default=str),
+        system_prompt=(
+            "你是 AIedu 教师出题/批阅智能体的批阅模式。先根据题目、题型、参考答案和满分为每题形成 2 至 5 条简短评分 Rubric，"
+            "再逐项核对学生作答并给分。评分只能由学生答案直接支持，不得因为语言风格或答案顺序不同扣分；"
+            "程序题应关注算法、正确性、边界与表达，不要求与参考答案逐字一致。score 不得超过 max_score，total_score 必须等于分项之和。"
+            "evidence_excerpt 必须逐字摘自学生答案；未作答时固定写‘未作答’。comment 要说明得分点和待改进点，error_type 使用简短类别或 null。"
+            "置信度低、参考答案不足、题意歧义或无法可靠判断时必须 needs_review=true，并清楚填写 review_reason。"
+        ),
+        user_prompt=json.dumps({
+            "teacher_rules": teacher_rules or "按参考答案和题目分值公平评分",
+            "submission": state.get("tool_results", {}),
+        }, ensure_ascii=False, default=str),
+    )
+    return value.model_dump(), metadata
+
+
+def _model_grading_revision(state: WorkflowState, draft: dict, issues: list[str]) -> tuple[dict, dict]:
+    """Run one bounded second look only when deterministic checks found a defect."""
+    value, metadata = structured_completion(
+        GradingSuggestion,
+        system_prompt=(
+            "你正在复核一份 AI 批阅建议。只修正校验指出的问题，并重新核对每项评分是否由学生原文支持。"
+            "必须覆盖所有 answer_id，保持真实 max_score，证据摘录必须来自对应学生答案，分项之和必须等于总分。"
+            "若仍无法可靠判断，不要猜测，降低置信度并明确要求教师重点复核。"
+        ),
+        user_prompt=json.dumps({
+            "teacher_rules": (state.get("prompt") or "").strip(),
+            "submission": state.get("tool_results", {}),
+            "first_suggestion": draft,
+            "validation_issues": issues,
+        }, ensure_ascii=False, default=str),
+        max_retries=0,
     )
     return value.model_dump(), metadata
 
@@ -912,16 +942,43 @@ def _validate(state: WorkflowState) -> ValidationResult:
     elif kind == "grading.single":
         try:
             suggestion = GradingSuggestion.model_validate(draft)
-            expected_ids = {item["answer_id"] for item in state.get("tool_results", {}).get("answers", [])}
+            answers = state.get("tool_results", {}).get("answers", [])
+            expected_ids = {item["answer_id"] for item in answers}
             actual_ids = {item.answer_id for item in suggestion.items}
             if actual_ids != expected_ids:
                 issues.append("批阅结果存在缺失或未知答案")
+            expected_maximums = {item["answer_id"]: int(item["max_score"]) for item in answers}
+            if any(item.max_score != expected_maximums.get(item.answer_id)
+                   for item in suggestion.items):
+                issues.append("批阅结果中的题目满分与实际作业不一致")
             if suggestion.total_score != sum(item.score for item in suggestion.items):
                 issues.append("总分与分项得分不一致")
+            if any(not item.rubric for item in suggestion.items):
+                issues.append("存在缺少评分 Rubric 的题目")
             if any(not item.evidence_excerpt for item in suggestion.items):
                 issues.append("存在无学生作答证据的评价")
-            evidence_sufficient = not issues and suggestion.confidence >= 60
-            if not evidence_sufficient:
+            answer_texts = {
+                item["answer_id"]: re.sub(r"\s+", "", item["student_answer"] or "")
+                for item in answers
+            }
+            unsupported = []
+            for item in suggestion.items:
+                excerpt = re.sub(r"\s+", "", item.evidence_excerpt or "")
+                answer_text = answer_texts.get(item.answer_id, "")
+                if answer_text:
+                    if not excerpt or excerpt not in answer_text:
+                        unsupported.append(item.answer_id)
+                elif excerpt not in {"", "未作答"}:
+                    unsupported.append(item.answer_id)
+            if unsupported:
+                issues.append("部分评价的证据摘录无法在学生原答案中定位")
+            if state.get("tool_results", {}).get("missing_question_ids"):
+                issues.append("提交记录存在缺失题目，需要教师确认")
+            low_confidence = suggestion.confidence < 60 or any(
+                item.confidence < 50 for item in suggestion.items
+            )
+            evidence_sufficient = not issues and not low_confidence
+            if low_confidence:
                 issues.append("批阅置信度或证据支持不足")
         except Exception as exc:
             issues.append(f"批阅结构无效：{str(exc)[:200]}")
@@ -1043,6 +1100,15 @@ def reflect_once(state: WorkflowState) -> WorkflowState:
                     questions[index] = replacement
         draft["questions"] = questions
     elif state["kind"] == "grading.single":
+        settings = get_settings()
+        revision_metadata: dict[str, Any] = {}
+        if issues and settings.enable_llm and settings.ai_api_key:
+            try:
+                draft, revision_metadata = _model_grading_revision(state, draft, issues)
+            except Exception:
+                # The original suggestion remains available for teacher review
+                # if the single bounded revision call fails.
+                revision_metadata = {}
         maximums = {item["answer_id"]: item["max_score"]
                     for item in state.get("tool_results", {}).get("answers", [])}
         for item in draft.get("items", []):
@@ -1051,15 +1117,24 @@ def reflect_once(state: WorkflowState) -> WorkflowState:
             item["score"] = min(maximum, max(0, int(item.get("score", 0))))
         draft["total_score"] = sum(int(item.get("score", 0)) for item in draft.get("items", []))
         draft["needs_review"] = True
-        draft["review_reason"] = (
-            "Reflection 后仍需教师确认：" + "；".join(issues)[:400]
-            if issues else "批阅建议已经过证据复核，仍需教师最终确认"
-        )
+        draft["review_reason"] = "批阅建议已经过证据复核，仍需教师最终确认"
+        if revision_metadata:
+            previous_usage = state.get("token_usage", {})
+            revision_usage = revision_metadata.get("token_usage") or {}
+            state = {**state, "token_usage": {
+                key: int(previous_usage.get(key) or 0) + int(revision_usage.get(key) or 0)
+                for key in ("prompt", "completion", "total")
+            }}
     elif state["kind"] == "course_map.generate" and issues:
         draft = _fallback_course_map(state).model_dump()
         draft["mode"] = "deterministic-reflection-fallback"
     reflected = {**state, "draft": draft, "reflection_count": 1}
     reflected["validation"] = _validate(reflected).model_dump()
+    if state["kind"] == "grading.single" and reflected["validation"]["issues"]:
+        draft["review_reason"] = (
+            "复核后仍存在以下问题：" + "；".join(reflected["validation"]["issues"])[:400]
+        )
+        reflected["draft"] = draft
     reflected["steps"] = _step(
         reflected, "reflect_once", tool_name="bounded_revision",
         summary={"revision_count": 1, "remaining_issues": reflected["validation"]["issues"]},

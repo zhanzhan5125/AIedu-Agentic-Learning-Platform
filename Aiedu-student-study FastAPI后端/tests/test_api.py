@@ -570,6 +570,7 @@ def test_teacher_submission_counts_and_manual_grading_time(client, auth):
         json={"resource_id": submission_id, "idempotency_key": "grade-status-key-001"},
     )
     assert ai_job.status_code == 202
+    assert ai_job.json()["data"]["agent_run_id"] is not None
     with SessionLocal() as db:
         assert db.get(Submission, submission_id).status == SubmissionStatus.ai_grading
     assert run_local_once() == 1
@@ -577,6 +578,16 @@ def test_teacher_submission_counts_and_manual_grading_time(client, auth):
         ai_submission = db.get(Submission, submission_id)
         assert ai_submission.status == SubmissionStatus.needs_review
         assert ai_submission.ai_graded_at is not None
+        assert ai_submission.ai_confidence == 0
+
+    ai_detail = client.get(
+        f"/api/v1/teacher/submissions/{submission_id}",
+        headers=headers(teacher_token),
+    ).json()["data"]
+    assert ai_detail["ai_grading"]["needs_review"] is True
+    assert ai_detail["ai_grading"]["confidence"] == 0
+    assert ai_detail["questions"][0]["ai_suggested_score"] == 0
+    assert ai_detail["questions"][0]["ai_comment"]
 
     graded = client.post(
         f"/api/v1/teacher/submissions/{submission_id}/grade",

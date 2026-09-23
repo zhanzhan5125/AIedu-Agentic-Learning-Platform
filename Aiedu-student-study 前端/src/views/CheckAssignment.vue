@@ -38,9 +38,9 @@
                                     </el-input>
                                 </div>
                                 <div style=" width: 100%; text-align: right;padding-right:20px">
-                                    <el-tooltip content="当前模型服务尚未配置；完成 FastAPI 页面切换后开放" placement="top">
-                                      <span><el-button type="primary" round disabled>AI 辅助批阅（待配置）</el-button></span>
-                                    </el-tooltip>
+                                    <el-button type="primary" round @click="llmCheckAssignment">
+                                      AI 辅助批阅<span v-if="leftNumPendingReview">（{{ leftNumPendingReview }}）</span>
+                                    </el-button>
                                     <el-button type="primary" round @click="detail">详情统计</el-button>
                                   <el-button type="info" round @click="exportScore">一键导出</el-button>
                                 </div>
@@ -51,6 +51,7 @@
                         <p style="color: #979797; margin-left: 5px; margin-right: 10px;">发送给:{{this.currentAssignment.total_num}}</p>
                         <p style="color: #979797; margin-left: 5px; margin-right: 10px;">已交:{{this.currentAssignment.submit_num}}</p>
                         <p style="color: #979797; margin-left: 5px; margin-right: 10px;">待批阅:{{this.leftNumPendingReview }}</p>
+                        <p style="color: #979797; margin-left: 5px; margin-right: 10px;">AI处理中:{{this.AIProcessing }}</p>
                         <p style="color: #979797; margin-left: 5px; margin-right: 10px;">AI结果待教师确认:{{this.AICheck }}</p>
                         <p style="color: #979797; margin-left: 5px; margin-right: 10px;">已完成:{{this.TeaCheck }}</p>
                         <router-link class="router2" to="/no_submitted">查看未提交学生</router-link>
@@ -183,6 +184,7 @@ export default {
             // sortOrder: 'descending',
           stuList:null,
           leftNumPendingReview:0,
+          AIProcessing:0,
           AICheck:0,
           TeaCheck:0
                 };
@@ -199,6 +201,7 @@ export default {
     statusLabel(status) {
       const labels = {
         '待批阅': '待批阅',
+        'AI处理中': 'AI 处理中',
         '智能批阅': 'AI 结果待教师确认',
         '已完成': '已批阅'
       }
@@ -216,7 +219,7 @@ export default {
           sname: item.student_name,
           isChecked: ({
             submitted: '待批阅',
-            ai_grading: '智能批阅',
+            ai_grading: 'AI处理中',
             needs_review: '智能批阅',
             graded: '已完成',
             returned: '已完成'
@@ -230,6 +233,7 @@ export default {
         const start = (this.pageNum - 1) * this.pageSize
         this.tableData = this.stuList.slice(start, start + this.pageSize)
         this.leftNumPendingReview = this.stuList.filter(student => student.isChecked === '待批阅').length;
+        this.AIProcessing = this.stuList.filter(student => student.isChecked === 'AI处理中').length;
         this.AICheck = this.stuList.filter(student => student.isChecked === '智能批阅').length;
         this.TeaCheck = this.stuList.filter(student => student.isChecked === '已完成').length;
 
@@ -274,7 +278,7 @@ export default {
       }
     },
     handleMark(row){
-      if(this.loading === true){
+      if(row.isChecked === 'AI处理中'){
         this.$message.warning('智能批阅中，请稍后再试')
         return
       }

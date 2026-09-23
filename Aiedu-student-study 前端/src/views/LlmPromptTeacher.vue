@@ -1,20 +1,11 @@
 <template>
-  <div class="total-container">
-
-    <!--导航栏-->
-    <div class="header-container"
-         style="width: 100%; height: auto; display: flex;padding-top:0;border-bottom: 1px solid #ccc;">
-      <p style="font-size: larger; color: #2196f3;  padding-bottom: 17px;padding-top:17px;padding-left:70px">
-        {{ course.title || course.tittle }}</p>
+  <div class="grading-page">
+    <div class="course-header">
+      <p>{{ course.title || course.tittle }}</p>
       <el-menu
-          :default-active="'/assignment'" router
-          background-color="white"
-          text-color="black"
-          active-text-color="#2196f3"
-          class="el-menu-demo"
-          mode="horizontal"
-          :ellipsis="true"
-          style="flex-grow: 1; display: flex; justify-content: flex-end;border-bottom: none;padding-right:50px"
+        :default-active="'/assignment'" router mode="horizontal"
+        background-color="white" text-color="black" active-text-color="#2196f3"
+        class="course-menu"
       >
         <el-menu-item index="/course">首页</el-menu-item>
         <el-menu-item index="/assignment">作业</el-menu-item>
@@ -27,526 +18,410 @@
       </el-menu>
     </div>
 
-    <el-main style="height:75vh;padding-bottom: 0;">
-
-      <!--页面标题栏-->
-      <div class="title-container">
-        <span class="title">{{ this.currentAssignment.a_name }}&nbsp;智能批阅</span>
-        <router-link type="primary" class="router" to="/checkassignment">返回</router-link>
+    <main class="grading-main">
+      <div class="page-title">
+        <div>
+          <h2>{{ currentAssignment.a_name }} · AI 辅助批阅</h2>
+          <p>AI 只生成逐题评分建议；教师确认后，成绩和学习画像才会更新。</p>
+        </div>
+        <el-button type="text" @click="$router.push({ name: '查看作业' })">返回提交列表</el-button>
       </div>
 
-      <!--提示词撰写模块-->
-      <div class="prompt-container">
+      <div class="summary-grid">
+        <div class="summary-card"><strong>{{ counts.pending }}</strong><span>待批阅</span></div>
+        <div class="summary-card processing"><strong>{{ counts.processing }}</strong><span>AI 处理中</span></div>
+        <div class="summary-card review"><strong>{{ counts.review }}</strong><span>待教师确认</span></div>
+        <div class="summary-card done"><strong>{{ counts.completed }}</strong><span>已完成</span></div>
+      </div>
 
-        <div class="prompt-box">
-          <div class="prompt-left">
-            <p style="line-height: 40px;font-weight: bold;margin-left: 20px;margin-top: 10px">批阅模式</p>
-            <div v-for="(prompt,index) in promptList" :key="index">
-              <div class="prompt-grid" :class="{ 'activeGrid': activeGrid === index }">
-                <div class="prompt-grid-content clickable" style="display:flex;" @click="selectPrompt(index)">
-                  <div class="prompt-grid-left" style="width: 80%;text-align: center">
-                    <p style="line-height: 40px">{{ prompt.name }}</p>
-                  </div>
-                  <div class="prompt-grid-middle"
-                       style="width:20%;display: flex; justify-content: center;align-items: center">
-                    <i class="el-icon-check" v-if="prompt.ptStatus ===1"></i>
-                  </div>
-                  <!--                  <div class="prompt-grid-right"-->
-                  <!--                       style="width:30%;display: flex; justify-content: center;align-items: center">-->
-                  <!--                    <el-dropdown trigger="click">-->
-                  <!--                      <el-button type="primary" icon="el-icon-more" style="height:30px"></el-button>-->
-                  <!--                      <el-dropdown-menu slot="dropdown">-->
-                  <!--                        <el-dropdown-item>-->
-                  <!--                          <el-button style="border:none" @click="changePrompt()">设为启用</el-button>-->
-                  <!--                        </el-dropdown-item>-->
-                  <!--                      </el-dropdown-menu>-->
-                  <!--                    </el-dropdown>-->
-                  <!--                  </div>-->
-                </div>
-              </div>
+      <el-alert
+        title="受控批阅模式"
+        description="智能体会先形成评分标准，再逐题评分并检查分数边界与答案证据；发现问题时只允许重新批阅一次。低置信结果会标记为重点人工复核。"
+        type="info" :closable="false" show-icon
+      />
+
+      <div class="workspace">
+        <section class="rules-panel">
+          <div class="panel-title">
+            <div>
+              <h3>本次批阅规则</h3>
+              <p>系统的分值边界和证据校验不可关闭，下面只补充课程要求。</p>
             </div>
-            <p style="line-height: 40px;font-weight: bold;margin-left: 20px;margin-top: 10px">批阅模型</p>
-            <div class="prompt-grid">
-              <div class="prompt-grid-content clickable" style="display:flex;">
-                <div class="prompt-grid-left" style="width: 100%;text-align: center">
-                  <select v-model="llm" style="border: none; font-size: larger;line-height: 40px; font-weight: bold; color: rgb(1,21,33); width: 100%; height: 45px; text-align: center;">
-                    <option v-for="option in options" :key="option.value" :value="option.value">
-                      {{ option.label }}
-                    </option>
-                  </select>
-
-
-
-
-
-                </div>
-              </div>
-            </div>
-            <div class="prompt-grid" style="margin-top: 100px;background-color: #e4effc;">
-              <div class="prompt-grid-content clickable" style="display:flex;" @click="llmCheck()">
-                <div class="prompt-grid-left" style="width: 100%;text-align: center">
-                  <p style="line-height: 40px;font-weight: bold;color: rgb(1,21,33)">一键智能批阅</p>
-                </div>
-              </div>
-            </div>
-            <!--            <div class="mode-selector" style="width:100%;height:40px;justify-content: center;align-items: center;display: flex;padding-top:10px">-->
-            <!--              <el-switch-->
-            <!--                  style="zoom: 1.1"-->
-            <!--                  v-model="preview"-->
-            <!--                  active-text="预览模式"-->
-            <!--                  inactive-text="编辑模式"-->
-            <!--                  @change="changeStyle()">-->
-            <!--                >-->
-            <!--              </el-switch>-->
-            <!--            </div>-->
-
-            <!--            <div class="prompt-grid">-->
-            <!--              <div class="prompt-grid-content clickable" style="display:flex;" @click="addPrompt()">-->
-            <!--                <div class="prompt-grid-left" style="width: 100%;text-align: center">-->
-            <!--                  <p style="line-height: 40px;font-weight: bold">新建提示词</p>-->
-            <!--                </div>-->
-            <!--              </div>-->
-            <!--            </div>-->
           </div>
 
-          <div class="prompt-middle">
-            <div v-for="(item,index) in promptList[activeGrid].prompt" :key="index">
-              <div class="text-grid">
-                <div class="text-upper"
-                     :style="{ height: '30px', backgroundColor: index > 0 ? '#EAF4FD' : 'rgb(64,158,255)' }">
-                  <p style="line-height: 30px;margin-left: 10px">
-                    {{ index > 0 ? '问答' + (index) : '角色设定' }}
-                  </p>
-                </div>
-                <div class="text-bottom" v-show="!preview">
-                  <el-input
-                      type="textarea"
-                      :autosize="{ minRows: 2}"
-                      placeholder="请输入内容"
-                      v-model="item.value"
-                      style="border: none; box-shadow: none; font-size: 15px; overflow-y: hidden;">
-                  </el-input>
-                </div>
-                <div class="preview" v-show="preview"
-                     style="font-size: 15px; overflow-y: hidden;min-height:58px;width:100%;font-family:华文宋体;">
-                  <span v-html="item.value" style="line-height:25px"></span>
-                </div>
-              </div>
+          <div v-if="providerStatus" class="provider-status">
+            <el-tag :type="providerReady ? 'success' : 'warning'" size="small">
+              {{ providerReady ? `${providerStatus.chat_model} 已配置` : '模型服务未启用' }}
+            </el-tag>
+            <span v-if="!providerReady">当前只能产生确定性降级结果，请先配置模型服务。</span>
+          </div>
+
+          <el-select
+            v-if="promptTemplates.length"
+            v-model="selectedPromptId" size="small" class="prompt-select"
+            placeholder="选择已保存规则" @change="selectPrompt"
+          >
+            <el-option
+              v-for="item in promptTemplates" :key="item.id"
+              :label="`${item.name}（第 ${item.version} 版）`" :value="item.id"
+            />
+          </el-select>
+
+          <el-input
+            v-model="gradingRules" type="textarea" :rows="12" maxlength="20000"
+            show-word-limit placeholder="例如：术语表述准确即可，不要求与参考答案逐字一致；程序题重点检查算法和边界。"
+          />
+
+          <div class="rule-actions">
+            <el-button size="small" :loading="savingRules" @click="saveRules">保存规则版本</el-button>
+            <el-button
+              type="primary" size="small" :loading="startingBatch"
+              :disabled="counts.pending === 0 || (providerStatus && !providerReady)" @click="startBatch"
+            >开始批阅 {{ counts.pending }} 份</el-button>
+          </div>
+
+          <div v-if="batchTotal" class="batch-progress">
+            <div><span>本批任务进度</span><span>{{ batchFinished }}/{{ batchTotal }}</span></div>
+            <el-progress :percentage="batchProgress" :status="batchFailed ? 'exception' : undefined" />
+            <p v-if="batchFailed">{{ batchFailed }} 份任务失败，可在右侧查看原因后重试。</p>
+          </div>
+        </section>
+
+        <section class="submission-panel">
+          <div class="panel-title submission-title">
+            <div>
+              <h3>学生提交</h3>
+              <p>完成后进入逐题确认页，AI 建议不会自动发布成绩。</p>
             </div>
+            <el-button icon="el-icon-refresh" size="mini" @click="loadSubmissions">刷新</el-button>
+          </div>
 
-            <div class="middle-button" v-show="!preview" style="height:35px;width:90%;margin: 10px auto 10px;">
-              <el-button type="primary" plain icon="el-icon-plus" style="height:35px" @click="addRound()">增加对话
-              </el-button>
-
-              <el-popconfirm
-                  confirm-button-text='确定'
-                  cancel-button-text='我再想想'
-                  icon="el-icon-info"
-                  icon-color="red"
-                  title="你确定删除吗？"
-                  @confirm="subRound()"
-                  class="ml-5"
-              >
-                <el-button slot="reference" type="danger" plain icon="el-icon-delete" style="height:35px" @click="">
-                  删除对话
+          <div v-loading="loading" class="submission-list">
+            <el-empty v-if="!loading && submissions.length === 0" description="暂无已提交作业" />
+            <div v-for="item in submissions" :key="item.id" class="submission-row">
+              <div class="student-info">
+                <strong>{{ item.student_name }}</strong>
+                <span>{{ item.student_account }}</span>
+                <small>{{ formatTime(item.submitted_at) }}</small>
+              </div>
+              <div class="row-result">
+                <el-tag :type="statusMeta(item).type" size="small">{{ statusMeta(item).label }}</el-tag>
+                <span v-if="item.ai_confidence !== null && item.ai_confidence !== undefined">
+                  建议置信度 {{ item.ai_confidence }}%
+                </span>
+                <span v-if="jobFor(item).error" class="job-error">{{ jobFor(item).error }}</span>
+                <span v-else-if="item.review_reason" class="review-reason">{{ item.review_reason }}</span>
+              </div>
+              <div class="row-action">
+                <el-button
+                  v-if="item.status === 'submitted'" type="primary" plain size="small"
+                  :loading="jobFor(item).submitting" @click="startOne(item)"
+                >AI 批阅</el-button>
+                <el-button v-else-if="item.status === 'ai_grading'" size="small" disabled>
+                  <i class="el-icon-loading" /> 正在批阅
                 </el-button>
-              </el-popconfirm>
-              <el-button type="success" plain icon="el-icon-check" style="height:35px;margin-left: 5px"
-                         @click="savePrompt()">保存更改
-              </el-button>
-            </div>
-          </div>
-
-          <div class="prompt-right">
-            <div class="right-upper"
-                 style="height:40px;margin: 0 10px 5px 10px;background-color:#C8C8C9;text-align: center;font-size:16px;border-radius: 4px ">
-              <span style="line-height: 40px">可用模块</span>
-            </div>
-            <div class="right-bottom">
-              <div v-for="(key,index) in keyList" :key="index">
-                <el-tooltip class="item" effect="light" :content="key.info" placement="left">
-                  <div class="key-grid">
-                    <div class="key-content" style="width: 100%;text-align: center;background-color: #EAF4FD">
-                      <p style="line-height: 30px">{{ key.name }}</p>
-                    </div>
-                  </div>
-                </el-tooltip>
+                <template v-else-if="isAiFailed(item)">
+                  <el-button type="danger" plain size="small" :loading="jobFor(item).submitting" @click="startOne(item)">重试</el-button>
+                  <el-button type="text" size="small" @click="openReview(item)">人工批阅</el-button>
+                </template>
+                <el-button v-else type="primary" size="small" @click="openReview(item)">
+                  {{ item.status === 'needs_review' ? '确认建议' : '查看批阅' }}
+                </el-button>
               </div>
             </div>
           </div>
-        </div>
+        </section>
       </div>
-
-    </el-main>
-    <div class="log-container">
-      <div class="log-box">
-        <div class="log-upper" style="width: 100%;height: 50px;border-bottom: solid 1px rgb(200,200,201);display: flex">
-          <div class="log-title" style="width:14%;text-align: center">
-            <span style="line-height: 50px;font-size:20px;font-weight: bold">批阅进度</span>
-          </div>
-          <div v-if="loading" style="margin-right: 15px;margin-top: 13px">
-            <i class="el-icon-loading" style="color: #409dfd"></i> <i style="color: #409dfd">正在批阅中</i>
-          </div>
-          <div class="custom-loading" v-if="loading" style="margin-top: 15px;width: 1000px">
-            <el-progress :percentage="progressPercent" :stroke-width="10" show-text></el-progress>
-          </div>
-        </div>
-        <!--        <div class="log-bottom">-->
-        <!--          <div v-for="(item,index) in logList" :key="index">-->
-        <!--            <div class="log-grid" style="margin:20px auto;width: 95%;box-shadow: 0 2px 4px rgba(0, 0, 0, .12), 0 0 6px rgba(0, 0, 0, .04)">-->
-        <!--              <div style="=height:30px;width:100%;display: flex">-->
-        <!--                <span style="line-height: 30px;margin-left: 20px">学生学号：{{item.name}}</span>-->
-        <!--                <span style="line-height: 30px;margin-left: 20px">得分：{{item.score}}</span>-->
-        <!--              </div>-->
-        <!--              <div style="margin-left: 20px">-->
-        <!--                <span style="line-height: 30px;">评价：{{item.content}}</span>-->
-        <!--              </div>-->
-        <!--            </div>-->
-        <!--          </div>-->
-
-        <!--        </div>-->
-      </div>
-    </div>
+    </main>
   </div>
 </template>
 
 <script>
 import apiV1 from '@/utils/apiV1'
+
+const DEFAULT_RULES = `1. 以题目、参考答案、题目分值和学生实际作答为依据。
+2. 答案含义正确即可，不要求与参考答案逐字一致。
+3. 评语同时说明得分点和待改进点，不使用空泛表述。
+4. 无法可靠判断时降低置信度并标记教师重点复核。`
+
 export default {
+  name: 'LlmPromptTeacher',
   data() {
     return {
-      options:[
-        {
-          value:'Qwen-max',
-          label:'Qwen-max'
-        }, {
-          value:'Qwen-plus',
-          label:'Qwen-plus'
-        }
-      ],
-      llm:'Qwen-max',
-      preview: true,
-      course: null,
-      round: 0,
-      activeName: 'second',
-      currentAssignment: '',
-      promptList: [],
-      loading:false,
-      stuList:[],
-      logList:[
-        {
-          name:"333100202",
-          score:"9",
-          content:"哈哈哈哈哈哈哈"
-        },
-
-      ],
-      progressPercent: 0,
-      keyList: [
-        {
-          name: "题目内容",
-          info: "作业的一道题目的题干"
-        }, {
-          name: "正确答案",
-          info: "作业的一道题目的正确解答"
-        }, {
-          name: "学生答案",
-          info: "学生作答某道题目的内容"
-        }, {
-          name: "题目分值",
-          info: "作业的一道题目的满分"
-        }, {
-          name: "期望分值",
-          info: "题目的满分 * 0.7,仅供作返回示例"
-        }
-      ],
-      activeGrid: 0,
-    };
+      course: {},
+      currentAssignment: {},
+      submissions: [],
+      promptTemplates: [],
+      selectedPromptId: null,
+      gradingRules: DEFAULT_RULES,
+      providerStatus: null,
+      jobs: {},
+      batchSubmissionIds: [],
+      loading: false,
+      savingRules: false,
+      startingBatch: false,
+      pollTimer: null
+    }
   },
-
-  created() {
-    this.user = this.$store.getters.getUser
-    this.course = this.$store.getters.getCourse;
-    this.stuList = this.$store.getters.getStuList;
-    this.currentAssignment = this.$store.getters.getCurrentAssignment;
-    this.load();
+  computed: {
+    counts() {
+      return this.submissions.reduce((result, item) => {
+        if (item.status === 'submitted') result.pending += 1
+        else if (item.status === 'ai_grading') result.processing += 1
+        else if (item.status === 'needs_review') result.review += 1
+        else if (['graded', 'returned'].includes(item.status)) result.completed += 1
+        return result
+      }, { pending: 0, processing: 0, review: 0, completed: 0 })
+    },
+    batchTotal() {
+      return this.batchSubmissionIds.length
+    },
+    batchFinished() {
+      return this.batchSubmissionIds.filter(id => ['succeeded', 'failed', 'cancelled'].includes(this.jobForId(id).status)).length
+    },
+    batchFailed() {
+      return this.batchSubmissionIds.filter(id => ['failed', 'cancelled'].includes(this.jobForId(id).status)).length
+    },
+    batchProgress() {
+      return this.batchTotal ? Math.round(this.batchFinished / this.batchTotal * 100) : 0
+    },
+    providerReady() {
+      return Boolean(this.providerStatus?.configured && this.providerStatus?.enabled)
+    }
   },
-
+  async created() {
+    this.course = this.$store.getters.getCourse || {}
+    this.currentAssignment = this.$store.getters.getCurrentAssignment || {}
+    await Promise.all([this.loadPrompts(), this.loadSubmissions(), this.loadProviderStatus()])
+    this.ensurePolling()
+  },
+  beforeDestroy() {
+    this.stopPolling()
+  },
   methods: {
-    load(){
-      this.promptList=[]
-      apiV1.get('/prompts').then(res => {
-        function parseStringToDictList(prompt) {
-          let dictList = []
-          let array = prompt.split(/\$/);
-          for (let i = 0; i < array.length; i++) {
-            dictList.push({"value": array[i]})
-          }
-          return dictList;
-        }
-
-        let promptList = res.data
-        for (let i = 0; i < promptList.length; i++) {
-          let dictionary = {
-            name: promptList[i].name,
-            purpose: promptList[i].purpose,
-            ptId: promptList[i].id,
-            prompt: parseStringToDictList(promptList[i].content||''),
-            ptStatus: promptList[i].active
-          }
-          this.promptList.push(dictionary)
-          console.log("promptList", this.promptList)
-        }
-        this.changeStyle()
-        this.selectPrompt(0)
-      })
-    },
-    handleClick(tab, event) {
-      console.log(tab, event);
-    },
-    addRound() {
-      this.promptList[this.activeGrid].prompt.push({
-        value: ""
-      })
-      this.changeKeyList()
-    },
-    subRound() {
-      this.promptList[this.activeGrid].prompt.pop()
-      this.changeKeyList()
-    },
-    selectPrompt(index) {
-      this.activeGrid = index;
-      this.changeKeyList()
-      console.log(prompt.name)
-    },
-    changeKeyList() {
-      for (let i = 0; i < this.round; i++) {
-        this.keyList.pop()
-      }
-      this.round = this.promptList[this.activeGrid].prompt.length - 2
-      for (let i = 0; i < this.round; i++) {
-        this.keyList.push({
-          "name": "问答" + (i + 1) + "评语",
-          "info": "问答" + (i + 1) + "返回的评语"
-        })
+    async loadProviderStatus() {
+      try {
+        const response = await apiV1.get('/ai/provider/status')
+        this.providerStatus = response.data || null
+      } catch (error) {
+        this.providerStatus = null
       }
     },
-    llmCheck() {
-      this.loading = true;
-      const pendingReviewStudents = this.stuList.filter(student => student.isChecked === '待批阅');
-      const totalStudents = pendingReviewStudents.length;
-      let completedStudents = 0;
-      const updateProgress = () => {
-        this.progressPercent = Math.round((completedStudents / totalStudents) * 100);
-      };
-
-      const processNextStudent = (index) => {
-        if (index < totalStudents) {
-          const student = pendingReviewStudents[index];
-          apiV1.post('/ai/grading-jobs', {resource_id:student.submissionId,idempotency_key:`grading-${student.submissionId}-${Date.now()}`})
-              .then(response => {
-                // 处理成功情况
-                console.log(response);
-              })
-              .catch(error => {
-                // 处理失败情况
-                console.error(error);
-              })
-              .finally(() => {
-                // 处理下一个学生
-                completedStudents++;
-                updateProgress();
-                processNextStudent(index + 1);
-              });
+    async loadPrompts() {
+      try {
+        const response = await apiV1.get('/prompts')
+        this.promptTemplates = (response.data || []).filter(item => item.purpose === 'grading')
+        if (this.promptTemplates.length) {
+          const selected = this.promptTemplates.find(item => item.active) || this.promptTemplates[0]
+          this.selectedPromptId = selected.id
+          this.gradingRules = (selected.content || DEFAULT_RULES).replace(/\$/g, '\n\n')
+        }
+      } catch (error) {
+        this.promptTemplates = []
+      }
+    },
+    selectPrompt(id) {
+      const selected = this.promptTemplates.find(item => item.id === id)
+      if (selected) this.gradingRules = (selected.content || DEFAULT_RULES).replace(/\$/g, '\n\n')
+    },
+    async saveRules() {
+      if (!this.gradingRules.trim()) {
+        this.$message.warning('请先填写批阅规则')
+        return
+      }
+      this.savingRules = true
+      try {
+        const selected = this.promptTemplates.find(item => item.id === this.selectedPromptId)
+        if (selected) {
+          await apiV1.post(`/prompts/${selected.id}/versions`, {
+            name: selected.name,
+            purpose: 'grading',
+            content: this.gradingRules.trim(),
+            activate: selected.active
+          })
         } else {
-          // 所有学生处理完毕，重新加载数据
-          this.loading = false;
-          this.load();
+          await apiV1.post('/prompts', {
+            name: `AI辅助批阅规则-${Date.now()}`,
+            purpose: 'grading',
+            content: this.gradingRules.trim(),
+            activate: false
+          })
         }
-      };
-      // 开始处理第一个学生
-      processNextStudent(0);
-    },
-    savePrompt() {
-      let promptList = this.promptList[this.activeGrid].prompt
-      let promptString = ""
-      for (let i = 0; i < promptList.length; i++) {
-        if (i != 0) promptString += "$"
-        promptString += promptList[i]['value']
+        await this.loadPrompts()
+        this.$message.success('批阅规则已保存')
+      } catch (error) {
+        this.$message.error(error.response?.data?.msg || '批阅规则保存失败')
+      } finally {
+        this.savingRules = false
       }
-      const selected=this.promptList[this.activeGrid]
-      apiV1.post(`/prompts/${selected.ptId}/versions`, {name:selected.name,purpose:selected.purpose||'grading',content:promptString,activate:selected.ptStatus}).then(response => {
-        console.log(response);
-        this.$message.success("保存成功")
-      })
     },
-    changeMode() {
-      this.preview = !(this.preview)
-      this.changeStyle()
-    },
-    changeStyle() {
-      function replaceHtmlTags(str) {
-        // 匹配span标签的开始标签和结束标签
-        var regex = /<span\b[^>]*>(.*?)<\/span>/g;
-        // 使用replace方法替换匹配的标签
-        var replacedStr = str.replace(regex, function (match, p1) {
-          // 将span标签的开始标签替换为"{{"，结束标签替换为"}}"
-          return "{{" + p1 + "}}";
-        });
-        return replacedStr;
+    async loadSubmissions() {
+      if (!this.currentAssignment.a_id) return
+      this.loading = this.submissions.length === 0
+      try {
+        const response = await apiV1.get(`/teacher/assignments/${this.currentAssignment.a_id}/submissions`)
+        this.submissions = response.data?.records || []
+      } catch (error) {
+        this.$message.error(error.response?.data?.msg || '提交记录加载失败')
+      } finally {
+        this.loading = false
       }
-
-      if (this.preview) {
-        for (let j = 0; j < this.promptList.length; j++) {
-          for (let i = 0; i < this.promptList[j]['prompt'].length; i++) {
-            let reply = this.promptList[j]['prompt'][i]['value']
-            this.promptList[j]['prompt'][i]['value'] = reply.replace(/\{\{(.*?)\}\}/g, '<span style="color: white;background-color:#409EFF;line-height:30px;border-radius: 2px;margin:0 4px">$1</span>').replace(/\n/g, '<br>');
-          }
+    },
+    async startBatch() {
+      if (this.providerStatus && !this.providerReady) {
+        this.$message.error('模型服务尚未配置或启用，无法开始 AI 批阅')
+        return
+      }
+      const pending = this.submissions.filter(item => item.status === 'submitted')
+      if (!pending.length) return
+      this.batchSubmissionIds = pending.map(item => item.id)
+      this.startingBatch = true
+      await Promise.all(pending.map(item => this.startOne(item, false)))
+      this.startingBatch = false
+      this.ensurePolling()
+    },
+    async startOne(item, notify = true) {
+      if (this.providerStatus && !this.providerReady) {
+        this.$message.error('模型服务尚未配置或启用，无法开始 AI 批阅')
+        return
+      }
+      this.$set(this.jobs, item.id, { ...this.jobFor(item), submitting: true, error: null })
+      try {
+        const response = await apiV1.post('/ai/grading-jobs', {
+          resource_id: item.id,
+          idempotency_key: `grading-${item.id}-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`,
+          prompt: this.gradingRules.trim() || null
+        })
+        this.$set(this.jobs, item.id, {
+          jobId: response.data.job_id,
+          agentRunId: response.data.agent_run_id,
+          status: response.data.status,
+          submitting: false,
+          error: null
+        })
+        item.status = 'ai_grading'
+        if (!this.batchSubmissionIds.includes(item.id)) this.batchSubmissionIds = [item.id]
+        if (notify) this.$message.success('已提交 AI 批阅任务')
+        this.ensurePolling()
+      } catch (error) {
+        const message = error.response?.data?.msg || 'AI 批阅任务创建失败'
+        this.$set(this.jobs, item.id, { status: 'failed', submitting: false, error: message })
+        if (notify) this.$message.error(message)
+      }
+    },
+    async pollJobs() {
+      const active = Object.entries(this.jobs).filter(([, job]) => job.jobId && ['queued', 'running'].includes(job.status))
+      await Promise.all(active.map(async ([submissionId, job]) => {
+        try {
+          const response = await apiV1.get(`/jobs/${job.jobId}`)
+          this.$set(this.jobs, Number(submissionId), {
+            ...job,
+            status: response.data.status,
+            error: response.data.error || null
+          })
+        } catch (error) {
+          this.$set(this.jobs, Number(submissionId), {
+            ...job,
+            error: error.response?.data?.msg || '任务状态读取失败'
+          })
         }
-      } else {
-        for (let j = 0; j < this.promptList.length; j++) {
-          for (let i = 0; i < this.promptList[j]['prompt'].length; i++) {
-            let reply = this.promptList[j]['prompt'][i]['value']
-            this.promptList[j]['prompt'][i]['value'] = replaceHtmlTags(reply).replace(/<br>/g, '\n')
-          }
-        }
+      }))
+      await this.loadSubmissions()
+      const hasActiveJobs = Object.values(this.jobs).some(job => ['queued', 'running'].includes(job.status))
+      if (!hasActiveJobs && this.counts.processing === 0) this.stopPolling()
+    },
+    ensurePolling() {
+      const hasActiveJobs = Object.values(this.jobs).some(job => ['queued', 'running'].includes(job.status))
+      if (this.pollTimer || (this.counts.processing === 0 && !hasActiveJobs)) return
+      this.pollTimer = window.setInterval(this.pollJobs, 2500)
+    },
+    stopPolling() {
+      if (this.pollTimer) window.clearInterval(this.pollTimer)
+      this.pollTimer = null
+    },
+    jobFor(item) {
+      return this.jobs[item.id] || {}
+    },
+    jobForId(id) {
+      return this.jobs[id] || {}
+    },
+    statusMeta(item) {
+      const job = this.jobFor(item)
+      if (this.isAiFailed(item)) return { label: 'AI 失败，需人工处理', type: 'danger' }
+      return ({
+        submitted: { label: '待批阅', type: 'info' },
+        ai_grading: { label: 'AI 处理中', type: 'warning' },
+        needs_review: { label: '待教师确认', type: 'warning' },
+        graded: { label: '已完成', type: 'success' },
+        returned: { label: '已完成', type: 'success' }
+      })[item.status] || { label: item.status, type: 'info' }
+    },
+    isAiFailed(item) {
+      const job = this.jobFor(item)
+      return ['failed', 'cancelled'].includes(job.status) || (item.review_reason || '').includes('失败')
+    },
+    openReview(item) {
+      const student = {
+        s_name: item.student_name,
+        s_id: item.student_account,
+        student_id: item.student_id,
+        submission_id: item.id
       }
+      const stuList = this.submissions.map(row => ({
+        sname: row.student_name,
+        sid: row.student_account,
+        studentId: row.student_id,
+        submissionId: row.id
+      }))
+      this.$store.dispatch('setStuList', stuList)
+      this.$store.dispatch('setStudent', student)
+      this.$router.push({ name: '教师批阅' })
+    },
+    formatTime(value) {
+      if (!value) return '-'
+      return new Date(value).toLocaleString('zh-CN', { hour12: false })
     }
   }
 }
 </script>
 
 <style scoped>
-
-.title {
-  display: block;
-  font-size: 20px;
-  color: black;
-  font-weight: bold;
-  margin-left: 70px;
-}
-.el-main{
-  padding: 20px 10px 0 20px !important;
-}
-.title-container {
-  border-bottom: 1px solid #ccc;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
-  padding: 5px 20px 10px;
-}
-
-.router {
-  text-decoration: none; /* 去掉下划线 */
-  color: #0177FBFF; /* 保持默认文字颜色 */
-  cursor: pointer; /* 添加手型光标 */
-  font-size: 13px;
-  margin-right: 80px;
-}
-
-.prompt-container {
-  height: 300px;
-  width: 100%;
-  margin-top: 30px;
-}
-
-.prompt-box {
-  display: flex;
-  height: 440px;
-  width: 85%;
-  margin: 0 auto;
-  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
-}
-
-.prompt-left {
-  width: 22%;
-  height: 100%;
-  background-color: #C8C8C9;
-}
-
-.prompt-middle {
-  width: 60%;
-  height: 100%;
-  overflow-y: auto;
-}
-
-.prompt-right {
-  width: 18%;
-  height: 420px;
-  border-left: solid 1px #C8C8C9;
-  margin-top: 10px;
-  margin-bottom: 10px;
-}
-
-.prompt-grid {
-  height: 50px;
-  width: 90%;
-  margin: 10px auto 10px;
-  background-color: white;
-  border-radius: 5px;
-  padding: 5px;
-}
-
-.clickable {
-  cursor: pointer; /* 将鼠标样式改为手指 */
-}
-
-.clickable:hover {
-  background-color: rgb(229, 241, 252); /* 鼠标悬停时的背景色 */
-  color: black;
-}
-
-.activeGrid {
-  background-color: black;
-  color: white;
-}
-
-.text-grid {
-  min-height: 78px;
-  width: 90%;
-  margin: 10px auto 10px;
-  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
-  border-radius: 5px;
-}
-
-.preview {
-  display: block;
-  resize: vertical;
-  padding: 5px 15px;
-  line-height: 1.5;
-  box-sizing: border-box;
-  width: 100%;
-  font-size: inherit;
-  color: #606266;
-  background-color: #FFF;
-  background-image: none;
-  border: 1px solid #DCDFE6;
-  border-radius: 4px;
-  transition: border-color .2s cubic-bezier(.645, .045, .355, 1);
-}
-
-.key-grid {
-  height: 40px;
-  width: 90%;
-  margin: 10px auto 10px;
-  background-color: #EAF4FD;
-  border-radius: 5px;
-  padding: 5px;
-  text-align: center;
-}
-
-.log-container {
-  height: 70px;
-  width: 100%;
-  padding: 0 10px 20px 20px;
-}
-
-.log-box {
-  height: 50px;
-  width: 85%;
-  margin: 0 auto;
-  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
-  background-color: #FFFFFF;
+.grading-page { height: 100vh; background: #f5f7fa; overflow: hidden; }
+.course-header { height: 61px; display: flex; align-items: center; border-bottom: 1px solid #ddd; background: #fff; }
+.course-header > p { margin: 0; padding-left: 70px; font-size: 18px; color: #2196f3; }
+.course-menu { flex: 1; display: flex; justify-content: flex-end; padding-right: 50px; border-bottom: none; }
+.grading-main { height: calc(100vh - 61px); box-sizing: border-box; padding: 22px 5%; display: flex; flex-direction: column; gap: 14px; overflow: hidden; }
+.page-title { display: flex; justify-content: space-between; align-items: flex-start; }
+.page-title h2, .panel-title h3 { margin: 0 0 6px; color: #1f2d3d; }
+.page-title p, .panel-title p { margin: 0; color: #8492a6; font-size: 13px; }
+.summary-grid { display: grid; grid-template-columns: repeat(4, minmax(120px, 1fr)); gap: 12px; }
+.summary-card { display: flex; align-items: baseline; gap: 10px; padding: 12px 18px; background: #fff; border-left: 4px solid #909399; border-radius: 6px; }
+.summary-card strong { font-size: 24px; }
+.summary-card span { color: #606266; }
+.summary-card.processing { border-color: #e6a23c; }
+.summary-card.review { border-color: #409eff; }
+.summary-card.done { border-color: #67c23a; }
+.workspace { min-height: 0; flex: 1; display: grid; grid-template-columns: minmax(330px, 0.8fr) minmax(520px, 1.5fr); gap: 16px; }
+.rules-panel, .submission-panel { min-height: 0; background: #fff; border-radius: 8px; box-shadow: 0 2px 10px rgba(31, 45, 61, 0.08); padding: 18px; box-sizing: border-box; }
+.rules-panel { overflow-y: auto; }
+.submission-panel { display: flex; flex-direction: column; overflow: hidden; }
+.panel-title { margin-bottom: 14px; }
+.submission-title { display: flex; justify-content: space-between; align-items: center; }
+.prompt-select { width: 100%; margin-bottom: 12px; }
+.provider-status { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; color: #e6a23c; font-size: 12px; }
+.rule-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
+.batch-progress { margin-top: 18px; padding-top: 16px; border-top: 1px solid #ebeef5; }
+.batch-progress > div { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 13px; }
+.batch-progress p { color: #f56c6c; font-size: 12px; }
+.submission-list { min-height: 160px; flex: 1; overflow-y: auto; padding-right: 4px; }
+.submission-row { display: grid; grid-template-columns: 160px minmax(220px, 1fr) 180px; gap: 16px; align-items: center; padding: 14px 4px; border-bottom: 1px solid #ebeef5; }
+.student-info, .row-result { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.student-info span, .student-info small, .row-result span { color: #8492a6; font-size: 12px; }
+.review-reason, .job-error { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.job-error { color: #f56c6c !important; }
+.row-action { text-align: right; }
+@media (max-width: 1050px) {
+  .workspace { grid-template-columns: 1fr; overflow-y: auto; }
+  .rules-panel, .submission-panel { min-height: 430px; }
 }
 </style>

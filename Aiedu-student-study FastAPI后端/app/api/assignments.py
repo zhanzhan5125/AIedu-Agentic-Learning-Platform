@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 
 import csv
 import io
+import json
 
 from fastapi import APIRouter, Depends, Query, Request, Response, status
 from sqlalchemy import func, select
@@ -596,6 +597,19 @@ def get_teacher_submission(
     answers = {answer.question_id: answer for answer in db.scalars(
         select(Answer).where(Answer.submission_id == submission_id)
     ).all()}
+    ai_grading = None
+    if submission.ai_comment:
+        try:
+            parsed = json.loads(submission.ai_comment)
+            if isinstance(parsed, dict):
+                ai_grading = parsed
+        except (TypeError, json.JSONDecodeError):
+            ai_grading = None
+    ai_items = {
+        int(item["answer_id"]): item
+        for item in (ai_grading or {}).get("items", [])
+        if isinstance(item, dict) and item.get("answer_id") is not None
+    }
     question_rows = db.execute(
         select(AssignmentQuestion.position, Question)
         .join(Question, Question.id == AssignmentQuestion.question_id)
@@ -605,6 +619,7 @@ def get_teacher_submission(
     questions = []
     for position, question in question_rows:
         answer = answers.get(question.id)
+        suggestion = ai_items.get(answer.id) if answer else None
         questions.append({
             "id": question.id,
             "position": position,
@@ -615,7 +630,13 @@ def get_teacher_submission(
             "answer_id": answer.id if answer else None,
             "answer": answer.content if answer else "",
             "earned_score": answer.score if answer else 0,
-            "ai_comment": answer.ai_comment if answer else None,
+            "ai_comment": ((suggestion or {}).get("comment") if suggestion
+                           else (answer.ai_comment if answer else None)),
+            "ai_suggested_score": (suggestion or {}).get("score"),
+            "ai_rubric": (suggestion or {}).get("rubric", []),
+            "ai_error_type": (suggestion or {}).get("error_type"),
+            "ai_evidence_excerpt": (suggestion or {}).get("evidence_excerpt"),
+            "ai_confidence": (suggestion or {}).get("confidence"),
             "teacher_comment": answer.teacher_comment if answer else None,
         })
     return ok({
@@ -627,6 +648,14 @@ def get_teacher_submission(
                     "name": student.display_name},
         "total_score": submission.total_score,
         "overall_comment": submission.teacher_comment,
+        "ai_grading": ({
+            "total_score": ai_grading.get("total_score", 0),
+            "overall_comment": ai_grading.get("overall_comment"),
+            "confidence": submission.ai_confidence,
+            "needs_review": True,
+            "review_reason": submission.review_reason,
+            "graded_at": submission.ai_graded_at,
+        } if ai_grading else None),
         "questions": questions,
     }, request.state.request_id)
 

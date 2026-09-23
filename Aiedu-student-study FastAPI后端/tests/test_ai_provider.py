@@ -212,3 +212,41 @@ def test_assignment_request_requires_enough_questions_for_selected_kinds():
             question_kinds=["short_answer", "programming"],
             idempotency_key="mixed-kind-test",
         )
+
+
+def test_grading_validation_rejects_an_excerpt_not_found_in_student_answer():
+    state = {
+        "kind": "grading.single",
+        "tool_results": {
+            "answers": [{
+                "answer_id": 7,
+                "question_id": 3,
+                "question_kind": "short_answer",
+                "question": "什么是进程？",
+                "student_answer": "运行中的程序",
+                "reference_answer": "进程是程序的一次执行过程",
+                "max_score": 10,
+            }],
+            "missing_question_ids": [],
+        },
+        "draft": {
+            "items": [{
+                "answer_id": 7,
+                "score": 8,
+                "max_score": 10,
+                "rubric": ["说明动态执行特征"],
+                "comment": "基本正确",
+                "evidence_excerpt": "程序的一次执行过程",
+                "confidence": 85,
+            }],
+            "total_score": 8,
+            "overall_comment": "基本掌握",
+            "confidence": 85,
+            "needs_review": True,
+        },
+    }
+
+    validation = workflows._validate(state)
+
+    assert validation.valid is False
+    assert any("无法在学生原答案中定位" in issue for issue in validation.issues)
