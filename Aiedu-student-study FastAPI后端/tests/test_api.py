@@ -738,6 +738,39 @@ def test_profile_uses_leaf_points_from_published_course_map(client):
         assert "profile_coverage" not in view
 
 
+def test_student_can_recover_latest_offering_practice(client, auth):
+    with SessionLocal.begin() as db:
+        teacher = db.query(User).filter_by(role=Role.teacher).one()
+        student = db.query(User).filter_by(role=Role.student).one()
+        course = Course(number="CS207-R", name="练习恢复测试")
+        db.add(course)
+        db.flush()
+        offering = CourseOffering(course_id=course.id, teacher_id=teacher.id, year=2026,
+                                  term=1, status=OfferingStatus.active)
+        db.add(offering)
+        db.flush()
+        db.add(Enrollment(offering_id=offering.id, student_id=student.id))
+        run = AgentRun(
+            kind="practice.generate", owner_id=student.id,
+            resource_type="offering", resource_id=offering.id,
+            status=JobStatus.succeeded, result={"questions": [{"prompt": "练习题"}]},
+        )
+        db.add(run)
+        db.flush()
+        offering_id, run_id = offering.id, run.id
+
+    token = auth(client, "student", "student")
+    response = client.get(
+        f"/api/v1/student/offerings/{offering_id}/practice-runs/latest",
+        headers=headers(token),
+    )
+
+    assert response.status_code == 200
+    assert response.json()["data"]["id"] == run_id
+    assert response.json()["data"]["status"] == "succeeded"
+    assert response.json()["data"]["result"]["questions"][0]["prompt"] == "练习题"
+
+
 def test_class_insights_lists_all_published_points_with_chapter_numbering():
     with SessionLocal.begin() as db:
         teacher = db.query(User).filter_by(role=Role.teacher).one()

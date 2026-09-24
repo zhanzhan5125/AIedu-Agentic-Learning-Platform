@@ -201,6 +201,29 @@ def offering_practice(offering_id: int, payload: PracticeJobRequest, request: Re
     return _practice_job(offering_id, None, payload, request, user, db)
 
 
+@router.get("/student/offerings/{offering_id}/practice-runs/latest")
+def latest_offering_practice(offering_id: int, request: Request,
+                             user: User = Depends(require_roles(Role.student)),
+                             db: Session = Depends(get_db)):
+    offering_for_user(db, offering_id, user)
+    run = db.scalar(select(AgentRun).where(
+        AgentRun.owner_id == user.id,
+        AgentRun.kind == "practice.generate",
+        AgentRun.resource_type == "offering",
+        AgentRun.resource_id == offering_id,
+    ).order_by(AgentRun.created_at.desc(), AgentRun.id.desc()))
+    if run is None:
+        return ok(None, request.state.request_id)
+    return ok({
+        "id": run.id,
+        "status": run.status.value,
+        "result": run.result,
+        "error": run.error,
+        "created_at": run.created_at,
+        "updated_at": run.updated_at,
+    }, request.state.request_id)
+
+
 @router.post("/student/assignments/{assignment_id}/practice-jobs", status_code=status.HTTP_202_ACCEPTED)
 def assignment_practice(assignment_id: int, payload: PracticeJobRequest, request: Request,
                         user: User = Depends(require_roles(Role.student)), db: Session = Depends(get_db)):
