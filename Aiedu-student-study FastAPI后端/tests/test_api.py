@@ -9,6 +9,7 @@ from app.models import (AIJob, AgentRun, AgentRunStep, Answer, Assignment, Assig
                         JobStatus, OfferingStatus, OutboxEvent, ProcessingStatus, Question,
                         QuestionKnowledgePoint, ResourceChunk, Role,
                         ScheduledNotification, Submission, SubmissionStatus, User)
+from app.services.insights import class_insights
 from app.services.learning import profile_view, refresh_student_mastery, upsert_evidence
 from app.services.submissions import auto_submit_expired_drafts
 from app.worker import deliver_scheduled_notifications, run_local_once
@@ -534,11 +535,17 @@ def test_teacher_submission_counts_and_manual_grading_time(client, auth):
             end_at=datetime.now() + timedelta(hours=1),
         )
         question = Question(prompt="什么是进程？", score=10)
-        db.add_all([assignment, question])
+        point = KnowledgePoint(course_id=course.id, code="KP-PROCESS", name="进程概念")
+        db.add_all([assignment, question, point])
         db.flush()
-        db.add(AssignmentQuestion(
-            assignment_id=assignment.id, question_id=question.id, position=1,
-        ))
+        db.add_all([
+            AssignmentQuestion(
+                assignment_id=assignment.id, question_id=question.id, position=1,
+            ),
+            QuestionKnowledgePoint(
+                question_id=question.id, knowledge_point_id=point.id, weight=100,
+            ),
+        ])
         submission = Submission(
             assignment_id=assignment.id, student_id=student.id,
             status=SubmissionStatus.submitted, submitted_at=datetime.now(),
@@ -614,6 +621,13 @@ def test_teacher_submission_counts_and_manual_grading_time(client, auth):
     assert insights["questions"][0]["highest_score"] == 8
     assert insights["questions"][0]["lowest_score"] == 8
     assert insights["questions"][0]["max_score"] == 10
+
+    class_view = client.get(
+        f"/api/v1/teacher/offerings/{offering_id}/insights",
+        headers=headers(teacher_token),
+    ).json()["data"]
+    assert class_view["knowledge_points"][0]["average_mastery"] == 80
+    assert class_view["knowledge_points"][0]["evidence_student_count"] == 1
 
     submissions = client.get(
         f"/api/v1/teacher/assignments/{assignment_id}/submissions",
@@ -719,6 +733,68 @@ def test_profile_uses_leaf_points_from_published_course_map(client):
         assert [(item["name"], item["chapter_name"]) for item in view["knowledge_points"]] == [
             ("变量", "第一章"),
         ]
+        assert view["knowledge_points"][0]["code"] == "1-1"
+
+
+def test_class_insights_lists_all_published_points_with_chapter_numbering():
+    with SessionLocal.begin() as db:
+        teacher = db.query(User).filter_by(role=Role.teacher).one()
+        student = db.query(User).filter_by(role=Role.student).one()
+        course = Course(number="CS211", name="班级学情目录测试")
+        db.add(course)
+        db.flush()
+        offering = CourseOffering(course_id=course.id, teacher_id=teacher.id, year=2026,
+                                  term=1, status=OfferingStatus.active)
+        db.add(offering)
+        db.flush()
+        db.add(Enrollment(offering_id=offering.id, student_id=student.id))
+        chapter = KnowledgePoint(course_id=course.id, code="MAP-chapter-1", name="第一章")
+        variable = KnowledgePoint(course_id=course.id, code="MAP-kp-1-1", name="变量")
+        constant = KnowledgePoint(course_id=course.id, code="MAP-kp-1-2", name="常量")
+        stale = KnowledgePoint(course_id=course.id, code="OLD-POINT", name="旧路线知识点")
+        db.add_all([chapter, variable, constant, stale])
+        db.flush()
+        variable.parent_id = chapter.id
+        constant.parent_id = chapter.id
+        version = CourseMapVersion(course_id=course.id, offering_id=offering.id, version=1,
+                                   status="published", title="课程路线", created_by=teacher.id)
+        db.add(version)
+        db.flush()
+        chapter_node = CourseMapNode(version_id=version.id, node_key="chapter-1",
+                                     name="第一章", position=1,
+                                     knowledge_point_id=chapter.id)
+        variable_node = CourseMapNode(version_id=version.id, node_key="kp-1-1",
+                                      name="变量", position=2,
+                                      knowledge_point_id=variable.id)
+        constant_node = CourseMapNode(version_id=version.id, node_key="kp-1-2",
+                                      name="常量", position=3,
+                                      knowledge_point_id=constant.id)
+        db.add_all([chapter_node, variable_node, constant_node])
+        db.flush()
+        db.add_all([
+            CourseMapEdge(version_id=version.id, source_node_id=chapter_node.id,
+                          target_node_id=variable_node.id, relation_type="contains"),
+            CourseMapEdge(version_id=version.id, source_node_id=chapter_node.id,
+                          target_node_id=constant_node.id, relation_type="contains"),
+        ])
+        upsert_evidence(
+            db, student_id=student.id, offering_id=offering.id,
+            knowledge_point_id=variable.id, source_type="assignment",
+            source_id=1, score=80, confidence=100,
+        )
+        refresh_student_mastery(db, student.id, offering.id)
+
+        view = class_insights(db, offering.id)
+
+        assert [(item["code"], item["name"], item["chapter_name"])
+                for item in view["knowledge_points"]] == [
+            ("1-1", "变量", "第一章"),
+            ("1-2", "常量", "第一章"),
+        ]
+        assert view["knowledge_points"][0]["average_mastery"] == 80
+        assert view["knowledge_points"][0]["sample_status"] == "limited"
+        assert view["knowledge_points"][1]["average_mastery"] is None
+        assert view["knowledge_points"][1]["sample_status"] == "none"
 
 
 def test_tutor_blocks_direct_answer_for_open_assignment(client, auth):

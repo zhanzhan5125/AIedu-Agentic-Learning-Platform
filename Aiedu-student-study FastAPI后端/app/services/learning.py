@@ -25,6 +25,82 @@ from app.models import (
 SOURCE_WEIGHTS = {"assignment": 70, "practice": 30}
 
 
+def course_knowledge_catalog(db: Session, offering_id: int) -> list[dict]:
+    """Return current leaf knowledge points in course-map order with display numbering."""
+    offering = db.get(CourseOffering, offering_id)
+    if offering is None:
+        return []
+    all_points = db.scalars(select(KnowledgePoint).where(
+        KnowledgePoint.course_id == offering.course_id
+    ).order_by(KnowledgePoint.code, KnowledgePoint.id)).all()
+    point_by_id = {point.id: point for point in all_points}
+    published_map = db.scalar(select(CourseMapVersion).where(
+        CourseMapVersion.offering_id == offering_id,
+        CourseMapVersion.status == "published",
+    ).order_by(CourseMapVersion.version.desc()))
+    catalog: list[dict] = []
+    if published_map:
+        map_nodes = db.scalars(select(CourseMapNode).where(
+            CourseMapNode.version_id == published_map.id
+        ).order_by(CourseMapNode.position, CourseMapNode.id)).all()
+        node_by_id = {node.id: node for node in map_nodes}
+        contains_edges = db.scalars(select(CourseMapEdge).where(
+            CourseMapEdge.version_id == published_map.id,
+            CourseMapEdge.relation_type == "contains",
+        )).all()
+        parent_node_ids = {edge.source_node_id for edge in contains_edges}
+        parent_by_child = {edge.target_node_id: edge.source_node_id for edge in contains_edges}
+        chapter_nodes = [node for node in map_nodes if node.id in parent_node_ids]
+        chapter_number = {node.id: index for index, node in enumerate(chapter_nodes, 1)}
+        point_number_by_chapter: dict[int, int] = defaultdict(int)
+        seen_point_ids: set[int] = set()
+        for node in map_nodes:
+            if node.id in parent_node_ids or not node.knowledge_point_id:
+                continue
+            point = point_by_id.get(node.knowledge_point_id)
+            if point is None or point.id in seen_point_ids:
+                continue
+            parent_node = node_by_id.get(parent_by_child.get(node.id))
+            parent_number = chapter_number.get(parent_node.id) if parent_node else None
+            if parent_number is not None:
+                point_number_by_chapter[parent_node.id] += 1
+                display_code = f"{parent_number}-{point_number_by_chapter[parent_node.id]}"
+            else:
+                display_code = point.code
+            catalog.append({
+                "point": point,
+                "display_code": display_code,
+                "chapter_id": parent_node.knowledge_point_id if parent_node else point.parent_id,
+                "chapter_name": parent_node.name if parent_node else (
+                    point_by_id[point.parent_id].name if point.parent_id in point_by_id else None
+                ),
+            })
+            seen_point_ids.add(point.id)
+        return catalog
+
+    chapter_ids = {point.parent_id for point in all_points if point.parent_id is not None}
+    chapter_points = [point for point in all_points if point.id in chapter_ids]
+    chapter_number = {point.id: index for index, point in enumerate(chapter_points, 1)}
+    point_number_by_chapter: dict[int, int] = defaultdict(int)
+    for point in all_points:
+        if point.id in chapter_ids:
+            continue
+        parent = point_by_id.get(point.parent_id)
+        parent_number = chapter_number.get(point.parent_id)
+        if parent_number is not None:
+            point_number_by_chapter[point.parent_id] += 1
+            display_code = f"{parent_number}-{point_number_by_chapter[point.parent_id]}"
+        else:
+            display_code = point.code
+        catalog.append({
+            "point": point,
+            "display_code": display_code,
+            "chapter_id": parent.id if parent else None,
+            "chapter_name": parent.name if parent else None,
+        })
+    return catalog
+
+
 def _mastery_values(evidence_rows: list[LearningEvidence], now: datetime | None = None) -> tuple[int, int]:
     now = now or datetime.now()
     source_scores: dict[str, float] = {}
@@ -159,7 +235,7 @@ def refresh_class_mastery(db: Session, offering_id: int) -> list[ClassMasterySna
     snapshots = []
     now = datetime.now()
     for knowledge_id, profiles in grouped.items():
-        eligible = [p for p in profiles if p.confidence >= 40 and p.observation_count >= 3]
+        eligible = [p for p in profiles if p.confidence > 0 and p.observation_count > 0]
         snapshot = ClassMasterySnapshot(
             offering_id=offering_id,
             knowledge_point_id=knowledge_id,
@@ -205,46 +281,9 @@ def student_activity(db: Session, student_id: int, offering_id: int) -> dict:
 
 
 def profile_view(db: Session, student_id: int, offering_id: int) -> dict:
-    offering = db.get(CourseOffering, offering_id)
-    all_points = db.scalars(select(KnowledgePoint).where(
-        KnowledgePoint.course_id == offering.course_id
-    ).order_by(KnowledgePoint.code)).all() if offering else []
-    point_by_id = {point.id: point for point in all_points}
-    chapter_by_point_id: dict[int, KnowledgePoint] = {}
-    published_map = db.scalar(select(CourseMapVersion).where(
-        CourseMapVersion.offering_id == offering_id,
-        CourseMapVersion.status == "published",
-    ).order_by(CourseMapVersion.version.desc())) if offering else None
-    if published_map:
-        map_nodes = db.scalars(select(CourseMapNode).where(
-            CourseMapNode.version_id == published_map.id
-        ).order_by(CourseMapNode.position)).all()
-        node_by_id = {node.id: node for node in map_nodes}
-        contains_edges = db.scalars(select(CourseMapEdge).where(
-            CourseMapEdge.version_id == published_map.id,
-            CourseMapEdge.relation_type == "contains",
-        )).all()
-        parent_node_ids = {edge.source_node_id for edge in contains_edges}
-        leaf_nodes = [node for node in map_nodes
-                      if node.id not in parent_node_ids and node.knowledge_point_id]
-        points = [point_by_id[node.knowledge_point_id] for node in leaf_nodes
-                  if node.knowledge_point_id in point_by_id]
-        for edge in contains_edges:
-            child_node = node_by_id.get(edge.target_node_id)
-            parent_node = node_by_id.get(edge.source_node_id)
-            if child_node and child_node.knowledge_point_id and parent_node:
-                parent_point = point_by_id.get(parent_node.knowledge_point_id)
-                if parent_point:
-                    chapter_by_point_id[child_node.knowledge_point_id] = parent_point
-    else:
-        chapter_ids = {point.parent_id for point in all_points if point.parent_id is not None}
-        points = [point for point in all_points if point.id not in chapter_ids]
-        chapter_by_point_id = {
-            point.id: point_by_id[point.parent_id]
-            for point in points if point.parent_id in point_by_id
-        }
     knowledge = []
-    for point in points:
+    for catalog_item in course_knowledge_catalog(db, offering_id):
+        point = catalog_item["point"]
         evidence = db.scalars(select(LearningEvidence).where(
             LearningEvidence.student_id == student_id,
             LearningEvidence.offering_id == offering_id,
@@ -256,13 +295,13 @@ def profile_view(db: Session, student_id: int, offering_id: int) -> dict:
         state = "insufficient_data"
         if confidence >= 40 and observation_count >= 3:
             state = "weak" if mastery_score < 60 else "mastered"
-        chapter = chapter_by_point_id.get(point.id)
         knowledge.append({
             "id": point.id,
-            "code": point.code,
+            "code": catalog_item["display_code"],
+            "storage_code": point.code,
             "name": point.name,
-            "chapter_id": chapter.id if chapter else None,
-            "chapter_name": chapter.name if chapter else None,
+            "chapter_id": catalog_item["chapter_id"],
+            "chapter_name": catalog_item["chapter_name"],
             "mastery_score": mastery_score,
             "confidence": confidence / 100,
             "observation_count": observation_count,

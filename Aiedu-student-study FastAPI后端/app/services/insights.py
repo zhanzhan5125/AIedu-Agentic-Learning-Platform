@@ -18,6 +18,7 @@ from app.models import (
     Submission,
     SubmissionStatus,
 )
+from app.services.learning import course_knowledge_catalog
 
 FINAL_STATUSES = (SubmissionStatus.graded, SubmissionStatus.returned)
 
@@ -121,29 +122,30 @@ def assignment_insights(db: Session, assignment: Assignment) -> dict:
 def class_insights(db: Session, offering_id: int) -> dict:
     enrollment_count = db.scalar(select(func.count(Enrollment.id)).where(
         Enrollment.offering_id == offering_id)) or 0
-    points = db.execute(
-        select(KnowledgePoint, StudentMasteryProfile)
-        .join(StudentMasteryProfile, StudentMasteryProfile.knowledge_point_id == KnowledgePoint.id)
-        .where(StudentMasteryProfile.offering_id == offering_id)
-    ).all()
-    grouped: dict[int, dict] = defaultdict(lambda: {"profiles": []})
-    for point, profile in points:
-        grouped[point.id]["point"] = point
-        grouped[point.id]["profiles"].append(profile)
+    profiles = db.scalars(select(StudentMasteryProfile).where(
+        StudentMasteryProfile.offering_id == offering_id
+    )).all()
+    grouped: dict[int, list[StudentMasteryProfile]] = defaultdict(list)
+    for profile in profiles:
+        grouped[profile.knowledge_point_id].append(profile)
     knowledge = []
-    for point_id, values in grouped.items():
-        profiles = values["profiles"]
-        eligible = [p for p in profiles if p.confidence >= 40 and p.observation_count >= 3]
+    for catalog_item in course_knowledge_catalog(db, offering_id):
+        point = catalog_item["point"]
+        eligible = [p for p in grouped.get(point.id, [])
+                    if p.confidence > 0 and p.observation_count > 0]
         weak_count = sum(1 for p in eligible if p.mastery_score < 60)
         knowledge.append({
-            "id": point_id,
-            "code": values["point"].code,
-            "name": values["point"].name,
+            "id": point.id,
+            "code": catalog_item["display_code"],
+            "storage_code": point.code,
+            "name": point.name,
+            "chapter_id": catalog_item["chapter_id"],
+            "chapter_name": catalog_item["chapter_name"],
             "evidence_student_count": len(eligible),
             "average_mastery": round(sum(p.mastery_score for p in eligible) / len(eligible), 1) if eligible else None,
             "weak_student_count": weak_count,
             "weak_ratio": round(weak_count / len(eligible), 2) if eligible else 0,
             "is_class_weak": len(eligible) >= 5 and weak_count / len(eligible) >= 0.3,
+            "sample_status": "none" if not eligible else "limited" if len(eligible) < 5 else "sufficient",
         })
-    knowledge.sort(key=lambda item: (item["average_mastery"] is None, item["average_mastery"] or 0))
     return {"offering_id": offering_id, "student_count": enrollment_count, "knowledge_points": knowledge}
