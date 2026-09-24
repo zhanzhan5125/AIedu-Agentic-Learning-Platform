@@ -639,7 +639,7 @@ def test_teacher_submission_counts_and_manual_grading_time(client, auth):
     assert submissions["records"][0]["graded_at"] is not None
 
 
-def test_mastery_requires_three_confident_observations(client):
+def test_mastery_uses_first_confirmed_observation(client):
     with SessionLocal.begin() as db:
         teacher = db.query(User).filter_by(role=Role.teacher).one()
         student = db.query(User).filter_by(role=Role.student).one()
@@ -657,16 +657,16 @@ def test_mastery_requires_three_confident_observations(client):
                                parent_id=chapter.id)
         db.add(point)
         db.flush()
-        for source_id, score in enumerate((30, 50, 40), 1):
-            upsert_evidence(db, student_id=student.id, offering_id=offering.id,
-                            knowledge_point_id=point.id, source_type="assignment",
-                            source_id=source_id, score=score, confidence=90)
+        upsert_evidence(db, student_id=student.id, offering_id=offering.id,
+                        knowledge_point_id=point.id, source_type="assignment",
+                        source_id=1, score=40, confidence=90)
         refresh_student_mastery(db, student.id, offering.id)
         view = profile_view(db, student.id, offering.id)
         assert len(view["knowledge_points"]) == 1
         assert view["knowledge_points"][0]["chapter_name"] == "函数与递归"
         assert view["knowledge_points"][0]["state"] == "weak"
-        assert view["knowledge_points"][0]["observation_count"] == 3
+        assert view["knowledge_points"][0]["observation_count"] == 1
+        assert "evidence_needed" not in view["knowledge_points"][0]
 
 
 def test_mastery_uses_normalized_assignment_and_practice_weights(client):
@@ -734,6 +734,8 @@ def test_profile_uses_leaf_points_from_published_course_map(client):
             ("变量", "第一章"),
         ]
         assert view["knowledge_points"][0]["code"] == "1-1"
+        assert view["knowledge_points"][0]["state"] == "unobserved"
+        assert "profile_coverage" not in view
 
 
 def test_class_insights_lists_all_published_points_with_chapter_numbering():
@@ -991,7 +993,7 @@ def test_tutor_identity_question_delegates_without_rag_or_model(client, auth, mo
         assert child.agent_name == "student_learning_assistant"
         assert child.result["student_name"] == "学生"
         assert child.result["course_name"] == "身份协作测试课程"
-        assert len(child.result["insufficient_points"]) == 20
+        assert len(child.result["unobserved_points"]) == 20
 
 
 def test_course_map_draft_has_evidence_and_requires_publish(client, auth):

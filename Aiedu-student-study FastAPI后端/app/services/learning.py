@@ -292,9 +292,9 @@ def profile_view(db: Session, student_id: int, offering_id: int) -> dict:
         ).order_by(LearningEvidence.observed_at.desc(), LearningEvidence.id.desc()).limit(20)).all()
         mastery_score, confidence = _mastery_values(evidence)
         observation_count = len(evidence)
-        state = "insufficient_data"
-        if confidence >= 40 and observation_count >= 3:
-            state = "weak" if mastery_score < 60 else "mastered"
+        state = "unobserved" if observation_count == 0 else (
+            "weak" if mastery_score < 60 else "mastered"
+        )
         knowledge.append({
             "id": point.id,
             "code": catalog_item["display_code"],
@@ -305,7 +305,6 @@ def profile_view(db: Session, student_id: int, offering_id: int) -> dict:
             "mastery_score": mastery_score,
             "confidence": confidence / 100,
             "observation_count": observation_count,
-            "evidence_needed": max(0, 3 - observation_count),
             "state": state,
             "last_observed_at": max((item.observed_at for item in evidence), default=None),
             "evidence": [{
@@ -314,11 +313,9 @@ def profile_view(db: Session, student_id: int, offering_id: int) -> dict:
                 "observed_at": item.observed_at,
             } for item in evidence],
         })
-    sufficient_count = sum(1 for item in knowledge if item["state"] != "insufficient_data")
     return {
         "student_id": student_id, "offering_id": offering_id,
         "activity": student_activity(db, student_id, offering_id),
         "mastery_weights": SOURCE_WEIGHTS,
-        "profile_coverage": {"sufficient": sufficient_count, "total": len(knowledge)},
         "knowledge_points": knowledge,
     }

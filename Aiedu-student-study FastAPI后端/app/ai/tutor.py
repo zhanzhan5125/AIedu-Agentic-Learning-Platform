@@ -19,7 +19,7 @@ from app.services.learning import profile_view
 
 PERSONAL_IDENTITY_MARKERS = ("我是谁", "我的名字", "我叫什么", "认识我", "知道我是谁")
 PROFILE_MARKERS = (
-    "我的学情", "学习画像", "我的掌握", "掌握情况", "薄弱", "证据不足", "画像覆盖率",
+    "我的学情", "学习画像", "我的掌握", "掌握情况", "薄弱", "暂无学习记录",
     "复习计划", "怎么复习", "如何复习", "适合我", "根据我的", "结合我的", "个性化", "诊断练习",
 )
 SELF_REFERENCES = ("我", "自己")
@@ -89,12 +89,12 @@ def _learning_brief(db: Session, student_id: int, offering_id: int, question: st
     profile = profile_view(db, student_id, offering_id)
     points = profile.get("knowledge_points", [])
     weak = [item["name"] for item in points if item["state"] == "weak"]
-    insufficient = [item["name"] for item in points if item["state"] == "insufficient_data"]
+    unobserved = [item["name"] for item in points if item["state"] == "unobserved"]
     mastered = [item["name"] for item in points if item["state"] == "mastered"]
     actions = ([f"先复习 {name}" for name in weak[:5]] or
-               [f"先用诊断练习补充 {name} 的学习证据" for name in insufficient[:5]] or
-               ["完成一次综合巩固练习"])
-    state_order = {"weak": 0, "insufficient_data": 1, "mastered": 2}
+               (["完成一次综合巩固练习"] if mastered else
+                ["先完成一次课程基础练习，建立初始学习记录"]))
+    state_order = {"weak": 0, "mastered": 1, "unobserved": 2}
     detail_rows = sorted(points, key=lambda item: (
         -_point_relevance(item["name"], question), state_order.get(item["state"], 3),
         item.get("mastery_score", 0),
@@ -108,10 +108,10 @@ def _learning_brief(db: Session, student_id: int, offering_id: int, question: st
         ],
     } for item in detail_rows]
     return StudentLearningBrief(
-        summary=f"已掌握 {len(mastered)} 个，薄弱 {len(weak)} 个，证据不足 {len(insufficient)} 个。",
+        summary=f"已掌握 {len(mastered)} 个，薄弱 {len(weak)} 个，暂无学习记录 {len(unobserved)} 个。",
         student_name=student.display_name if student else None,
         course_name=course.name if course else None,
-        weak_points=weak[:20], insufficient_points=insufficient[:20], mastered_points=mastered[:20],
+        weak_points=weak[:20], unobserved_points=unobserved[:20], mastered_points=mastered[:20],
         recommended_actions=actions, point_details=point_details,
     ).model_dump()
 
@@ -126,11 +126,8 @@ def _profile_fallback_answer(brief: dict) -> str:
             evidence = "、".join(item.get("recent_evidence") or []) or "暂无可展示的近期得分"
             lines.append(f"{item['name']}{chapter}：掌握度 {item['mastery_score']}，依据为 {evidence}")
         return "根据你的学习画像，目前较薄弱的是：" + "；".join(lines) + "。"
-    insufficient = [item for item in details if item.get("state") == "insufficient_data"]
-    if insufficient:
-        names = "、".join(item["name"] for item in insufficient[:5])
-        return (f"当前还不能可靠判断你具体弱在哪里。{names} 等知识点的学习证据不足，"
-                "建议先完成一次诊断练习，再根据结果定位薄弱环节。")
+    if details and all(item.get("state") == "unobserved" for item in details):
+        return "当前还没有已评分的作业或练习记录，可以先完成一组课程基础练习。"
     return f"根据当前学习画像：{brief['summary']} " + "；".join(brief["recommended_actions"])
 
 
@@ -198,7 +195,7 @@ def run_student_qa(
             "agent_name": "student_learning_assistant", "task_type": "student_learning_brief",
             "plan": AgentPlan(goal="为问答智能体提供最小必要的个人画像摘要", steps=[
                 PlanStep(id="1", action="读取确定性学习画像", tool="get_student_mastery", reason="画像由业务证据计算"),
-                PlanStep(id="2", action="整理薄弱、已掌握和证据不足项", tool="get_learning_evidence", reason="只返回回答所需摘要"),
+                PlanStep(id="2", action="整理薄弱、已掌握和暂无记录项", tool="get_learning_evidence", reason="只返回回答所需摘要"),
             ]).model_dump(),
             "result": learning_brief,
             "validation": ValidationResult(valid=True, evidence_sufficient=True).model_dump(),
@@ -207,7 +204,7 @@ def run_student_qa(
                 "agent_name": "student_learning_assistant", "step_type": "delegation",
                 "tool_name": "get_student_mastery", "duration_ms": 0,
                 "output_summary": {"weak_count": len(learning_brief["weak_points"]),
-                                   "insufficient_count": len(learning_brief["insufficient_points"]),
+                                   "unobserved_count": len(learning_brief["unobserved_points"]),
                                    "detail_count": len(learning_brief["point_details"])},
             }],
         })
@@ -257,9 +254,12 @@ def run_student_qa(
         try:
             answer, metadata = structured_completion(
                 TutorAnswer,
-                system_prompt=("你是 AIedu 学生问答智能体。只能依据给定课程证据和可选的个人画像摘要回答；"
-                               "涉及学生个人情况时，必须优先使用 learning_brief 中的掌握度与学习证据，"
-                               "不得把个人画像误称为课程资料。引用必须支持结论。证据不足时要明确说明。"
+                system_prompt=("你是 AIedu 学生问答智能体。只能依据给定课程资料和可选的个人画像摘要回答；"
+                               "涉及学生个人情况时，必须优先使用 learning_brief 中的掌握度与成绩记录，"
+                               "不得把个人画像误称为课程资料。有学习成绩时必须直接按画像判断；"
+                               "只有完全没有已评分记录时才说明暂无学习记录。课程资料必须支持结论。"
+                               "不要向学生展示‘证据不足、无依据、置信度、检索失败’等内部技术判断；"
+                               "资料未涵盖问题时，只需自然说明当前课程资料暂未包含相关内容。"
                                "开放作业只做苏格拉底式引导。"),
                 user_prompt=json.dumps({"question": question, "intent": intent,
                                         "citations": citations, "learning_brief": learning_brief,
@@ -297,8 +297,8 @@ def run_student_qa(
     else:
         answer = TutorAnswer(
             intent=intent if intent != "current_web" else "current_web",
-            answer=("当前课程资料中没有检索到足够证据。"
-                    "网页搜索也未配置或不适合替代课程依据；你可以换一种问法，或请教师补充相关资料。"),
+            answer=("当前课程资料暂未包含这个问题的相关内容。"
+                    "你可以换一种问法，或请教师补充相关资料。"),
             evidence_sufficient=False,
         )
     steps.append(_step("compose_result", "structured_llm" if token_usage["total"] else "deterministic_fallback",

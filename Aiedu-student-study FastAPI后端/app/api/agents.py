@@ -165,13 +165,13 @@ def _practice_job(offering_id: int, assignment_id: int | None, payload: Practice
     if not ids:
         profile = profile_view(db, user.id, offering_id)
         weak = [item for item in profile["knowledge_points"] if item["state"] == "weak"]
-        insufficient = [item for item in profile["knowledge_points"] if item["state"] == "insufficient_data"]
+        observed = [item for item in profile["knowledge_points"] if item["state"] != "unobserved"]
         if weak:
             selected, practice_mode = weak, "weak_point_review"
-        elif insufficient:
-            selected, practice_mode = insufficient, "diagnostic"
-        else:
+        elif observed:
             selected, practice_mode = profile["knowledge_points"], "comprehensive_review"
+        else:
+            selected, practice_mode = profile["knowledge_points"], "course_baseline"
         ids = [item["id"] for item in selected]
         selected_names = [item["name"] for item in selected]
     elif set(ids) != set(db.scalars(select(KnowledgePoint.id).where(

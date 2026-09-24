@@ -14,11 +14,11 @@
       </el-table>
     </template>
     <template v-else>
-      <div class="metrics"><el-card><b>{{ (data.activity || {}).score || 0 }}</b><span>近30天活跃度</span></el-card><el-card><b>{{ weakCount }}</b><span>个人薄弱知识点</span></el-card><el-card><b>{{ coverageText }}</b><span>{{ insufficientCount ? '画像覆盖率' : '画像证据充分' }}</span></el-card></div>
+      <div class="metrics"><el-card><b>{{ (data.activity || {}).score || 0 }}</b><span>近30天活跃度</span></el-card><el-card><b>{{ weakCount }}</b><span>个人薄弱知识点</span></el-card><el-card><b>{{ masteredCount }}</b><span>已掌握知识点</span></el-card></div>
       <el-table :data="data.knowledge_points || []" empty-text="完成已评分作业或诊断练习后将生成学习画像">
         <el-table-column prop="name" label="知识点"/>
         <el-table-column label="所属章节"><template slot-scope="s"><span>{{ s.row.chapter_name || '未归属章节' }}</span></template></el-table-column>
-        <el-table-column label="掌握度" width="240"><template slot-scope="s"><el-progress :percentage="s.row.mastery_score" /></template></el-table-column>
+        <el-table-column label="掌握度" width="240"><template slot-scope="s"><el-progress v-if="s.row.state !== 'unobserved'" :percentage="s.row.mastery_score" /><span v-else class="no-score">暂无学习记录</span></template></el-table-column>
         <el-table-column label="证据" width="110"><template slot-scope="s"><el-button type="text" @click="showEvidence(s.row)">查看证据</el-button></template></el-table-column>
       </el-table>
     </template>
@@ -47,9 +47,9 @@ export default {
     classWeakCount() { return (this.data.knowledge_points || []).filter(i => i.is_class_weak).length },
     coveredPointCount() { return (this.data.knowledge_points || []).filter(i => i.average_mastery !== null).length },
     weakCount() { return (this.data.knowledge_points || []).filter(i => i.state === 'weak').length },
-    insufficientCount() { return (this.data.knowledge_points || []).filter(i => i.state === 'insufficient_data').length },
-    coverageText() { const coverage=this.data.profile_coverage||{}; return `${coverage.sufficient||0}/${coverage.total||0}` },
-    practiceButtonText() { if(this.weakCount) return '针对薄弱点复习'; if(this.insufficientCount) return '生成诊断练习'; return '生成综合巩固练习' }
+    masteredCount() { return (this.data.knowledge_points || []).filter(i => i.state === 'mastered').length },
+    observedCount() { return (this.data.knowledge_points || []).filter(i => i.state !== 'unobserved').length },
+    practiceButtonText() { if(this.weakCount) return '针对薄弱点复习'; if(this.observedCount) return '生成综合巩固练习'; return '生成课程基础练习' }
   },
   created() { this.load() },
   methods: {

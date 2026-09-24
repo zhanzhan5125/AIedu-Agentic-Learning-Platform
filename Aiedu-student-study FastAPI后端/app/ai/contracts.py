@@ -54,7 +54,7 @@ class CourseContextBrief(BaseModel):
 class StudentLearningPointBrief(BaseModel):
     name: str = Field(min_length=1, max_length=200)
     chapter_name: str | None = Field(default=None, max_length=200)
-    state: Literal["weak", "insufficient_data", "mastered"]
+    state: Literal["weak", "mastered", "unobserved"]
     mastery_score: int = Field(default=0, ge=0, le=100)
     recent_evidence: list[str] = Field(default_factory=list, max_length=5)
 
@@ -64,7 +64,7 @@ class StudentLearningBrief(BaseModel):
     student_name: str | None = Field(default=None, max_length=100)
     course_name: str | None = Field(default=None, max_length=200)
     weak_points: list[str] = Field(default_factory=list, max_length=20)
-    insufficient_points: list[str] = Field(default_factory=list, max_length=20)
+    unobserved_points: list[str] = Field(default_factory=list, max_length=20)
     mastered_points: list[str] = Field(default_factory=list, max_length=20)
     recommended_actions: list[str] = Field(default_factory=list, max_length=10)
     point_details: list[StudentLearningPointBrief] = Field(default_factory=list, max_length=20)

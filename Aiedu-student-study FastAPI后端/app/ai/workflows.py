@@ -238,17 +238,17 @@ def _course_brief(db, offering_id: int, query: str, include_class: bool) -> tupl
 def _student_brief(profile: dict) -> dict:
     points = profile.get("knowledge_points", [])
     weak = [item["name"] for item in points if item["state"] == "weak"]
-    insufficient = [item["name"] for item in points if item["state"] == "insufficient_data"]
+    unobserved = [item["name"] for item in points if item["state"] == "unobserved"]
     mastered = [item["name"] for item in points if item["state"] == "mastered"]
     if weak:
         actions = [f"优先复习：{name}" for name in weak[:5]]
-    elif insufficient:
-        actions = [f"先完成诊断练习补充证据：{name}" for name in insufficient[:5]]
-    else:
+    elif mastered:
         actions = ["完成综合巩固练习，保持已掌握知识点"]
+    else:
+        actions = ["先完成一次课程基础练习，建立初始学习记录"]
     return StudentLearningBrief(
-        summary=f"{len(mastered)} 个知识点已掌握，{len(weak)} 个薄弱，{len(insufficient)} 个证据不足。",
-        weak_points=weak[:20], insufficient_points=insufficient[:20], mastered_points=mastered[:20],
+        summary=f"{len(mastered)} 个知识点已掌握，{len(weak)} 个薄弱，{len(unobserved)} 个暂无学习记录。",
+        weak_points=weak[:20], unobserved_points=unobserved[:20], mastered_points=mastered[:20],
         recommended_actions=actions,
     ).model_dump()
 
@@ -473,8 +473,8 @@ def _fallback_questions(state: WorkflowState) -> AssignmentDraftResult:
                  state.get("tool_results", {}).get("citations") or [])
     mode_text = {
         "weak_point_review": "根据已确认的薄弱知识点生成巩固练习。",
-        "diagnostic": "当前没有已确认薄弱点，针对证据不足知识点生成诊断练习。",
-        "comprehensive_review": "当前画像证据充分且无薄弱点，生成综合巩固练习。",
+        "course_baseline": "当前还没有已评分记录，生成课程基础练习。",
+        "comprehensive_review": "当前没有薄弱知识点，生成综合巩固练习。",
     }.get(data.get("practice_mode"), "依据教师约束、课程资料和学习画像生成；发布或使用前必须人工确认。")
 
     def question_content(question_kind: str, keyword: str, number: int) -> tuple[str, str, list[str]]:
