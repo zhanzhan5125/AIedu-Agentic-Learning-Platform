@@ -510,7 +510,10 @@ def _fallback_questions(state: WorkflowState) -> AssignmentDraftResult:
         )
         question_values.append(AssignmentQuestionDraft(
             kind=question_kind, prompt=prompt, reference_answer=answer, rubric=rubric,
-            score=10, difficulty=difficulty, knowledge_point_ids=knowledge_ids,
+            score=10, difficulty=difficulty,
+            knowledge_point_ids=(
+                [knowledge_ids[index % len(knowledge_ids)]] if knowledge_ids else []
+            ),
             citations=[Citation.model_validate(item) for item in citations[:2]],
         ))
     return AssignmentDraftResult(
@@ -548,6 +551,9 @@ def _model_assignment(state: WorkflowState) -> tuple[dict, dict]:
             "你是 AIedu 教师出题/批阅智能体的出题模式。只能依据给定课程资料生成题目，"
             "严格满足题量、题型、难度和知识点要求，question_kinds 是教师允许且要求覆盖的题型；"
             "当题量不少于题型数量时，每种所选题型至少生成一道。整套题不得重复。"
+            "每道题的 knowledge_point_ids 必须从教师给定的 knowledge_point_ids 中选择 1 至 2 个与题干直接对应的知识点，"
+            "不得漏绑定、不得绑定未选知识点，也不得把所有知识点无区分地绑定到每道题。"
+            "题量足够时，整套题应覆盖教师所选的全部知识点。"
             "单选题和多选题必须在 prompt 中完整列出 A、B、C、D 四个选项，并在答案中明确正确选项。每题提供答案、"
             "2至4条简短 Rubric 与最多2条引用。题干控制在300字内，参考答案控制在500字内。"
         ),
@@ -1078,6 +1084,23 @@ def _validate(state: WorkflowState) -> ValidationResult:
             issues.append("存在不可判定或分值无效的题目")
         if len({item.get("prompt") for item in questions}) != len(questions):
             issues.append("存在重复题目")
+        selected_knowledge_ids = {
+            int(value) for value in state.get("input_data", {}).get("knowledge_point_ids", [])
+        }
+        if selected_knowledge_ids:
+            question_knowledge_ids = [
+                {int(value) for value in item.get("knowledge_point_ids", [])}
+                for item in questions
+            ]
+            if any(not ids for ids in question_knowledge_ids):
+                issues.append("存在未绑定知识点的题目")
+            if any(not ids.issubset(selected_knowledge_ids) for ids in question_knowledge_ids):
+                issues.append("题目绑定了教师选择范围外的知识点")
+            if any(len(ids) > 2 for ids in question_knowledge_ids):
+                issues.append("单道题绑定的知识点过多")
+            covered_ids = set().union(*question_knowledge_ids) if question_knowledge_ids else set()
+            if expected >= len(selected_knowledge_ids) and covered_ids != selected_knowledge_ids:
+                issues.append("整套题未覆盖教师选择的全部知识点")
         citations = [citation for item in questions for citation in item.get("citations", [])]
         evidence_sufficient = bool(citations)
         if kind == "assignment.draft" and not evidence_sufficient:
@@ -1266,6 +1289,31 @@ def reflect_once(state: WorkflowState) -> WorkflowState:
                 replacement = next_fallback(item.get("kind"))
                 if replacement:
                     questions[index] = replacement
+        allowed_knowledge_ids = [
+            int(value) for value in state.get("input_data", {}).get("knowledge_point_ids", [])
+        ]
+        if allowed_knowledge_ids:
+            allowed_knowledge_set = set(allowed_knowledge_ids)
+            for index, item in enumerate(questions):
+                valid_ids: list[int] = []
+                for value in item.get("knowledge_point_ids", []):
+                    try:
+                        knowledge_id = int(value)
+                    except (TypeError, ValueError):
+                        continue
+                    if knowledge_id in allowed_knowledge_set and knowledge_id not in valid_ids:
+                        valid_ids.append(knowledge_id)
+                item["knowledge_point_ids"] = valid_ids[:2] or [
+                    allowed_knowledge_ids[index % len(allowed_knowledge_ids)]
+                ]
+            if expected >= len(allowed_knowledge_ids):
+                covered_ids = {
+                    value for item in questions for value in item["knowledge_point_ids"]
+                }
+                for index, missing_id in enumerate(
+                    value for value in allowed_knowledge_ids if value not in covered_ids
+                ):
+                    questions[index % len(questions)]["knowledge_point_ids"] = [missing_id]
         draft["questions"] = questions
     elif state["kind"] == "grading.single":
         settings = get_settings()

@@ -147,6 +147,9 @@ def test_assignment_fallback_covers_selected_question_kinds():
         "short_answer", "single_choice", "multiple_choice", "programming",
     ]
     assert all(item.difficulty == 4 for item in result.questions)
+    assert [item.knowledge_point_ids for item in result.questions] == [
+        [1], [2], [1], [2],
+    ]
     for item in result.questions[1:3]:
         assert workflows._has_complete_choice_options(item.prompt)
 
@@ -178,6 +181,38 @@ def test_assignment_validation_rejects_missing_selected_kind():
     assert any("未覆盖教师选择的全部题型" in issue for issue in validation.issues)
 
 
+def test_assignment_validation_rejects_invalid_knowledge_point_mapping():
+    state = {
+        "kind": "assignment.draft",
+        "input_data": {
+            "question_count": 2,
+            "question_kinds": ["short_answer"],
+            "knowledge_point_ids": [1, 2],
+        },
+        "draft": {
+            "questions": [
+                {
+                    "kind": "short_answer", "prompt": "问题一", "reference_answer": "答案一",
+                    "score": 10, "knowledge_point_ids": [],
+                    "citations": [{"title": "资料", "excerpt": "依据"}],
+                },
+                {
+                    "kind": "short_answer", "prompt": "问题二", "reference_answer": "答案二",
+                    "score": 10, "knowledge_point_ids": [3],
+                    "citations": [{"title": "资料", "excerpt": "依据"}],
+                },
+            ],
+        },
+    }
+
+    validation = workflows._validate(state)
+
+    assert validation.valid is False
+    assert any("未绑定知识点" in issue for issue in validation.issues)
+    assert any("选择范围外" in issue for issue in validation.issues)
+    assert any("未覆盖教师选择的全部知识点" in issue for issue in validation.issues)
+
+
 def test_assignment_reflection_repairs_choice_options_without_duplicates():
     state = {
         "kind": "assignment.draft",
@@ -203,6 +238,39 @@ def test_assignment_reflection_repairs_choice_options_without_duplicates():
 
     assert len(set(prompts)) == 2
     assert all(workflows._has_complete_choice_options(prompt) for prompt in prompts)
+
+
+def test_assignment_reflection_repairs_knowledge_point_mapping():
+    state = {
+        "kind": "assignment.draft",
+        "input_data": {
+            "question_count": 2,
+            "question_kinds": ["short_answer"],
+            "knowledge_point_ids": [1, 2],
+        },
+        "tool_results": {"course_context": {"citations": []}},
+        "draft": {
+            "questions": [
+                {
+                    "kind": "short_answer", "prompt": "问题一", "reference_answer": "答案一",
+                    "score": 10, "knowledge_point_ids": [],
+                },
+                {
+                    "kind": "short_answer", "prompt": "问题二", "reference_answer": "答案二",
+                    "score": 10, "knowledge_point_ids": [999, "invalid"],
+                },
+            ],
+        },
+        "validation": {"issues": ["知识点映射无效"]},
+        "reflection_count": 0,
+        "steps": [],
+    }
+
+    reflected = workflows.reflect_once(state)
+
+    assert [item["knowledge_point_ids"] for item in reflected["draft"]["questions"]] == [
+        [1], [2],
+    ]
 
 
 def test_assignment_request_requires_enough_questions_for_selected_kinds():
