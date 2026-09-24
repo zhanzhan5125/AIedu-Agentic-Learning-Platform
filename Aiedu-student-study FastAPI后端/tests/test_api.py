@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime, timedelta
 
 from app.db import SessionLocal
-from app.models import (AIJob, AgentRun, Answer, Assignment, AssignmentQuestion, AssignmentStatus, Course,
+from app.models import (AIJob, AgentRun, AgentRunStep, Answer, Assignment, AssignmentQuestion, AssignmentStatus, Course,
                         CourseMapEdge, CourseMapNode, CourseMapVersion, CourseOffering, CourseResource,
                         Enrollment, KnowledgePoint, Notification,
                         JobStatus, OfferingStatus, OutboxEvent, ProcessingStatus, Question,
@@ -570,7 +570,8 @@ def test_teacher_submission_counts_and_manual_grading_time(client, auth):
         json={"resource_id": submission_id, "idempotency_key": "grade-status-key-001"},
     )
     assert ai_job.status_code == 202
-    assert ai_job.json()["data"]["agent_run_id"] is not None
+    agent_run_id = ai_job.json()["data"]["agent_run_id"]
+    assert agent_run_id is not None
     with SessionLocal() as db:
         assert db.get(Submission, submission_id).status == SubmissionStatus.ai_grading
     assert run_local_once() == 1
@@ -579,6 +580,10 @@ def test_teacher_submission_counts_and_manual_grading_time(client, auth):
         assert ai_submission.status == SubmissionStatus.needs_review
         assert ai_submission.ai_graded_at is not None
         assert ai_submission.ai_confidence == 0
+        tool_step = db.query(AgentRunStep).filter_by(
+            run_id=agent_run_id, node_name="execute_tools"
+        ).one()
+        assert "citations" not in tool_step.output_summary["tools_used"]
 
     ai_detail = client.get(
         f"/api/v1/teacher/submissions/{submission_id}",
