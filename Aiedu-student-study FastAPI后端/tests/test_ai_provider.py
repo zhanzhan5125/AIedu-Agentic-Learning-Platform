@@ -250,3 +250,61 @@ def test_grading_validation_rejects_an_excerpt_not_found_in_student_answer():
 
     assert validation.valid is False
     assert any("无法在学生原答案中定位" in issue for issue in validation.issues)
+
+
+def test_assignment_analysis_fallback_covers_every_question_without_recalculating_scores():
+    state = {
+        "kind": "assignment.summary",
+        "tool_results": {
+            "assignment_stats": {
+                "graded_count": 1,
+                "total_score": 50,
+                "average_score": 10,
+                "questions": [
+                    {"question_id": 11, "submission_count": 1, "max_score": 10,
+                     "average_score": 10, "score_rate": 100, "error_types": {}},
+                    {"question_id": 12, "submission_count": 1, "max_score": 10,
+                     "average_score": 0, "score_rate": 0, "error_types": {"未作答": 1}},
+                ],
+            },
+            "question_answers": [
+                {"question_id": 11, "answer_samples": []},
+                {"question_id": 12, "answer_samples": []},
+            ],
+        },
+    }
+
+    draft = workflows._fallback_assignment_analysis(state).model_dump()
+    state["draft"] = draft
+    validation = workflows._validate(state)
+
+    assert validation.valid is True
+    assert [item["question_id"] for item in draft["question_summaries"]] == [11, 12]
+    assert "10 / 50" in draft["overall_summary"]
+
+
+def test_assignment_analysis_rejects_unsupported_learning_state_inference():
+    state = {
+        "kind": "assignment.summary",
+        "tool_results": {
+            "assignment_stats": {"graded_count": 1},
+            "question_answers": [{"question_id": 11}],
+        },
+        "draft": {
+            "overall_summary": "仅有一份已确认作答。",
+            "question_summaries": [{
+                "question_id": 11,
+                "summary": "学生学习态度不端正。",
+                "strengths": [],
+                "common_issues": [],
+                "teaching_suggestion": "请根据答案补充缺失的得分点。",
+                "confidence": 20,
+            }],
+            "confidence": 20,
+        },
+    }
+
+    validation = workflows._validate(state)
+
+    assert validation.valid is False
+    assert any("学习状态推断" in issue for issue in validation.issues)

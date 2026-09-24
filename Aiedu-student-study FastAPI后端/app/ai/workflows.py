@@ -9,7 +9,8 @@ from langgraph.graph import END, START, StateGraph
 from sqlalchemy import select
 
 from app.ai.contracts import (
-    AgentPlan, AssignmentDraftResult, AssignmentQuestionDraft, Citation,
+    AgentPlan, AssignmentAnalysisResult, AssignmentDraftResult, AssignmentQuestionDraft,
+    AssignmentQuestionSummary, Citation,
     ChapterKnowledgeBatch, CourseChapterPlan, CourseContextBrief, CourseMapDraft,
     CourseMapEdgeDraft, CourseMapNodeDraft, GradingSuggestion, GradeSuggestionItem, PlanStep,
     StudentLearningBrief, ValidationResult,
@@ -21,15 +22,16 @@ from app.integrations.rag import search_course, search_course_supporting
 from app.models import (
     Answer, Assignment, AssignmentQuestion, Course, CourseOffering,
     CourseResource, KnowledgePoint, ProcessingStatus, Question, ResourceChunk, Submission,
+    SubmissionStatus,
 )
-from app.services.insights import class_insights
+from app.services.insights import assignment_insights, class_insights
 from app.services.learning import profile_view
 
 
 AGENT_BY_KIND = {
     "assignment.draft": ("teacher_assessment_agent", "assignment_draft"),
     "grading.single": ("teacher_assessment_agent", "grading"),
-    "assignment.summary": ("teacher_course_assistant", "assignment_summary"),
+    "assignment.summary": ("teacher_assessment_agent", "assignment_analysis"),
     "course_map.generate": ("teacher_course_assistant", "course_map_draft"),
     "practice.generate": ("student_learning_assistant", "practice_generate"),
     "question.generate": ("teacher_assessment_agent", "question_generate"),
@@ -150,6 +152,13 @@ def make_plan(state: WorkflowState) -> WorkflowState:
             PlanStep(id="1", action="读取题目、答案和学生作答", tool="get_submission_answers", reason="评分必须以真实作答为依据"),
             PlanStep(id="2", action="生成分项评分建议", tool=None, reason="输出可复核的评分和评语"),
             PlanStep(id="3", action="检查分数边界和证据支持", tool="validate_grading", reason="批阅建议不得超过题目分值"),
+        ]
+    elif kind == "assignment.summary":
+        steps = [
+            PlanStep(id="1", action="读取已确认成绩与逐题统计", tool="get_assignment_statistics", reason="数值必须由确定性代码计算"),
+            PlanStep(id="2", action="读取匿名化的逐题作答样本", tool="get_graded_answers", reason="总结必须由真实学生作答支持"),
+            PlanStep(id="3", action="总结每题答题情况与教学建议", tool=None, reason="形成教师可读的逐题分析"),
+            PlanStep(id="4", action="校验题目覆盖完整性", tool="validate_assignment_analysis", reason="确保每道题都有对应总结"),
         ]
     elif kind == "practice.generate":
         steps = [
@@ -369,7 +378,9 @@ def execute_tools(state: WorkflowState) -> WorkflowState:
         if state["kind"] == "assignment.draft" and offering_id:
             brief, delegations = _course_brief(db, offering_id, query, include_class=True)
             tools["course_context"] = brief
-        elif offering_id and state["kind"] not in {"course_map.generate", "grading.single"}:
+        elif offering_id and state["kind"] not in {
+            "course_map.generate", "grading.single", "assignment.summary",
+        }:
             tools["citations"] = _citations(search_course(offering_id, query, limit=6, db=db))
         if state["kind"] == "practice.generate" and offering_id and state.get("owner_id"):
             profile = profile_view(db, int(state["owner_id"]), offering_id)
@@ -392,6 +403,47 @@ def execute_tools(state: WorkflowState) -> WorkflowState:
                     AssignmentQuestion.assignment_id == submission.assignment_id
                 )).all())
                 tools["missing_question_ids"] = sorted(assigned_ids - {q.id for _, q in rows})
+        if state["kind"] == "assignment.summary":
+            assignment = db.get(Assignment, state["resource_id"])
+            if assignment:
+                tools["assignment_stats"] = assignment_insights(db, assignment)
+                question_rows = db.execute(
+                    select(Question, AssignmentQuestion.position)
+                    .join(AssignmentQuestion, AssignmentQuestion.question_id == Question.id)
+                    .where(AssignmentQuestion.assignment_id == assignment.id)
+                    .order_by(AssignmentQuestion.position)
+                ).all()
+                question_answers = []
+                for question, position in question_rows:
+                    answer_rows = db.execute(
+                        select(Answer)
+                        .join(Submission, Submission.id == Answer.submission_id)
+                        .where(
+                            Submission.assignment_id == assignment.id,
+                            Submission.status.in_([
+                                SubmissionStatus.graded, SubmissionStatus.returned,
+                            ]),
+                            Answer.question_id == question.id,
+                        )
+                        .order_by(Answer.id)
+                        .limit(20)
+                    ).scalars().all()
+                    question_answers.append({
+                        "question_id": question.id,
+                        "position": position,
+                        "question_kind": question.kind,
+                        "question": question.prompt,
+                        "reference_answer": question.reference_answer or "",
+                        "max_score": question.score,
+                        "sample_count": len(answer_rows),
+                        "answer_samples": [{
+                            "answer": (answer.content or "")[:1200],
+                            "confirmed_score": answer.score,
+                            "teacher_comment": (answer.teacher_comment or "")[:500],
+                            "error_type": (answer.ai_raw or {}).get("error_type"),
+                        } for answer in answer_rows],
+                    })
+                tools["question_answers"] = question_answers
         if state["kind"] == "course_map.generate" and offering_id:
             resource_ids = state.get("input_data", {}).get("resource_ids") or []
             chunks, strategy = _course_map_materials(db, offering_id, resource_ids)
@@ -544,6 +596,91 @@ def _model_grading_revision(state: WorkflowState, draft: dict, issues: list[str]
             "first_suggestion": draft,
             "validation_issues": issues,
         }, ensure_ascii=False, default=str),
+        max_retries=0,
+    )
+    return value.model_dump(), metadata
+
+
+def _fallback_assignment_analysis(state: WorkflowState) -> AssignmentAnalysisResult:
+    stats = state.get("tool_results", {}).get("assignment_stats", {})
+    summaries = []
+    for item in stats.get("questions", []):
+        average = item.get("average_score")
+        maximum = item.get("max_score")
+        rate = item.get("score_rate")
+        errors = list((item.get("error_types") or {}).keys())[:5]
+        summaries.append(AssignmentQuestionSummary(
+            question_id=int(item["question_id"]),
+            summary=(
+                f"已确认 {item.get('submission_count', 0)} 份作答，平均分 "
+                f"{average if average is not None else '-'} / {maximum}，"
+                f"得分率 {rate if rate is not None else '-'}%。"
+            ),
+            strengths=[],
+            common_issues=errors or ["当前样本不足，暂无法归纳稳定的共性问题"],
+            teaching_suggestion="结合学生原答案抽样复核，并针对失分点进行讲解。",
+            confidence=0,
+        ))
+    return AssignmentAnalysisResult(
+        overall_summary=(
+            f"本次统计基于 {stats.get('graded_count', 0)} 份教师已确认成绩；"
+            f"作业平均分为 {stats.get('average_score')} / {stats.get('total_score')}。"
+        ),
+        question_summaries=summaries,
+        confidence=0,
+    )
+
+
+def _model_assignment_analysis(state: WorkflowState) -> tuple[dict, dict]:
+    value, metadata = structured_completion(
+        AssignmentAnalysisResult,
+        system_prompt=(
+            "你是 AIedu 教师出题/批阅智能体的作业分析模式。后端给出的平均分、最高分、最低分和得分率是确定性统计，"
+            "不得重新计算或改写这些数值。请匿名总结每一道题的整体答题情况：概括主要得分点、共性错误及一条可执行的教学建议。"
+            "不得提及学生姓名或推断个人身份，不得修改成绩。只能陈述作答中可直接观察的事实，不得评价学习态度、"
+            "猜测未作答原因，或仅因空白作答就推断学生存在知识盲区、能力问题或理解困难。"
+            "样本较少时必须明确说明结论仅供参考，不要把单个学生表现泛化为全班规律。"
+            "question_summaries 必须覆盖输入中的每一个 question_id，且不得生成不存在的题目。"
+        ),
+        user_prompt=json.dumps({
+            "assignment_statistics": state.get("tool_results", {}).get("assignment_stats", {}),
+            "graded_answer_samples": state.get("tool_results", {}).get("question_answers", []),
+        }, ensure_ascii=False, default=str),
+        max_tokens=8_000,
+        max_retries=0,
+    )
+    return value.model_dump(), metadata
+
+
+_UNSUPPORTED_LEARNING_INFERENCES = (
+    "态度不", "知识盲区", "知识空白", "理解困难", "能力问题",
+    "只复习", "缺乏了解", "完全不了解", "掌握较好", "未能掌握",
+)
+
+
+def _has_unsupported_learning_inference(value: Any) -> bool:
+    text = json.dumps(value, ensure_ascii=False, default=str)
+    return any(phrase in text for phrase in _UNSUPPORTED_LEARNING_INFERENCES)
+
+
+def _model_assignment_analysis_revision(
+    state: WorkflowState, draft: dict, issues: list[str]
+) -> tuple[dict, dict]:
+    value, metadata = structured_completion(
+        AssignmentAnalysisResult,
+        system_prompt=(
+            "你是 AIedu 教师出题/批阅智能体的作业分析修订节点。请修复当前分析中超出作答证据的推断。"
+            "只写“答案包含了什么”或“答案未包含什么”；空白、不知道或无效文本只能表述为“未形成可评分的有效作答”。"
+            "不得推断学习态度、复习情况、能力、动机、知识盲区、是否掌握或理解困难。"
+            "保留后端统计数值不变，并且精确覆盖输入中每一个 question_id。"
+        ),
+        user_prompt=json.dumps({
+            "validation_issues": issues,
+            "assignment_statistics": state.get("tool_results", {}).get("assignment_stats", {}),
+            "graded_answer_samples": state.get("tool_results", {}).get("question_answers", []),
+            "current_analysis": draft,
+        }, ensure_ascii=False, default=str),
+        max_tokens=8_000,
         max_retries=0,
     )
     return value.model_dump(), metadata
@@ -885,6 +1022,12 @@ def compose_result(state: WorkflowState) -> WorkflowState:
         else:
             draft = _fallback_grading(state).model_dump()
         draft["mode"] = "model" if metadata else "deterministic-fallback"
+    elif state["kind"] == "assignment.summary":
+        if settings.enable_llm and settings.ai_api_key:
+            draft, metadata = _model_assignment_analysis(state)
+        else:
+            draft = _fallback_assignment_analysis(state).model_dump()
+        draft["mode"] = "model" if metadata else "deterministic-fallback"
     elif state["kind"] == "course_map.generate":
         if settings.enable_llm and settings.ai_api_key:
             draft, metadata = _model_course_map(state)
@@ -982,6 +1125,31 @@ def _validate(state: WorkflowState) -> ValidationResult:
                 issues.append("批阅置信度或证据支持不足")
         except Exception as exc:
             issues.append(f"批阅结构无效：{str(exc)[:200]}")
+            evidence_sufficient = False
+    elif kind == "assignment.summary":
+        try:
+            analysis = AssignmentAnalysisResult.model_validate(draft)
+            expected_ids = {
+                int(item["question_id"])
+                for item in state.get("tool_results", {}).get("question_answers", [])
+            }
+            actual_ids = [item.question_id for item in analysis.question_summaries]
+            if set(actual_ids) != expected_ids or len(actual_ids) != len(set(actual_ids)):
+                issues.append("逐题分析存在缺失、重复或未知题目")
+            evidence_text = {
+                "overall_summary": analysis.overall_summary,
+                "question_summaries": [{
+                    "summary": item.summary,
+                    "common_issues": item.common_issues,
+                } for item in analysis.question_summaries],
+            }
+            if _has_unsupported_learning_inference(evidence_text):
+                issues.append("答题分析包含无法由作答直接支持的学习状态推断")
+            if not state.get("tool_results", {}).get("assignment_stats", {}).get("graded_count"):
+                issues.append("尚无教师确认成绩，不能形成作业答题分析")
+            evidence_sufficient = not issues
+        except Exception as exc:
+            issues.append(f"作业分析结构无效：{str(exc)[:200]}")
             evidence_sufficient = False
     elif kind == "course_map.generate":
         try:
@@ -1125,6 +1293,53 @@ def reflect_once(state: WorkflowState) -> WorkflowState:
                 key: int(previous_usage.get(key) or 0) + int(revision_usage.get(key) or 0)
                 for key in ("prompt", "completion", "total")
             }}
+    elif state["kind"] == "assignment.summary":
+        settings = get_settings()
+        fallback = _fallback_assignment_analysis(state).model_dump()
+        revision_usage = None
+        if settings.enable_llm and settings.ai_api_key:
+            try:
+                draft, revision_metadata = _model_assignment_analysis_revision(
+                    state, draft, issues
+                )
+                revision_usage = revision_metadata.get("token_usage")
+                draft["mode"] = "model-reflection"
+            except Exception:
+                draft = dict(draft)
+        expected_ids = {
+            int(item["question_id"])
+            for item in state.get("tool_results", {}).get("question_answers", [])
+        }
+        current = {
+            int(item["question_id"]): item for item in draft.get("question_summaries", [])
+            if isinstance(item, dict) and item.get("question_id") in expected_ids
+        }
+        for item in fallback["question_summaries"]:
+            current.setdefault(int(item["question_id"]), item)
+        fallback_by_id = {
+            int(item["question_id"]): item for item in fallback["question_summaries"]
+        }
+        for item_id, item in list(current.items()):
+            evidence_text = {
+                "summary": item.get("summary"),
+                "common_issues": item.get("common_issues"),
+            }
+            if _has_unsupported_learning_inference(evidence_text):
+                current[item_id] = fallback_by_id[item_id]
+        overall_summary = draft.get("overall_summary") or fallback["overall_summary"]
+        if _has_unsupported_learning_inference(overall_summary):
+            overall_summary = fallback["overall_summary"]
+        draft = {
+            "overall_summary": overall_summary,
+            "question_summaries": [current[item_id] for item_id in sorted(current)],
+            "confidence": int(draft.get("confidence") or 0),
+            "mode": draft.get("mode", "deterministic-reflection-fallback"),
+        }
+        if revision_usage:
+            previous_usage = state.get("token_usage") or {}
+            state["token_usage"] = {key: int(previous_usage.get(key) or 0) + int(
+                revision_usage.get(key) or 0
+            ) for key in ("prompt", "completion", "total")}
     elif state["kind"] == "course_map.generate" and issues:
         draft = _fallback_course_map(state).model_dump()
         draft["mode"] = "deterministic-reflection-fallback"

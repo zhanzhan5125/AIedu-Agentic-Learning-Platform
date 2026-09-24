@@ -601,6 +601,20 @@ def test_teacher_submission_counts_and_manual_grading_time(client, auth):
     )
     assert graded.status_code == 200
 
+    insights = client.get(
+        f"/api/v1/teacher/assignments/{assignment_id}/insights",
+        headers=headers(teacher_token),
+    ).json()["data"]
+    assert insights["total_score"] == 10
+    assert insights["average_score"] == 8
+    assert insights["average_rate"] == 80
+    assert insights["highest_score"] == 8
+    assert insights["lowest_score"] == 8
+    assert insights["questions"][0]["average_score"] == 8
+    assert insights["questions"][0]["highest_score"] == 8
+    assert insights["questions"][0]["lowest_score"] == 8
+    assert insights["questions"][0]["max_score"] == 10
+
     submissions = client.get(
         f"/api/v1/teacher/assignments/{assignment_id}/submissions",
         headers=headers(teacher_token),

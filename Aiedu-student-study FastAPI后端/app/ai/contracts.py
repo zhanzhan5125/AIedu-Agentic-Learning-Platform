@@ -113,6 +113,21 @@ class GradingSuggestion(BaseModel):
     review_reason: str | None = None
 
 
+class AssignmentQuestionSummary(BaseModel):
+    question_id: int
+    summary: str = Field(min_length=1, max_length=2000)
+    strengths: list[str] = Field(default_factory=list, max_length=5)
+    common_issues: list[str] = Field(default_factory=list, max_length=5)
+    teaching_suggestion: str = Field(min_length=1, max_length=1000)
+    confidence: int = Field(default=0, ge=0, le=100)
+
+
+class AssignmentAnalysisResult(BaseModel):
+    overall_summary: str = Field(min_length=1, max_length=5000)
+    question_summaries: list[AssignmentQuestionSummary] = Field(default_factory=list, max_length=30)
+    confidence: int = Field(default=0, ge=0, le=100)
+
+
 class TutorAnswer(BaseModel):
     intent: Literal[
         "course_qa", "resource_lookup", "personalized_learning", "current_web",

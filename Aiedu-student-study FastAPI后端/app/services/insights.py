@@ -33,16 +33,18 @@ def assignment_insights(db: Session, assignment: Assignment) -> dict:
         Submission.assignment_id == assignment.id,
         Submission.status.in_(FINAL_STATUSES),
     )).all()
-    average = round(
-        sum(row.total_score / assignment.total_score * 100 for row in graded_rows) / len(graded_rows), 1
-    ) if graded_rows and assignment.total_score else None
-
     question_rows = db.execute(
         select(Question, AssignmentQuestion.position)
         .join(AssignmentQuestion, AssignmentQuestion.question_id == Question.id)
         .where(AssignmentQuestion.assignment_id == assignment.id)
         .order_by(AssignmentQuestion.position)
     ).all()
+    total_score = assignment.total_score or sum(question.score for question, _ in question_rows)
+    final_scores = [row.total_score for row in graded_rows if row.total_score is not None]
+    average = round(sum(final_scores) / len(final_scores), 1) if final_scores else None
+    average_rate = round(average / total_score * 100, 1) if (
+        average is not None and total_score
+    ) else None
     question_stats = []
     point_losses: dict[int, dict] = defaultdict(lambda: {"loss": 0.0, "weight": 0.0, "errors": defaultdict(int)})
     for question, position in question_rows:
@@ -56,21 +58,31 @@ def assignment_insights(db: Session, assignment: Assignment) -> dict:
                 Answer.question_id == question.id,
             )
         ).all()
-        rate = round(sum(a.score for a, _ in answers) / (len(answers) * question.score) * 100, 1) if answers and question.score else None
+        scores = [answer.score for answer, _ in answers if answer.score is not None]
+        question_average = round(sum(scores) / len(scores), 1) if scores else None
+        rate = round(question_average / question.score * 100, 1) if (
+            question_average is not None and question.score
+        ) else None
         bindings = db.execute(
             select(QuestionKnowledgePoint, KnowledgePoint)
             .join(KnowledgePoint, KnowledgePoint.id == QuestionKnowledgePoint.knowledge_point_id)
             .where(QuestionKnowledgePoint.question_id == question.id)
         ).all()
         errors: dict[str, int] = defaultdict(int)
-        for _, analysis in answers:
-            if analysis and analysis.error_type:
-                errors[analysis.error_type] += 1
+        for answer, analysis in answers:
+            error_type = (analysis.error_type if analysis and analysis.error_type else
+                          (answer.ai_raw or {}).get("error_type"))
+            if error_type:
+                errors[str(error_type)] += 1
         question_stats.append({
             "question_id": question.id,
             "position": position,
             "prompt": question.prompt,
             "submission_count": len(answers),
+            "max_score": question.score,
+            "average_score": question_average,
+            "highest_score": max(scores) if scores else None,
+            "lowest_score": min(scores) if scores else None,
             "score_rate": rate,
             "is_error_prone": len(answers) >= 5 and rate is not None and rate < 60,
             "knowledge_points": [{"id": kp.id, "name": kp.name, "weight": link.weight} for link, kp in bindings],
@@ -92,7 +104,11 @@ def assignment_insights(db: Session, assignment: Assignment) -> dict:
     weak_points.sort(key=lambda item: item["loss_rate"], reverse=True)
     return {
         "assignment_id": assignment.id,
+        "total_score": total_score,
         "average_score": average,
+        "average_rate": average_rate,
+        "highest_score": max(final_scores) if final_scores else None,
+        "lowest_score": min(final_scores) if final_scores else None,
         "assigned_count": assigned,
         "submitted_count": submitted,
         "submission_rate": round(submitted / assigned * 100, 1) if assigned else 0,
