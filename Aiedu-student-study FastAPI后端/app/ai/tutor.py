@@ -7,7 +7,8 @@ from time import perf_counter
 from sqlalchemy.orm import Session
 
 from app.ai.contracts import (
-    AgentPlan, Citation, PlanStep, StudentLearningBrief, TutorAnswer, ValidationResult,
+    AgentPlan, Citation, PlanStep, StudentLearningBrief, TutorAnswer, TutorRoutingDecision,
+    ValidationResult,
 )
 from app.core.config import get_settings
 from app.integrations.ai_provider import structured_completion
@@ -60,6 +61,81 @@ def _needs_learning_profile(question: str, conversation_memory: dict | None) -> 
     recent = (conversation_memory or {}).get("recent_messages", [])
     recent_user_messages = [item.get("content", "") for item in recent if item.get("role") == "user"]
     return any(_contains_profile_signal(item) for item in recent_user_messages[-2:])
+
+
+def _fallback_routing(question: str, conversation_memory: dict | None) -> TutorRoutingDecision:
+    """Deterministic availability fallback; the enabled model is the primary router."""
+    identity_request = _is_personal_identity(question)
+    if identity_request or _needs_learning_profile(question, conversation_memory):
+        return TutorRoutingDecision(
+            intent="personalized_learning",
+            delegate_student_learning_assistant=True,
+            search_course_materials=not identity_request,
+            identity_request=identity_request,
+            rationale="模型路由不可用，使用受控的个人学习问题回退规则。",
+        )
+    if any(marker in question for marker in CURRENT_MARKERS):
+        return TutorRoutingDecision(
+            intent="current_web", search_course_materials=True, search_web=True,
+            rationale="模型路由不可用，问题包含明显的时效信息请求。",
+        )
+    if any(marker in question for marker in RESOURCE_MARKERS):
+        return TutorRoutingDecision(
+            intent="resource_lookup", search_course_materials=True,
+            rationale="模型路由不可用，问题包含明确的资料定位请求。",
+        )
+    return TutorRoutingDecision(
+        intent="course_qa", search_course_materials=True,
+        rationale="模型路由不可用，按普通课程问答处理。",
+    )
+
+
+def _route_with_model(question: str, conversation_memory: dict | None) -> tuple[TutorRoutingDecision, dict, str]:
+    settings = get_settings()
+    if not settings.enable_llm or not settings.ai_api_key:
+        return _fallback_routing(question, conversation_memory), {}, "deterministic-fallback"
+    try:
+        decision, metadata = structured_completion(
+            TutorRoutingDecision,
+            system_prompt=(
+                "你是 AIedu 学生问答智能体的意图规划节点。请根据当前问题和最近对话自主决定处理路径。"
+                "personalized_learning 包括身份、个人掌握情况、薄弱原因、个人复习计划和个性化练习；"
+                "resource_lookup 用于页码、课件或资料出处定位；current_web 只用于明确需要最新或实时信息的问题；"
+                "chitchat 仅用于与课程学习无关的闲聊；其余课程问题使用 course_qa。"
+                "只有确实需要姓名或学习画像时才委派学生学习助手。"
+                "课程事实优先检索课程资料；需要实时外部信息时才使用网页搜索。"
+                "rationale 只写一句可审计的决策摘要，不要输出思维链。"
+            ),
+            user_prompt=json.dumps({
+                "question": question,
+                "conversation_summary": (conversation_memory or {}).get("summary"),
+                "recent_messages": (conversation_memory or {}).get("recent_messages", [])[-4:],
+            }, ensure_ascii=False, default=str),
+            max_tokens=500,
+            timeout_seconds=45,
+            max_retries=0,
+        )
+        updates = {}
+        if decision.intent == "personalized_learning" or decision.identity_request:
+            updates["delegate_student_learning_assistant"] = True
+        if decision.identity_request:
+            updates.update({"intent": "personalized_learning", "search_course_materials": False,
+                            "search_web": False})
+        if decision.intent == "current_web":
+            updates["search_web"] = True
+        if decision.intent == "chitchat":
+            updates.update({"delegate_student_learning_assistant": False,
+                            "search_course_materials": False, "search_web": False})
+        return decision.model_copy(update=updates), metadata, "model"
+    except Exception:
+        return _fallback_routing(question, conversation_memory), {}, "deterministic-fallback"
+
+
+def _merge_usage(*values: dict | None) -> dict[str, int]:
+    return {
+        key: sum(int((value or {}).get(key) or 0) for value in values)
+        for key in ("prompt", "completion", "total")
+    }
 
 
 def _citation(row: dict) -> dict:
@@ -147,38 +223,59 @@ def run_student_qa(
     """A bounded Student QA run with conditional learning-agent delegation."""
     steps: list[dict] = []
     started = perf_counter()
-    identity_request = False
-    if guided:
-        intent = "assignment_guidance"
-    elif _is_greeting(question):
-        intent = "chitchat"
-    elif _is_personal_identity(question):
-        intent = "personalized_learning"
-        identity_request = True
-    elif _needs_learning_profile(question, conversation_memory):
-        intent = "personalized_learning"
-    elif any(marker in question for marker in CURRENT_MARKERS):
-        intent = "current_web"
-    elif any(marker in question for marker in RESOURCE_MARKERS):
-        intent = "resource_lookup"
-    else:
-        intent = "course_qa"
     steps.append(_step("prepare_context", "open_assignment_similarity", started, {
-        "guided": guided, "similarity": round(similarity, 4), "intent": intent,
+        "guided": guided, "similarity": round(similarity, 4),
         "memory_messages": len((conversation_memory or {}).get("recent_messages", [])),
     }))
+    routing_started = perf_counter()
+    routing_metadata: dict = {}
+    if guided:
+        intent = "assignment_guidance"
+        identity_request = False
+        delegate_learning = False
+        search_materials = False
+        search_web = False
+        routing_mode = "policy-guard"
+        routing_reason = "问题与开放作业高度相似，确定性防抄策略优先。"
+    elif _is_greeting(question):
+        intent = "chitchat"
+        identity_request = False
+        delegate_learning = False
+        search_materials = False
+        search_web = False
+        routing_mode = "fast-path"
+        routing_reason = "精确问候走低延迟回复。"
+    else:
+        routing, routing_metadata, routing_mode = _route_with_model(question, conversation_memory)
+        intent = routing.intent
+        identity_request = routing.identity_request
+        delegate_learning = routing.delegate_student_learning_assistant
+        search_materials = routing.search_course_materials
+        search_web = routing.search_web
+        routing_reason = routing.rationale
+    steps.append(_step("route_intent", (
+        "structured_intent_router" if routing_mode == "model" else routing_mode
+    ), routing_started, {
+        "intent": intent,
+        "routing_mode": routing_mode, "routing_reason": routing_reason,
+        "delegate_student_learning_assistant": delegate_learning,
+        "search_course_materials": search_materials, "search_web": search_web,
+    }, "planning"))
 
     plan_started = perf_counter()
     plan_steps = [
         PlanStep(id="1", action="检查开放作业相似度并识别问题类型",
                  tool="open_assignment_similarity", reason="先执行防抄策略并确定所需证据"),
     ]
-    if intent == "personalized_learning":
+    if delegate_learning:
         plan_steps.append(PlanStep(id="2", action="委派学生学习助手读取精简画像",
-                                   tool="delegate_student_learning_assistant", reason="问题明确要求结合个人情况"))
-    if not guided and intent != "chitchat" and not identity_request:
+                                   tool="delegate_student_learning_assistant", reason=routing_reason))
+    if search_materials:
         plan_steps.append(PlanStep(id=str(len(plan_steps) + 1), action="检索课程资料",
                                    tool="search_course_materials", reason="以课程内证据回答"))
+    if search_web:
+        plan_steps.append(PlanStep(id=str(len(plan_steps) + 1), action="搜索时效性网页信息",
+                                   tool="web_search", reason="问题需要课程资料之外的当前信息"))
     plan_steps.append(PlanStep(id=str(len(plan_steps) + 1), action="生成回答并执行证据自检",
                                tool="validate_tutor_answer", reason="防止无依据回答或泄露作业答案"))
     plan = AgentPlan(goal=question, steps=plan_steps[:4]).model_dump()
@@ -189,7 +286,7 @@ def run_student_qa(
     used_web = False
     learning_brief = None
     delegations: list[dict] = []
-    if intent == "personalized_learning":
+    if delegate_learning:
         learning_brief = _learning_brief(db, student_id, offering_id, question)
         delegations.append({
             "agent_name": "student_learning_assistant", "task_type": "student_learning_brief",
@@ -208,23 +305,24 @@ def run_student_qa(
                                    "detail_count": len(learning_brief["point_details"])},
             }],
         })
-    if not guided and intent != "chitchat" and not identity_request:
+    if search_materials:
         citations = [_citation(row) for row in search_course(offering_id, question, limit=6, db=db)]
-        if intent == "current_web" and not citations and get_settings().tavily_api_key:
-            citations = [Citation(
+    if search_web and get_settings().tavily_api_key:
+        web_citations = [Citation(
                 resource_id=None, title=item["title"], position=index,
                 excerpt=item["excerpt"], score=item.get("score"), url=item.get("url"),
                 fetched_at=item.get("fetched_at"), source="web",
             ).model_dump() for index, item in enumerate(web_search(question), 1)]
-            used_web = bool(citations)
+        citations = [*citations, *web_citations][:12]
+        used_web = bool(web_citations)
     steps.append(_step("execute_tools", "bounded_tool_executor", tool_started, {
         "citation_count": len(citations), "delegation_count": len(delegations),
         "web_search": "used" if used_web else (
-            "unavailable" if intent == "current_web" and not get_settings().tavily_api_key else "not_needed"),
+            "unavailable" if search_web and not get_settings().tavily_api_key else "not_needed"),
     }, "tool"))
 
     compose_started = perf_counter()
-    token_usage = {"prompt": 0, "completion": 0, "total": 0}
+    token_usage = routing_metadata.get("token_usage") or {"prompt": 0, "completion": 0, "total": 0}
     model_fallback = False
     if guided:
         answer = TutorAnswer(
@@ -266,9 +364,9 @@ def run_student_qa(
                                         "conversation_memory": conversation_memory or {}},
                                        ensure_ascii=False, default=str),
             )
-            token_usage = metadata.get("token_usage") or token_usage
+            token_usage = _merge_usage(token_usage, metadata.get("token_usage"))
         except Exception:
-            if intent != "personalized_learning" or not learning_brief:
+            if not learning_brief:
                 raise
             model_fallback = True
             answer = TutorAnswer(
@@ -301,6 +399,8 @@ def run_student_qa(
                     "你可以换一种问法，或请教师补充相关资料。"),
             evidence_sufficient=False,
         )
+    if learning_brief:
+        answer.used_learning_profile = True
     steps.append(_step("compose_result", "structured_llm" if token_usage["total"] else "deterministic_fallback",
                        compose_started, {"intent": intent, "policy_mode": answer.policy_mode,
                                          "model_fallback": model_fallback}))
@@ -329,5 +429,10 @@ def run_student_qa(
         "result": answer.model_dump(), "validation": validation.model_dump(),
         "needs_review": False, "reflection_count": 0, "steps": steps,
         "delegations": delegations, "token_usage": token_usage,
+        "routing": {
+            "mode": routing_mode, "reason": routing_reason,
+            "delegate_student_learning_assistant": delegate_learning,
+            "search_course_materials": search_materials, "search_web": search_web,
+        },
         "matched_assignment_id": matched_assignment_id,
     }

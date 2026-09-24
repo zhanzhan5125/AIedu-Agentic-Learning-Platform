@@ -6,8 +6,8 @@ import openai
 import pytest
 from pydantic import BaseModel
 
-from app.ai.contracts import CourseMapDraft
-from app.ai import workflows
+from app.ai.contracts import AssignmentRoutingDecision, CourseMapDraft, TutorRoutingDecision
+from app.ai import tutor, workflows
 from app.integrations import ai_provider
 from app.integrations.ai_provider import _json_payload
 from app.schemas import AssignmentDraftRequest
@@ -125,6 +125,58 @@ def test_structured_completion_prefers_strict_json_schema(monkeypatch):
     assert captured["response_format"]["json_schema"]["strict"] is True
     assert metadata["structured_output_mode"] == "json_schema"
     assert metadata["json_repair_applied"] is False
+
+
+def test_student_qa_model_router_can_autonomously_delegate_learning_agent(monkeypatch):
+    monkeypatch.setattr(tutor, "get_settings", lambda: SimpleNamespace(
+        enable_llm=True, ai_api_key="test",
+    ))
+    monkeypatch.setattr(tutor, "structured_completion", lambda schema, **_kwargs: (
+        TutorRoutingDecision(
+            intent="personalized_learning",
+            delegate_student_learning_assistant=True,
+            search_course_materials=False,
+            search_web=False,
+            rationale="问题需要结合学生近期作业表现。",
+        ),
+        {"token_usage": {"prompt": 10, "completion": 5, "total": 15}},
+    ) if schema is TutorRoutingDecision else (_ for _ in ()).throw(AssertionError(schema)))
+
+    decision, metadata, mode = tutor._route_with_model(
+        "结合最近的作业表现，接下来应该重点学什么？", None,
+    )
+
+    assert mode == "model"
+    assert decision.intent == "personalized_learning"
+    assert decision.delegate_student_learning_assistant is True
+    assert decision.search_course_materials is False
+    assert metadata["token_usage"]["total"] == 15
+
+
+def test_assignment_model_router_can_skip_course_agent_for_explicit_scope(monkeypatch):
+    monkeypatch.setattr(workflows, "get_settings", lambda: SimpleNamespace(
+        enable_llm=True, ai_api_key="test",
+    ))
+    monkeypatch.setattr(workflows, "structured_completion", lambda schema, **_kwargs: (
+        AssignmentRoutingDecision(
+            delegate_teacher_course_assistant=False,
+            include_class_insights=False,
+            search_course_materials=True,
+            rationale="教师已明确选择章节和知识点，直接检索资料即可。",
+        ),
+        {"token_usage": {"prompt": 8, "completion": 4, "total": 12}},
+    ) if schema is AssignmentRoutingDecision else (_ for _ in ()).throw(AssertionError(schema)))
+
+    decision, metadata, mode = workflows._assignment_routing({
+        "context": {"course": {"name": "程序设计"}},
+        "input_data": {"selected_chapter_names": ["第一章"],
+                       "knowledge_point_ids": [1, 2, 3]},
+    })
+
+    assert mode == "model"
+    assert decision.delegate_teacher_course_assistant is False
+    assert decision.search_course_materials is True
+    assert metadata["token_usage"]["total"] == 12
 
 
 def test_assignment_fallback_covers_selected_question_kinds():

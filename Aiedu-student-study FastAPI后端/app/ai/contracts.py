@@ -70,6 +70,24 @@ class StudentLearningBrief(BaseModel):
     point_details: list[StudentLearningPointBrief] = Field(default_factory=list, max_length=20)
 
 
+class TutorRoutingDecision(BaseModel):
+    intent: Literal[
+        "course_qa", "resource_lookup", "personalized_learning", "current_web", "chitchat"
+    ]
+    delegate_student_learning_assistant: bool = False
+    search_course_materials: bool = True
+    search_web: bool = False
+    identity_request: bool = False
+    rationale: str = Field(min_length=1, max_length=500)
+
+
+class AssignmentRoutingDecision(BaseModel):
+    delegate_teacher_course_assistant: bool = True
+    include_class_insights: bool = False
+    search_course_materials: bool = True
+    rationale: str = Field(min_length=1, max_length=500)
+
+
 class AssignmentQuestionDraft(BaseModel):
     kind: Literal["short_answer", "single_choice", "multiple_choice", "programming"] = "short_answer"
     prompt: str = Field(min_length=1, max_length=20_000)

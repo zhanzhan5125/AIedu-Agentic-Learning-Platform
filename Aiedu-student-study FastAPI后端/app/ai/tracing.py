@@ -47,6 +47,7 @@ def persist_execution_trace(
     run.result = {
         **public_result,
         "_validation": output.get("validation"),
+        "_routing": output.get("routing"),
         "_agent": {
             "name": output.get("agent_name"),
             "task_type": output.get("task_type"),

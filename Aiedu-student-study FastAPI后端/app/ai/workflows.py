@@ -10,7 +10,7 @@ from sqlalchemy import select
 
 from app.ai.contracts import (
     AgentPlan, AssignmentAnalysisResult, AssignmentDraftResult, AssignmentQuestionDraft,
-    AssignmentQuestionSummary, Citation,
+    AssignmentQuestionSummary, AssignmentRoutingDecision, Citation,
     ChapterKnowledgeBatch, CourseChapterPlan, CourseContextBrief, CourseMapDraft,
     CourseMapEdgeDraft, CourseMapNodeDraft, GradingSuggestion, GradeSuggestionItem, PlanStep,
     PracticeFeedbackItem, PracticeFeedbackResult, StudentLearningBrief, ValidationResult,
@@ -60,6 +60,7 @@ class WorkflowState(TypedDict, total=False):
     needs_review: bool
     steps: list[dict[str, Any]]
     token_usage: dict[str, int]
+    routing: dict[str, Any]
 
 
 def agent_identity(kind: str) -> tuple[str, str]:
@@ -141,16 +142,77 @@ def prepare_context(state: WorkflowState) -> WorkflowState:
     return seeded
 
 
+def _merge_token_usage(*values: dict | None) -> dict[str, int]:
+    return {
+        key: sum(int((value or {}).get(key) or 0) for value in values)
+        for key in ("prompt", "completion", "total")
+    }
+
+
+def _assignment_routing(state: WorkflowState) -> tuple[AssignmentRoutingDecision, dict, str]:
+    fallback = AssignmentRoutingDecision(
+        delegate_teacher_course_assistant=True,
+        include_class_insights=True,
+        search_course_materials=True,
+        rationale="模型路由不可用，沿用课程上下文、班级学情和资料检索的可靠路径。",
+    )
+    settings = get_settings()
+    if not settings.enable_llm or not settings.ai_api_key:
+        return fallback, {}, "deterministic-fallback"
+    try:
+        decision, metadata = structured_completion(
+            AssignmentRoutingDecision,
+            system_prompt=(
+                "你是 AIedu 教师出题/批阅智能体的任务规划节点。请根据教师的出题约束自主决定是否委派教师课程助手。"
+                "当教师要求结合班级薄弱点、学情、自适应难度，或出题范围不够明确时，应委派课程助手；"
+                "当教师已经明确选择章节和知识点，只需资料依据即可由出题智能体直接检索，不必委派。"
+                "include_class_insights 仅在任务确实需要班级表现时开启。生成题目必须检索课程资料，"
+                "因此 search_course_materials 应为 true。rationale 只写一句可审计摘要，不要输出思维链。"
+            ),
+            user_prompt=json.dumps({
+                "course": state.get("context", {}).get("course"),
+                "teacher_requirements": state.get("input_data", {}),
+                "teacher_prompt": state.get("prompt"),
+            }, ensure_ascii=False, default=str),
+            max_tokens=400,
+            timeout_seconds=45,
+            max_retries=0,
+        )
+        updates = {"search_course_materials": True}
+        if decision.include_class_insights:
+            updates["delegate_teacher_course_assistant"] = True
+        return decision.model_copy(update=updates), metadata, "model"
+    except Exception:
+        return fallback, {}, "deterministic-fallback"
+
+
 def make_plan(state: WorkflowState) -> WorkflowState:
     started = perf_counter()
     kind = state["kind"]
     if kind == "assignment.draft":
-        steps = [
-            PlanStep(id="1", action="获取课程和班级上下文", tool="delegate_teacher_course_assistant", reason="题目必须与课程范围和班级情况一致"),
-            PlanStep(id="2", action="检索可引用的课程资料", tool="search_course_materials", reason="为题目和答案提供资料依据"),
-            PlanStep(id="3", action="生成题目、答案与评分标准", tool=None, reason="形成教师可审核的结构化草稿"),
-            PlanStep(id="4", action="校验题量、难度、分值和依据", tool="validate_assignment_draft", reason="阻止不符合约束的草稿进入业务表"),
-        ]
+        routing, routing_metadata, routing_mode = _assignment_routing(state)
+        steps = []
+        if routing.delegate_teacher_course_assistant:
+            steps.append(PlanStep(
+                id=str(len(steps) + 1), action="委派课程助手准备课程上下文",
+                tool="delegate_teacher_course_assistant", reason=routing.rationale,
+            ))
+        elif routing.search_course_materials:
+            steps.append(PlanStep(
+                id=str(len(steps) + 1), action="直接检索所选范围的课程资料",
+                tool="search_course_materials", reason=routing.rationale,
+            ))
+        steps.extend([
+            PlanStep(id=str(len(steps) + 1), action="生成题目、答案与评分标准", tool=None, reason="形成教师可审核的结构化草稿"),
+            PlanStep(id=str(len(steps) + 2), action="校验题量、难度、分值和依据", tool="validate_assignment_draft", reason="阻止不符合约束的草稿进入业务表"),
+        ])
+        state = {
+            **state,
+            "routing": {**routing.model_dump(), "mode": routing_mode},
+            "token_usage": _merge_token_usage(
+                state.get("token_usage"), routing_metadata.get("token_usage")
+            ),
+        }
     elif kind == "grading.single":
         steps = [
             PlanStep(id="1", action="读取题目、答案和学生作答", tool="get_submission_answers", reason="评分必须以真实作答为依据"),
@@ -192,8 +254,12 @@ def make_plan(state: WorkflowState) -> WorkflowState:
     plan = AgentPlan(goal=state.get("prompt") or f"完成 {state['task_type']} 任务", steps=steps)
     result = {**state, "plan": plan.model_dump()}
     result["steps"] = _step(
-        result, "make_plan", tool_name=None,
-        summary={"step_count": len(steps), "tool_budget": plan.max_tool_calls}, started=started,
+        result, "make_plan", tool_name=(
+            "structured_intent_router"
+            if result.get("routing", {}).get("mode") == "model" else None
+        ),
+        summary={"step_count": len(steps), "tool_budget": plan.max_tool_calls,
+                 "routing": result.get("routing")}, started=started,
         step_type="planning",
     )
     return result
@@ -226,17 +292,28 @@ def _course_brief(db, offering_id: int, query: str, include_class: bool) -> tupl
         recommended_coverage=list(dict.fromkeys([*weak, *key_points]))[:10],
         citations=_citations(rows),
     ).model_dump()
+    child_steps = [
+        PlanStep(id="1", action="读取课程知识点和资料", tool="get_course_resources", reason="限定课程范围"),
+    ]
+    if include_class:
+        child_steps.append(PlanStep(
+            id=str(len(child_steps) + 1), action="分析班级薄弱点",
+            tool="get_class_insights", reason="提供差异化覆盖建议",
+        ))
+    child_steps.append(PlanStep(
+        id=str(len(child_steps) + 1), action="检索资料并形成简报",
+        tool="search_course_materials", reason="返回可引用证据",
+    ))
     delegation = {
         "agent_name": "teacher_course_assistant", "task_type": "course_context_brief",
         "result": brief,
-        "plan": AgentPlan(goal="为出题智能体准备课程上下文", steps=[
-            PlanStep(id="1", action="读取课程知识点和资料", tool="get_course_resources", reason="限定课程范围"),
-            PlanStep(id="2", action="分析班级薄弱点", tool="get_class_insights", reason="提供差异化覆盖建议"),
-            PlanStep(id="3", action="检索资料并形成简报", tool="search_course_materials", reason="返回可引用证据"),
-        ]).model_dump(),
+        "plan": AgentPlan(goal="为出题智能体准备课程上下文", steps=child_steps).model_dump(),
         "steps": [{
             "node_name": "build_course_context_brief", "agent_name": "teacher_course_assistant",
-            "step_type": "delegation", "tool_name": "get_class_insights+search_course_materials",
+            "step_type": "delegation", "tool_name": (
+                "get_class_insights+search_course_materials" if include_class else
+                "search_course_materials"
+            ),
             "output_summary": {"key_point_count": len(key_points), "citation_count": len(rows)},
             "duration_ms": 0,
         }],
@@ -386,8 +463,17 @@ def execute_tools(state: WorkflowState) -> WorkflowState:
     query = " ".join(query_terms) or state.get("prompt") or "课程核心知识点"
     with SessionLocal() as db:
         if state["kind"] == "assignment.draft" and offering_id:
-            brief, delegations = _course_brief(db, offering_id, query, include_class=True)
-            tools["course_context"] = brief
+            routing = state.get("routing", {})
+            if routing.get("delegate_teacher_course_assistant", True):
+                brief, delegations = _course_brief(
+                    db, offering_id, query,
+                    include_class=bool(routing.get("include_class_insights", True)),
+                )
+                tools["course_context"] = brief
+            elif routing.get("search_course_materials", True):
+                tools["citations"] = _citations(
+                    search_course(offering_id, query, limit=6, db=db)
+                )
         elif offering_id and state["kind"] not in {
             "course_map.generate", "grading.single", "assignment.summary", "practice.feedback",
         }:
@@ -1132,7 +1218,9 @@ def compose_result(state: WorkflowState) -> WorkflowState:
         draft = {"mode": "deterministic-fallback", "summary": "已完成课程上下文读取与资料检索。",
                  "citations": state.get("tool_results", {}).get("citations", [])}
     result = {**state, "draft": draft,
-              "token_usage": metadata.get("token_usage") or state.get("token_usage", {})}
+              "token_usage": _merge_token_usage(
+                  state.get("token_usage"), metadata.get("token_usage")
+              )}
     result["steps"] = _step(
         result, "compose_result", tool_name="structured_llm" if metadata else "deterministic_fallback",
         summary={"mode": draft.get("mode"), "schema": state["task_type"],
@@ -1605,5 +1693,5 @@ def run_workflow(kind: str, resource_id: int, prompt: str | None = None,
         "needs_review": state.get("needs_review", False),
         "reflection_count": state.get("reflection_count", 0),
         "steps": state.get("steps", []), "delegations": state.get("delegations", []),
-        "token_usage": state.get("token_usage"),
+        "token_usage": state.get("token_usage"), "routing": state.get("routing"),
     }
