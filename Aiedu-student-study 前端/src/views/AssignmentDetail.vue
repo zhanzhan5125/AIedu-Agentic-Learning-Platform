@@ -1,25 +1,5 @@
 <template>
   <div class="detail-page">
-    <div class="course-header">
-      <p>{{ course.title || course.tittle }}</p>
-      <el-menu
-        :default-active="'/assignment'" router mode="horizontal"
-        background-color="white" text-color="black" active-text-color="#2196f3"
-        class="course-menu"
-      >
-        <el-menu-item index="/course">首页</el-menu-item>
-        <el-menu-item index="/assignment">作业</el-menu-item>
-        <el-menu-item index="/course_insights">学情洞察</el-menu-item>
-        <el-menu-item index="/agent_studio">智能体工作台</el-menu-item>
-        <el-menu-item index="/chatpage" :disabled="true">考试</el-menu-item>
-        <el-menu-item index="/course_resources">资料</el-menu-item>
-        <el-menu-item index="/course_messages">
-          <MessageUnreadBadge :offering-id="course.offeringId || course.id || course.courseCode" />
-        </el-menu-item>
-        <el-menu-item index="/manage_stu">管理</el-menu-item>
-      </el-menu>
-    </div>
-
     <main class="detail-main" v-loading="loading">
       <div class="page-title">
         <div>
@@ -173,7 +153,6 @@ export default {
   name: 'AssignmentDetail',
   data() {
     return {
-      course: {},
       currentAssignment: {},
       insight: { questions: [] },
       analysis: null,
@@ -191,7 +170,6 @@ export default {
     }
   },
   async created() {
-    this.course = this.$store.getters.getCourse || {}
     this.currentAssignment = this.$store.getters.getCurrentAssignment || {}
     await this.loadStats()
     if (this.insight.graded_count) await this.loadAiAnalysis(false)
@@ -254,10 +232,7 @@ export default {
 
 <style scoped>
 .detail-page { height: 100vh; background: #f5f7fa; overflow: hidden; }
-.course-header { height: 61px; display: flex; align-items: center; border-bottom: 1px solid #ddd; background: #fff; }
-.course-header > p { margin: 0; padding-left: 70px; color: #2196f3; font-size: 18px; }
-.course-menu { flex: 1; display: flex; justify-content: flex-end; padding-right: 50px; border-bottom: none; }
-.detail-main { height: calc(100vh - 61px); overflow-y: auto; box-sizing: border-box; padding: 24px 6% 48px; }
+.detail-main { height: 100vh; overflow-y: auto; box-sizing: border-box; padding: 24px 6% 48px; }
 .page-title { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 18px; }
 .page-title h2, .section-heading h3 { margin: 0 0 7px; color: #1f2d3d; }
 .page-title p, .section-heading p { margin: 0; color: #8492a6; font-size: 13px; }
