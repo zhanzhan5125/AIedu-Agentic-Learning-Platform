@@ -192,7 +192,11 @@ export default {
         this.totalItem = this.tableData.length
         this.total_score = detail.total_score || this.tableData.reduce((sum, item) => sum + item.score, 0)
         this.total_stuScore = detail.submission?.total_score || 0
-        if (this.totalItem > 0) this.changeProblem(this.tableData[0].porder)
+        if (this.totalItem > 0) {
+          const requestedPosition = Number(this.$route.query.question)
+          const target = this.tableData.find(item => item.porder === requestedPosition) || this.tableData[0]
+          this.changeProblem(target.porder)
+        }
       } catch (error) {
         this.$message.error(error.response?.data?.msg || '批阅结果加载失败，请稍后重试')
       }

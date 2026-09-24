@@ -174,6 +174,16 @@ class PracticeJobRequest(BaseModel):
     prompt: str | None = Field(default=None, max_length=5000)
 
 
+class PracticeAnswerInput(BaseModel):
+    question_index: int = Field(ge=0, le=100)
+    content: str = Field(min_length=1, max_length=20_000)
+
+
+class PracticeSubmitRequest(BaseModel):
+    answers: list[PracticeAnswerInput] = Field(min_length=1, max_length=20)
+    idempotency_key: str = Field(min_length=8, max_length=128)
+
+
 class CourseMapDraftRequest(BaseModel):
     resource_ids: list[int] = Field(default_factory=list, max_length=50)
     prompt: str | None = Field(default=None, max_length=5000)

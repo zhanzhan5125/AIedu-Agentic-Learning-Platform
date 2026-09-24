@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, Request, status
-from sqlalchemy import select
+from fastapi import APIRouter, Depends, Query, Request, status
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
@@ -23,11 +23,12 @@ from app.models import (
     JobStatus,
     KnowledgePoint,
     OutboxEvent,
+    PracticeSession,
     Role,
     User,
 )
 from app.schemas import (AgentFeedbackCreate, AssignmentDraftRequest, CourseMapDraftRequest,
-                         PracticeJobRequest)
+                         PracticeJobRequest, PracticeSubmitRequest)
 from app.ai.workflows import agent_identity
 from app.services.access import offering_for_user
 from app.services.learning import profile_view
@@ -221,6 +222,128 @@ def latest_offering_practice(offering_id: int, request: Request,
         "error": run.error,
         "created_at": run.created_at,
         "updated_at": run.updated_at,
+    }, request.state.request_id)
+
+
+def _practice_session_view(db: Session, session: PracticeSession, *, detail: bool = False) -> dict:
+    completed = session.status == "completed"
+    answers = {
+        int(item.get("question_index")): item.get("content", "")
+        for item in (session.answers or [])
+    }
+    feedback_items = {
+        int(item.get("question_index")): item
+        for item in ((session.feedback or {}).get("items") or [])
+    }
+    questions = []
+    if detail:
+        for index, source in enumerate(session.questions or []):
+            question = {
+                "question_index": index,
+                "kind": source.get("kind", "short_answer"),
+                "prompt": source.get("prompt", ""),
+                "score": int(source.get("score") or 10),
+                "difficulty": int(source.get("difficulty") or 2),
+                "knowledge_point_ids": source.get("knowledge_point_ids") or [],
+                "student_answer": answers.get(index, ""),
+                "feedback": feedback_items.get(index) if completed else None,
+            }
+            # 参考答案与评分点只在提交并完成反馈后开放，避免练习前直接泄题。
+            if completed:
+                question["reference_answer"] = source.get("reference_answer", "")
+                question["rubric"] = source.get("rubric") or []
+            questions.append(question)
+    assignment = db.get(Assignment, session.assignment_id) if session.assignment_id else None
+    return {
+        "id": session.id,
+        "offering_id": session.offering_id,
+        "assignment_id": session.assignment_id,
+        "assignment_title": assignment.title if assignment else None,
+        "status": session.status,
+        "rationale": session.rationale,
+        "question_count": len(session.questions or []),
+        "questions": questions,
+        "score": session.score,
+        "total_score": session.total_score,
+        "summary": (session.feedback or {}).get("summary") if completed else None,
+        "agent_run_id": session.agent_run_id,
+        "created_at": session.created_at,
+        "updated_at": session.updated_at,
+        "completed_at": session.completed_at,
+    }
+
+
+@router.get("/student/offerings/{offering_id}/practice-sessions")
+def list_practice_sessions(offering_id: int, request: Request,
+                           page: int = Query(default=1, ge=1),
+                           page_size: int = Query(default=20, ge=1, le=100),
+                           user: User = Depends(require_roles(Role.student)),
+                           db: Session = Depends(get_db)):
+    offering_for_user(db, offering_id, user)
+    filters = (
+        PracticeSession.student_id == user.id,
+        PracticeSession.offering_id == offering_id,
+    )
+    total = db.scalar(select(func.count(PracticeSession.id)).where(*filters)) or 0
+    rows = db.scalars(select(PracticeSession).where(*filters).order_by(
+        PracticeSession.created_at.desc(), PracticeSession.id.desc()
+    ).offset((page - 1) * page_size).limit(page_size)).all()
+    return ok({
+        "items": [_practice_session_view(db, row) for row in rows],
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+    }, request.state.request_id)
+
+
+@router.get("/student/practice-sessions/{session_id}")
+def get_practice_session(session_id: int, request: Request,
+                         user: User = Depends(require_roles(Role.student)),
+                         db: Session = Depends(get_db)):
+    session = db.get(PracticeSession, session_id)
+    if session is None or session.student_id != user.id:
+        raise NotFound("个人练习不存在")
+    offering_for_user(db, session.offering_id, user)
+    return ok(_practice_session_view(db, session, detail=True), request.state.request_id)
+
+
+@router.post("/student/practice-sessions/{session_id}/submit", status_code=status.HTTP_202_ACCEPTED)
+def submit_practice_session(session_id: int, payload: PracticeSubmitRequest, request: Request,
+                            user: User = Depends(require_roles(Role.student)),
+                            db: Session = Depends(get_db)):
+    session = db.get(PracticeSession, session_id)
+    if session is None or session.student_id != user.id:
+        raise NotFound("个人练习不存在")
+    offering_for_user(db, session.offering_id, user)
+    if session.status == "completed":
+        raise Conflict("这次练习已经完成")
+    if session.status == "feedback_pending":
+        raise Conflict("练习反馈正在生成，请稍候")
+    expected_indices = set(range(len(session.questions or [])))
+    submitted_indices = [item.question_index for item in payload.answers]
+    if len(submitted_indices) != len(set(submitted_indices)):
+        raise Conflict("同一道练习题不能重复提交")
+    if set(submitted_indices) != expected_indices:
+        raise Conflict("请完成全部练习题后再提交")
+    session.answers = [item.model_dump() for item in sorted(
+        payload.answers, key=lambda value: value.question_index
+    )]
+    session.status = "feedback_pending"
+    job, run = queue_agent(
+        db,
+        kind="practice.feedback",
+        resource_type="practice_session",
+        resource_id=session.id,
+        owner=user,
+        idempotency_key=payload.idempotency_key,
+        input_data={"offering_id": session.offering_id, "practice_session_id": session.id},
+    )
+    db.commit()
+    return ok({
+        "practice_session_id": session.id,
+        "job_id": job.id,
+        "agent_run_id": run.id,
+        "status": job.status.value,
     }, request.state.request_id)
 
 

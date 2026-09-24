@@ -87,6 +87,29 @@ class AssignmentDraftResult(BaseModel):
     questions: list[AssignmentQuestionDraft] = Field(min_length=1, max_length=30)
 
 
+class PracticeFeedbackItem(BaseModel):
+    question_index: int = Field(ge=0)
+    score: int = Field(ge=0)
+    max_score: int = Field(ge=1)
+    is_correct: bool = False
+    feedback: str = Field(min_length=1, max_length=2000)
+    error_type: str | None = Field(default=None, max_length=100)
+    knowledge_point_ids: list[int] = Field(default_factory=list, max_length=20)
+
+    @model_validator(mode="after")
+    def score_not_above_maximum(self):
+        if self.score > self.max_score:
+            raise ValueError("score cannot exceed max_score")
+        return self
+
+
+class PracticeFeedbackResult(BaseModel):
+    items: list[PracticeFeedbackItem] = Field(min_length=1, max_length=20)
+    total_score: int = Field(ge=0)
+    max_score: int = Field(ge=1)
+    summary: str = Field(min_length=1, max_length=3000)
+
+
 class GradeSuggestionItem(BaseModel):
     answer_id: int
     score: int = Field(ge=0)

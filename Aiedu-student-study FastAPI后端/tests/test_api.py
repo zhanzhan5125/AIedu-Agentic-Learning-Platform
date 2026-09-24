@@ -6,7 +6,7 @@ from app.db import SessionLocal
 from app.models import (AIJob, AgentRun, AgentRunStep, Answer, Assignment, AssignmentQuestion, AssignmentStatus, Course,
                         CourseMapEdge, CourseMapNode, CourseMapVersion, CourseOffering, CourseResource,
                         Enrollment, KnowledgePoint, Notification,
-                        JobStatus, OfferingStatus, OutboxEvent, ProcessingStatus, Question,
+                        JobStatus, OfferingStatus, OutboxEvent, PracticeSession, ProcessingStatus, Question,
                         QuestionKnowledgePoint, ResourceChunk, Role,
                         ScheduledNotification, Submission, SubmissionStatus, User)
 from app.services.insights import class_insights
@@ -700,6 +700,45 @@ def test_mastery_uses_normalized_assignment_and_practice_weights(client):
         ]
 
 
+def test_assignment_evidence_links_to_exact_question():
+    with SessionLocal.begin() as db:
+        teacher = db.query(User).filter_by(role=Role.teacher).one()
+        student = db.query(User).filter_by(role=Role.student).one()
+        course = Course(number="CS-EVIDENCE", name="证据定位测试")
+        db.add(course)
+        db.flush()
+        offering = CourseOffering(course_id=course.id, teacher_id=teacher.id, year=2026,
+                                  term=1, status=OfferingStatus.active)
+        point = KnowledgePoint(course_id=course.id, code="1-1", name="变量定义")
+        db.add_all([offering, point])
+        db.flush()
+        assignment = Assignment(offering_id=offering.id, title="第一章作业")
+        question = Question(prompt="请说明变量如何定义。", reference_answer="类型 名称", score=10)
+        db.add_all([assignment, question])
+        db.flush()
+        db.add(AssignmentQuestion(assignment_id=assignment.id, question_id=question.id, position=2))
+        submission = Submission(assignment_id=assignment.id, student_id=student.id,
+                                status=SubmissionStatus.graded, total_score=8)
+        db.add(submission)
+        db.flush()
+        answer = Answer(submission_id=submission.id, question_id=question.id,
+                        content="int count;", score=8)
+        db.add(answer)
+        db.flush()
+        upsert_evidence(db, student_id=student.id, offering_id=offering.id,
+                        knowledge_point_id=point.id, source_type="assignment",
+                        source_id=answer.id, score=80, confidence=100)
+        db.flush()
+        view = profile_view(db, student.id, offering.id)
+        evidence = view["knowledge_points"][0]["evidence"][0]
+
+        assert evidence["assignment_id"] == assignment.id
+        assert evidence["assignment_title"] == "第一章作业"
+        assert evidence["question_id"] == question.id
+        assert evidence["question_position"] == 2
+        assert evidence["question_prompt"] == "请说明变量如何定义。"
+
+
 def test_profile_uses_leaf_points_from_published_course_map(client):
     with SessionLocal.begin() as db:
         teacher = db.query(User).filter_by(role=Role.teacher).one()
@@ -769,6 +808,77 @@ def test_student_can_recover_latest_offering_practice(client, auth):
     assert response.json()["data"]["id"] == run_id
     assert response.json()["data"]["status"] == "succeeded"
     assert response.json()["data"]["result"]["questions"][0]["prompt"] == "练习题"
+
+
+def test_personal_practice_history_submission_and_automatic_feedback(client, auth):
+    with SessionLocal.begin() as db:
+        teacher = db.query(User).filter_by(role=Role.teacher).one()
+        student = db.query(User).filter_by(role=Role.student).one()
+        course = Course(number="CS-PRACTICE", name="个人练习测试")
+        db.add(course)
+        db.flush()
+        offering = CourseOffering(
+            course_id=course.id, teacher_id=teacher.id, year=2026, term=1,
+            status=OfferingStatus.active,
+        )
+        db.add(offering)
+        db.flush()
+        db.add(Enrollment(offering_id=offering.id, student_id=student.id))
+        point = KnowledgePoint(course_id=course.id, code="1-1", name="程序入口")
+        db.add(point)
+        db.flush()
+        session = PracticeSession(
+            student_id=student.id,
+            offering_id=offering.id,
+            status="ready",
+            rationale="巩固程序入口",
+            questions=[{
+                "kind": "short_answer", "prompt": "C 程序的入口是什么？",
+                "reference_answer": "main 函数", "rubric": ["指出 main 函数"],
+                "score": 10, "difficulty": 1, "knowledge_point_ids": [point.id],
+            }],
+        )
+        db.add(session)
+        db.flush()
+        offering_id, session_id, point_id = offering.id, session.id, point.id
+
+    token = auth(client, "student", "student")
+    history = client.get(
+        f"/api/v1/student/offerings/{offering_id}/practice-sessions",
+        headers=headers(token),
+    )
+    assert history.status_code == 200
+    assert history.json()["data"]["items"][0]["id"] == session_id
+    detail = client.get(
+        f"/api/v1/student/practice-sessions/{session_id}", headers=headers(token)
+    ).json()["data"]
+    assert "reference_answer" not in detail["questions"][0]
+
+    submitted = client.post(
+        f"/api/v1/student/practice-sessions/{session_id}/submit",
+        headers=headers(token),
+        json={
+            "idempotency_key": "practice-feedback-test-001",
+            "answers": [{"question_index": 0, "content": "main 函数"}],
+        },
+    )
+    assert submitted.status_code == 202, submitted.text
+    assert run_local_once() == 1
+
+    completed = client.get(
+        f"/api/v1/student/practice-sessions/{session_id}", headers=headers(token)
+    ).json()["data"]
+    assert completed["status"] == "completed"
+    assert completed["score"] == completed["total_score"] == 10
+    assert completed["questions"][0]["feedback"]["is_correct"] is True
+    assert completed["questions"][0]["reference_answer"] == "main 函数"
+    profile = client.get(
+        f"/api/v1/student/offerings/{offering_id}/learning-profile",
+        headers=headers(token),
+    ).json()["data"]
+    point_view = next(item for item in profile["knowledge_points"] if item["id"] == point_id)
+    assert point_view["mastery_score"] == 100
+    assert point_view["evidence"][0]["practice_session_id"] == session_id
 
 
 def test_class_insights_lists_all_published_points_with_chapter_numbering():

@@ -13,7 +13,7 @@ from app.ai.contracts import (
     AssignmentQuestionSummary, Citation,
     ChapterKnowledgeBatch, CourseChapterPlan, CourseContextBrief, CourseMapDraft,
     CourseMapEdgeDraft, CourseMapNodeDraft, GradingSuggestion, GradeSuggestionItem, PlanStep,
-    StudentLearningBrief, ValidationResult,
+    PracticeFeedbackItem, PracticeFeedbackResult, StudentLearningBrief, ValidationResult,
 )
 from app.core.config import get_settings
 from app.db import SessionLocal
@@ -21,7 +21,7 @@ from app.integrations.ai_provider import structured_completion
 from app.integrations.rag import search_course, search_course_supporting
 from app.models import (
     Answer, Assignment, AssignmentQuestion, Course, CourseOffering,
-    CourseResource, KnowledgePoint, ProcessingStatus, Question, ResourceChunk, Submission,
+    CourseResource, KnowledgePoint, PracticeSession, ProcessingStatus, Question, ResourceChunk, Submission,
     SubmissionStatus,
 )
 from app.services.insights import assignment_insights, class_insights
@@ -34,6 +34,7 @@ AGENT_BY_KIND = {
     "assignment.summary": ("teacher_assessment_agent", "assignment_analysis"),
     "course_map.generate": ("teacher_course_assistant", "course_map_draft"),
     "practice.generate": ("student_learning_assistant", "practice_generate"),
+    "practice.feedback": ("student_learning_assistant", "practice_feedback"),
     "question.generate": ("teacher_assessment_agent", "question_generate"),
     "rag.chat": ("student_qa_agent", "course_qa"),
 }
@@ -91,6 +92,9 @@ def _find_offering(db, state: WorkflowState) -> tuple[CourseOffering | None, Ass
         offering_id = assignment.offering_id if assignment else None
     elif kind == "practice.generate":
         offering_id = offering_id or state["resource_id"]
+    elif kind == "practice.feedback":
+        practice = db.get(PracticeSession, state["resource_id"])
+        offering_id = practice.offering_id if practice else None
     elif kind in {"assignment.draft", "question.generate", "course_map.generate", "rag.chat"}:
         offering_id = offering_id or state["resource_id"]
     return (db.get(CourseOffering, int(offering_id)) if offering_id else None, assignment, submission)
@@ -165,6 +169,12 @@ def make_plan(state: WorkflowState) -> WorkflowState:
             PlanStep(id="1", action="读取个人学习画像", tool="get_student_mastery", reason="练习应针对真实学情"),
             PlanStep(id="2", action="检索相关课程资料", tool="search_course_materials", reason="题目需要课程依据"),
             PlanStep(id="3", action="生成个性化练习并校验", tool="create_practice_session", reason="生成可直接进入练习会话的结构化内容"),
+        ]
+    elif kind == "practice.feedback":
+        steps = [
+            PlanStep(id="1", action="读取练习题、参考答案和学生作答", tool="get_practice_answers", reason="反馈必须对应本次个人练习的真实作答"),
+            PlanStep(id="2", action="逐题判断正确性并给出解释", tool=None, reason="形成学生可直接理解的即时反馈"),
+            PlanStep(id="3", action="校验题目覆盖、分数边界与总分", tool="validate_practice_feedback", reason="个人练习结果可以直接写入学情画像"),
         ]
     elif kind == "course_map.generate":
         steps = [
@@ -379,13 +389,32 @@ def execute_tools(state: WorkflowState) -> WorkflowState:
             brief, delegations = _course_brief(db, offering_id, query, include_class=True)
             tools["course_context"] = brief
         elif offering_id and state["kind"] not in {
-            "course_map.generate", "grading.single", "assignment.summary",
+            "course_map.generate", "grading.single", "assignment.summary", "practice.feedback",
         }:
             tools["citations"] = _citations(search_course(offering_id, query, limit=6, db=db))
         if state["kind"] == "practice.generate" and offering_id and state.get("owner_id"):
             profile = profile_view(db, int(state["owner_id"]), offering_id)
             tools["learning_profile"] = profile
             tools["student_brief"] = _student_brief(profile)
+        if state["kind"] == "practice.feedback":
+            practice = db.get(PracticeSession, state["resource_id"])
+            if practice:
+                answer_by_index = {
+                    int(item.get("question_index")): (item.get("content") or "")
+                    for item in (practice.answers or [])
+                }
+                tools["practice_answers"] = [{
+                    "question_index": index,
+                    "kind": question.get("kind", "short_answer"),
+                    "question": question.get("prompt", ""),
+                    "student_answer": answer_by_index.get(index, ""),
+                    "reference_answer": question.get("reference_answer", ""),
+                    "rubric": question.get("rubric") or [],
+                    "max_score": max(1, int(question.get("score") or 10)),
+                    "knowledge_point_ids": [
+                        int(value) for value in question.get("knowledge_point_ids", [])
+                    ],
+                } for index, question in enumerate(practice.questions or [])]
         if state["kind"] == "grading.single":
             submission = db.get(Submission, state["resource_id"])
             if submission:
@@ -539,6 +568,59 @@ def _fallback_grading(state: WorkflowState) -> GradingSuggestion:
         total_score=0, overall_comment="当前仅完成确定性边界检查，未启用模型评分。",
         confidence=0, needs_review=True, review_reason="真实模型未启用或不可用",
     )
+
+
+def _fallback_practice_feedback(state: WorkflowState) -> PracticeFeedbackResult:
+    items: list[PracticeFeedbackItem] = []
+    for item in state.get("tool_results", {}).get("practice_answers", []):
+        student_answer = re.sub(r"\s+", "", item.get("student_answer") or "").casefold()
+        reference_answer = re.sub(r"\s+", "", item.get("reference_answer") or "").casefold()
+        exact = bool(student_answer and reference_answer and student_answer == reference_answer)
+        maximum = int(item["max_score"])
+        items.append(PracticeFeedbackItem(
+            question_index=int(item["question_index"]),
+            score=maximum if exact else 0,
+            max_score=maximum,
+            is_correct=exact,
+            feedback=(
+                "回答与参考答案一致。" if exact else
+                "当前未启用可用的模型反馈，系统不能可靠判断语义等价；请结合参考答案重新检查。"
+            ),
+            error_type=None if exact else "needs_self_review",
+            knowledge_point_ids=item.get("knowledge_point_ids", []),
+        ))
+    total = sum(item.score for item in items)
+    maximum = sum(item.max_score for item in items)
+    return PracticeFeedbackResult(
+        items=items,
+        total_score=total,
+        max_score=max(1, maximum),
+        summary=(
+            "本次练习已完成自动反馈。" if items else "本次练习没有可反馈的题目。"
+        ),
+    )
+
+
+def _model_practice_feedback(state: WorkflowState) -> tuple[dict, dict]:
+    settings = get_settings()
+    value, metadata = structured_completion(
+        PracticeFeedbackResult,
+        system_prompt=(
+            "你是 AIedu 学生学习助手的个人练习反馈模式。这不是正式作业批阅，不需要教师确认。"
+            "请根据题目、参考答案、评分要点和学生作答逐题判断；允许措辞不同但语义等价的答案得满分。"
+            "每项必须原样保留 question_index、max_score 和 knowledge_point_ids，score 必须在 0 到 max_score 之间。"
+            "is_correct 仅在获得满分且没有实质错误时为 true；部分正确时给部分分。"
+            "feedback 要先明确回答是否正确或部分正确，再简短说明已答对之处、遗漏或修正方法。"
+            "不得评价学习态度，也不得引入题目之外的个人信息。total_score 和 max_score 必须等于分项之和。"
+        ),
+        user_prompt=json.dumps({
+            "practice_answers": state.get("tool_results", {}).get("practice_answers", []),
+        }, ensure_ascii=False, default=str),
+        max_tokens=8_000,
+        timeout_seconds=settings.assignment_llm_timeout_seconds,
+        max_retries=0,
+    )
+    return value.model_dump(), metadata
 
 
 def _model_assignment(state: WorkflowState) -> tuple[dict, dict]:
@@ -1022,6 +1104,12 @@ def compose_result(state: WorkflowState) -> WorkflowState:
             draft = _fallback_questions(state).model_dump()
         draft["reason"] = draft.get("rationale")
         draft["mode"] = "model" if metadata else "deterministic-fallback"
+    elif state["kind"] == "practice.feedback":
+        if settings.enable_llm and settings.ai_api_key:
+            draft, metadata = _model_practice_feedback(state)
+        else:
+            draft = _fallback_practice_feedback(state).model_dump()
+        draft["mode"] = "model" if metadata else "deterministic-fallback"
     elif state["kind"] == "grading.single":
         if settings.enable_llm and settings.ai_api_key:
             draft, metadata = _model_grading(state)
@@ -1105,6 +1193,32 @@ def _validate(state: WorkflowState) -> ValidationResult:
         evidence_sufficient = bool(citations)
         if kind == "assignment.draft" and not evidence_sufficient:
             issues.append("课程资料证据不足")
+    elif kind == "practice.feedback":
+        try:
+            feedback = PracticeFeedbackResult.model_validate(draft)
+            questions = state.get("tool_results", {}).get("practice_answers", [])
+            expected = {int(item["question_index"]): item for item in questions}
+            actual_ids = [item.question_index for item in feedback.items]
+            if set(actual_ids) != set(expected) or len(actual_ids) != len(set(actual_ids)):
+                issues.append("练习反馈存在缺失、重复或未知题目")
+            if any(
+                item.max_score != int(expected.get(item.question_index, {}).get("max_score", -1))
+                for item in feedback.items
+            ):
+                issues.append("练习反馈中的题目满分与实际练习不一致")
+            if any(
+                item.knowledge_point_ids != expected.get(item.question_index, {}).get("knowledge_point_ids", [])
+                for item in feedback.items
+            ):
+                issues.append("练习反馈修改了题目知识点绑定")
+            if feedback.total_score != sum(item.score for item in feedback.items):
+                issues.append("练习反馈总分与分项得分不一致")
+            if feedback.max_score != sum(item.max_score for item in feedback.items):
+                issues.append("练习反馈满分与分项满分不一致")
+            evidence_sufficient = not issues
+        except Exception as exc:
+            issues.append(f"练习反馈结构无效：{str(exc)[:200]}")
+            evidence_sufficient = False
     elif kind == "grading.single":
         try:
             suggestion = GradingSuggestion.model_validate(draft)
@@ -1315,6 +1429,40 @@ def reflect_once(state: WorkflowState) -> WorkflowState:
                 ):
                     questions[index % len(questions)]["knowledge_point_ids"] = [missing_id]
         draft["questions"] = questions
+    elif state["kind"] == "practice.feedback":
+        # 个人练习不进入教师复核流，也不再发起第二次模型调用。保留模型给出的
+        # 语义反馈，只用确定性代码补齐题目并修正索引、满分、知识点和总分。
+        source_mode = draft.get("mode")
+        expected = state.get("tool_results", {}).get("practice_answers", [])
+        fallback_by_index = {
+            item["question_index"]: item
+            for item in _fallback_practice_feedback(state).model_dump()["items"]
+        }
+        current_by_index = {
+            int(item.get("question_index")): item
+            for item in draft.get("items", [])
+            if isinstance(item, dict) and str(item.get("question_index", "")).isdigit()
+        }
+        repaired_items = []
+        for question in expected:
+            index = int(question["question_index"])
+            item = dict(current_by_index.get(index) or fallback_by_index[index])
+            maximum = int(question["max_score"])
+            item["question_index"] = index
+            item["max_score"] = maximum
+            item["score"] = min(maximum, max(0, int(item.get("score") or 0)))
+            item["is_correct"] = bool(item.get("is_correct")) and item["score"] == maximum
+            item["feedback"] = item.get("feedback") or "请结合参考答案重新检查。"
+            item["knowledge_point_ids"] = question.get("knowledge_point_ids", [])
+            repaired_items.append(item)
+        draft = {
+            "items": repaired_items,
+            "total_score": sum(item["score"] for item in repaired_items),
+            "max_score": sum(item["max_score"] for item in repaired_items),
+            "summary": draft.get("summary") or "本次练习已完成自动反馈。",
+            "mode": ("model-reflection-repair" if source_mode == "model" else
+                     "deterministic-reflection-repair"),
+        }
     elif state["kind"] == "grading.single":
         settings = get_settings()
         revision_metadata: dict[str, Any] = {}

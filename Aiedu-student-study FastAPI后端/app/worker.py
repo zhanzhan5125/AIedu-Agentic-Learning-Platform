@@ -27,6 +27,7 @@ from app.integrations.rag import chunk_blocks, delete_resource_vectors, extract_
 from app.integrations.runtime_cache import runtime_cache
 from app.integrations.realtime import publish_message
 from app.services.insights import assignment_insights
+from app.services.learning import refresh_class_mastery, refresh_student_mastery, upsert_evidence
 
 
 logger = logging.getLogger(__name__)
@@ -163,6 +164,44 @@ def _process_job(payload: dict) -> None:
                 db.add(session)
                 db.flush()
                 output["result"]["practice_session_id"] = session.id
+            elif job.kind == "practice.feedback":
+                session = db.get(PracticeSession, job.resource_id)
+                if session is None or session.student_id != job.owner_id:
+                    raise ValueError("个人练习不存在或不属于当前学生")
+                result = output["result"]
+                session.feedback = result
+                session.score = int(result.get("total_score") or 0)
+                session.total_score = int(result.get("max_score") or 0)
+                session.status = "completed"
+                session.completed_at = datetime.now()
+
+                # 同一场练习中，同一知识点可能出现在多道题里；先按题目得分比聚合，
+                # 再写入一条稳定证据，避免题数多的知识点被重复加权。
+                scores_by_point: dict[int, list[int]] = {}
+                trustworthy_model_result = str(result.get("mode") or "").startswith("model")
+                for item in result.get("items", []):
+                    maximum = max(1, int(item.get("max_score") or 1))
+                    normalized_score = round(int(item.get("score") or 0) / maximum * 100)
+                    if not trustworthy_model_result and not item.get("is_correct"):
+                        continue
+                    for knowledge_id in set(item.get("knowledge_point_ids") or []):
+                        scores_by_point.setdefault(int(knowledge_id), []).append(normalized_score)
+                for knowledge_id, scores in scores_by_point.items():
+                    upsert_evidence(
+                        db,
+                        student_id=session.student_id,
+                        offering_id=session.offering_id,
+                        knowledge_point_id=knowledge_id,
+                        source_type="practice",
+                        source_id=session.id,
+                        score=round(sum(scores) / len(scores)),
+                        confidence=90 if trustworthy_model_result else 100,
+                        agent_run_id=run.id if run else None,
+                        observed_at=session.completed_at,
+                    )
+                refresh_student_mastery(db, session.student_id, session.offering_id)
+                refresh_class_mastery(db, session.offering_id)
+                output["result"]["practice_session_id"] = session.id
             elif job.kind == "course_map.generate":
                 offering = db.get(CourseOffering, job.resource_id)
                 if offering is None:
@@ -278,6 +317,10 @@ def _process_job(payload: dict) -> None:
                 if submission is not None:
                     submission.status = SubmissionStatus.needs_review
                     submission.review_reason = "AI 批阅失败，请教师直接批阅"
+            if job.kind == "practice.feedback":
+                session = db.get(PracticeSession, job.resource_id)
+                if session is not None:
+                    session.status = "feedback_failed"
         db.commit()
 
 

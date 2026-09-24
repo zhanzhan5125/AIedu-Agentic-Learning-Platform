@@ -697,6 +697,11 @@ class PracticeSession(TimestampMixin, Base):
     status: Mapped[str] = mapped_column(String(32), default="ready")
     rationale: Mapped[str | None] = mapped_column(Text)
     questions: Mapped[list] = mapped_column(JSON)
+    answers: Mapped[list | None] = mapped_column(JSON)
+    feedback: Mapped[dict | None] = mapped_column(JSON)
+    score: Mapped[int | None]
+    total_score: Mapped[int | None]
+    completed_at: Mapped[datetime | None]
     agent_run_id: Mapped[int | None] = mapped_column(ForeignKey("agent_runs.id", ondelete="SET NULL"))
 
 

@@ -4,10 +4,13 @@ from collections import defaultdict
 from datetime import datetime, timedelta
 from math import exp
 
-from sqlalchemy import delete, func, select
+from sqlalchemy import and_, delete, func, select
 from sqlalchemy.orm import Session
 
 from app.models import (
+    Answer,
+    Assignment,
+    AssignmentQuestion,
     ChatMessage,
     ClassMasterySnapshot,
     Conversation,
@@ -19,6 +22,9 @@ from app.models import (
     KnowledgePoint,
     LearningEvidence,
     MessageRole,
+    PracticeSession,
+    Question,
+    Submission,
     StudentMasteryProfile,
 )
 
@@ -313,6 +319,67 @@ def profile_view(db: Session, student_id: int, offering_id: int) -> dict:
                 "observed_at": item.observed_at,
             } for item in evidence],
         })
+
+    # 为证据补齐可导航的业务来源。作业证据的 source_id 是答案 ID，
+    # 因而可以无歧义地定位到“哪份作业的第几题”。
+    assignment_evidence_ids = {
+        int(item["source_id"])
+        for point in knowledge for item in point["evidence"]
+        if item["source_type"] == "assignment"
+    }
+    assignment_sources: dict[int, dict] = {}
+    if assignment_evidence_ids:
+        rows = db.execute(
+            select(
+                Answer.id,
+                Assignment.id,
+                Assignment.title,
+                Question.id,
+                Question.prompt,
+                AssignmentQuestion.position,
+            )
+            .join(Submission, Submission.id == Answer.submission_id)
+            .join(Assignment, Assignment.id == Submission.assignment_id)
+            .join(Question, Question.id == Answer.question_id)
+            .join(AssignmentQuestion, and_(
+                AssignmentQuestion.assignment_id == Assignment.id,
+                AssignmentQuestion.question_id == Question.id,
+            ))
+            .where(Answer.id.in_(assignment_evidence_ids))
+        ).all()
+        assignment_sources = {
+            int(answer_id): {
+                "assignment_id": assignment_id,
+                "assignment_title": assignment_title,
+                "question_id": question_id,
+                "question_position": position,
+                "question_prompt": question_prompt,
+            }
+            for answer_id, assignment_id, assignment_title, question_id, question_prompt, position in rows
+        }
+
+    practice_session_ids = {
+        int(item["source_id"])
+        for point in knowledge for item in point["evidence"]
+        if item["source_type"] == "practice"
+    }
+    practice_sources = {
+        row.id: {
+            "practice_session_id": row.id,
+            "practice_title": f"个性化练习 · {row.created_at:%m-%d %H:%M}",
+        }
+        for row in db.scalars(select(PracticeSession).where(
+            PracticeSession.id.in_(practice_session_ids),
+            PracticeSession.student_id == student_id,
+        )).all()
+    } if practice_session_ids else {}
+
+    for point in knowledge:
+        for item in point["evidence"]:
+            if item["source_type"] == "assignment":
+                item.update(assignment_sources.get(int(item["source_id"]), {}))
+            elif item["source_type"] == "practice":
+                item.update(practice_sources.get(int(item["source_id"]), {}))
     return {
         "student_id": student_id, "offering_id": offering_id,
         "activity": student_activity(db, student_id, offering_id),
