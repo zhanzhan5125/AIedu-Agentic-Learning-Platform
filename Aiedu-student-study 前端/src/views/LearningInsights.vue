@@ -7,7 +7,6 @@
       </div>
       <div v-if="!isTeacher" class="heading-actions">
         <el-button @click="openPracticeHistory">练习历史</el-button>
-        <el-button v-if="practiceHistory.length" @click="openPracticeSession(practiceHistory[0].id)">查看最近练习</el-button>
         <el-button type="primary" :loading="generating" @click="generatePractice">{{ practiceButtonText }}</el-button>
       </div>
     </div>
