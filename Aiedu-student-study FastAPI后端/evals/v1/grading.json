@@ -1,0 +1,596 @@
+{
+  "version": "v1",
+  "contains_personal_data": false,
+  "submissions": [
+    {
+      "id": "grading-001",
+      "source": "synthetic",
+      "teacher_rules": "按评分要点给分，语义等价不得扣分",
+      "answers": [
+        {
+          "id": "q-source-1",
+          "kind": "short_answer",
+          "prompt": "简述 C 语言源程序的主要组成部分。",
+          "reference_answer": "通常包括预处理指令、全局声明、main 函数、其他函数定义和注释。",
+          "rubric": [
+            "指出预处理指令",
+            "指出 main 函数是入口",
+            "指出其他函数或全局声明"
+          ],
+          "max_score": 10,
+          "student_answer": "预处理指令、全局声明、main函数、其他函数和注释共同组成程序。",
+          "gold_score": 10,
+          "accepted_min": 9,
+          "accepted_max": 10,
+          "should_review": false
+        },
+        {
+          "id": "q-variable-1",
+          "kind": "short_answer",
+          "prompt": "变量与常量有什么区别？",
+          "reference_answer": "变量值可在运行期间改变并占用存储；常量用于表示固定值，宏常量进行文本替换，const 对象具有只读约束。",
+          "rubric": [
+            "说明值是否可变",
+            "说明存储或定义方式",
+            "说明典型用途"
+          ],
+          "max_score": 10,
+          "student_answer": "变量的值可以改变，常量的值固定；宏常量会文本替换，const对象通常有存储。",
+          "gold_score": 10,
+          "accepted_min": 9,
+          "accepted_max": 10,
+          "should_review": false
+        },
+        {
+          "id": "q-compile-1",
+          "kind": "short_answer",
+          "prompt": "C 源程序到可执行文件通常经历哪些阶段？",
+          "reference_answer": "依次经历预处理、编译、汇编和链接。",
+          "rubric": [
+            "预处理",
+            "编译",
+            "汇编",
+            "链接"
+          ],
+          "max_score": 10,
+          "student_answer": "预处理、编译、汇编、链接。",
+          "gold_score": 10,
+          "accepted_min": 9,
+          "accepted_max": 10,
+          "should_review": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": "grading-002",
+      "source": "synthetic",
+      "teacher_rules": "按评分要点给分，语义等价不得扣分",
+      "answers": [
+        {
+          "id": "q-source-2",
+          "kind": "short_answer",
+          "prompt": "简述 C 语言源程序的主要组成部分。",
+          "reference_answer": "通常包括预处理指令、全局声明、main 函数、其他函数定义和注释。",
+          "rubric": [
+            "指出预处理指令",
+            "指出 main 函数是入口",
+            "指出其他函数或全局声明"
+          ],
+          "max_score": 10,
+          "student_answer": "主要有main函数和其他函数。",
+          "gold_score": 5,
+          "accepted_min": 4,
+          "accepted_max": 6,
+          "should_review": false
+        },
+        {
+          "id": "q-variable-2",
+          "kind": "short_answer",
+          "prompt": "变量与常量有什么区别？",
+          "reference_answer": "变量值可在运行期间改变并占用存储；常量用于表示固定值，宏常量进行文本替换，const 对象具有只读约束。",
+          "rubric": [
+            "说明值是否可变",
+            "说明存储或定义方式",
+            "说明典型用途"
+          ],
+          "max_score": 10,
+          "student_answer": "变量能改，常量不能改。",
+          "gold_score": 5,
+          "accepted_min": 4,
+          "accepted_max": 6,
+          "should_review": false
+        },
+        {
+          "id": "q-compile-2",
+          "kind": "short_answer",
+          "prompt": "C 源程序到可执行文件通常经历哪些阶段？",
+          "reference_answer": "依次经历预处理、编译、汇编和链接。",
+          "rubric": [
+            "预处理",
+            "编译",
+            "汇编",
+            "链接"
+          ],
+          "max_score": 10,
+          "student_answer": "先编译，再链接。",
+          "gold_score": 5,
+          "accepted_min": 4,
+          "accepted_max": 6,
+          "should_review": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": "grading-003",
+      "source": "synthetic",
+      "teacher_rules": "按评分要点给分，语义等价不得扣分",
+      "answers": [
+        {
+          "id": "q-source-3",
+          "kind": "short_answer",
+          "prompt": "简述 C 语言源程序的主要组成部分。",
+          "reference_answer": "通常包括预处理指令、全局声明、main 函数、其他函数定义和注释。",
+          "rubric": [
+            "指出预处理指令",
+            "指出 main 函数是入口",
+            "指出其他函数或全局声明"
+          ],
+          "max_score": 10,
+          "student_answer": "C程序只有main函数。",
+          "gold_score": 2,
+          "accepted_min": 1,
+          "accepted_max": 3,
+          "should_review": false
+        },
+        {
+          "id": "q-variable-3",
+          "kind": "short_answer",
+          "prompt": "变量与常量有什么区别？",
+          "reference_answer": "变量值可在运行期间改变并占用存储；常量用于表示固定值，宏常量进行文本替换，const 对象具有只读约束。",
+          "rubric": [
+            "说明值是否可变",
+            "说明存储或定义方式",
+            "说明典型用途"
+          ],
+          "max_score": 10,
+          "student_answer": "变量和常量完全一样。",
+          "gold_score": 0,
+          "accepted_min": 0,
+          "accepted_max": 1,
+          "should_review": false
+        },
+        {
+          "id": "q-compile-3",
+          "kind": "short_answer",
+          "prompt": "C 源程序到可执行文件通常经历哪些阶段？",
+          "reference_answer": "依次经历预处理、编译、汇编和链接。",
+          "rubric": [
+            "预处理",
+            "编译",
+            "汇编",
+            "链接"
+          ],
+          "max_score": 10,
+          "student_answer": "程序直接由源代码运行。",
+          "gold_score": 0,
+          "accepted_min": 0,
+          "accepted_max": 1,
+          "should_review": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": "grading-004",
+      "source": "synthetic",
+      "teacher_rules": "按评分要点给分，语义等价不得扣分",
+      "answers": [
+        {
+          "id": "q-source-4",
+          "kind": "short_answer",
+          "prompt": "简述 C 语言源程序的主要组成部分。",
+          "reference_answer": "通常包括预处理指令、全局声明、main 函数、其他函数定义和注释。",
+          "rubric": [
+            "指出预处理指令",
+            "指出 main 函数是入口",
+            "指出其他函数或全局声明"
+          ],
+          "max_score": 10,
+          "student_answer": "",
+          "gold_score": 0,
+          "accepted_min": 0,
+          "accepted_max": 1,
+          "should_review": false
+        },
+        {
+          "id": "q-variable-4",
+          "kind": "short_answer",
+          "prompt": "变量与常量有什么区别？",
+          "reference_answer": "变量值可在运行期间改变并占用存储；常量用于表示固定值，宏常量进行文本替换，const 对象具有只读约束。",
+          "rubric": [
+            "说明值是否可变",
+            "说明存储或定义方式",
+            "说明典型用途"
+          ],
+          "max_score": 10,
+          "student_answer": "",
+          "gold_score": 0,
+          "accepted_min": 0,
+          "accepted_max": 1,
+          "should_review": false
+        },
+        {
+          "id": "q-compile-4",
+          "kind": "short_answer",
+          "prompt": "C 源程序到可执行文件通常经历哪些阶段？",
+          "reference_answer": "依次经历预处理、编译、汇编和链接。",
+          "rubric": [
+            "预处理",
+            "编译",
+            "汇编",
+            "链接"
+          ],
+          "max_score": 10,
+          "student_answer": "",
+          "gold_score": 0,
+          "accepted_min": 0,
+          "accepted_max": 1,
+          "should_review": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": "grading-005",
+      "source": "synthetic",
+      "teacher_rules": "按评分要点给分，语义等价不得扣分",
+      "answers": [
+        {
+          "id": "q-source-5",
+          "kind": "short_answer",
+          "prompt": "简述 C 语言源程序的主要组成部分。",
+          "reference_answer": "通常包括预处理指令、全局声明、main 函数、其他函数定义和注释。",
+          "rubric": [
+            "指出预处理指令",
+            "指出 main 函数是入口",
+            "指出其他函数或全局声明"
+          ],
+          "max_score": 10,
+          "student_answer": "程序会先处理include等指令，再由main作为入口调用其他函数；还可有全局声明和注释。",
+          "gold_score": 9,
+          "accepted_min": 8,
+          "accepted_max": 10,
+          "should_review": false
+        },
+        {
+          "id": "q-variable-5",
+          "kind": "short_answer",
+          "prompt": "变量与常量有什么区别？",
+          "reference_answer": "变量值可在运行期间改变并占用存储；常量用于表示固定值，宏常量进行文本替换，const 对象具有只读约束。",
+          "rubric": [
+            "说明值是否可变",
+            "说明存储或定义方式",
+            "说明典型用途"
+          ],
+          "max_score": 10,
+          "student_answer": "前者承载运行时可变数据，后者表达固定含义；define是替换，const是受只读约束的对象。",
+          "gold_score": 10,
+          "accepted_min": 9,
+          "accepted_max": 10,
+          "should_review": false
+        },
+        {
+          "id": "q-compile-5",
+          "kind": "short_answer",
+          "prompt": "C 源程序到可执行文件通常经历哪些阶段？",
+          "reference_answer": "依次经历预处理、编译、汇编和链接。",
+          "rubric": [
+            "预处理",
+            "编译",
+            "汇编",
+            "链接"
+          ],
+          "max_score": 10,
+          "student_answer": "源文件先展开预处理内容，翻译成汇编，再形成目标代码，最后与库链接。",
+          "gold_score": 10,
+          "accepted_min": 9,
+          "accepted_max": 10,
+          "should_review": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": "grading-006",
+      "source": "synthetic",
+      "teacher_rules": "按评分要点给分，保留学生答案中的直接证据",
+      "answers": [
+        {
+          "id": "q-single-1",
+          "kind": "single_choice",
+          "prompt": "C 程序执行入口是哪个函数？A. start B. main C. init D. run",
+          "reference_answer": "B",
+          "rubric": [
+            "选择 B"
+          ],
+          "max_score": 5,
+          "student_answer": "B",
+          "gold_score": 5,
+          "accepted_min": 4,
+          "accepted_max": 5,
+          "should_review": false
+        },
+        {
+          "id": "q-multiple-1",
+          "kind": "multiple_choice",
+          "prompt": "以下哪些属于 C 的循环语句？A. for B. while C. do-while D. switch",
+          "reference_answer": "A、B、C",
+          "rubric": [
+            "选择 A",
+            "选择 B",
+            "选择 C",
+            "不选择 D"
+          ],
+          "max_score": 10,
+          "student_answer": "A、B、C",
+          "gold_score": 10,
+          "accepted_min": 9,
+          "accepted_max": 10,
+          "should_review": false
+        },
+        {
+          "id": "q-program-1",
+          "kind": "programming",
+          "prompt": "编写函数 int max2(int a,int b)，返回较大值。",
+          "reference_answer": "int max2(int a,int b){ return a>b?a:b; }",
+          "rubric": [
+            "函数签名正确",
+            "比较逻辑正确",
+            "返回结果"
+          ],
+          "max_score": 15,
+          "student_answer": "int max2(int a,int b){return a>b?a:b;}",
+          "gold_score": 15,
+          "accepted_min": 14,
+          "accepted_max": 15,
+          "should_review": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": "grading-007",
+      "source": "synthetic",
+      "teacher_rules": "按评分要点给分，保留学生答案中的直接证据",
+      "answers": [
+        {
+          "id": "q-single-2",
+          "kind": "single_choice",
+          "prompt": "C 程序执行入口是哪个函数？A. start B. main C. init D. run",
+          "reference_answer": "B",
+          "rubric": [
+            "选择 B"
+          ],
+          "max_score": 5,
+          "student_answer": "B",
+          "gold_score": 5,
+          "accepted_min": 4,
+          "accepted_max": 5,
+          "should_review": false
+        },
+        {
+          "id": "q-multiple-2",
+          "kind": "multiple_choice",
+          "prompt": "以下哪些属于 C 的循环语句？A. for B. while C. do-while D. switch",
+          "reference_answer": "A、B、C",
+          "rubric": [
+            "选择 A",
+            "选择 B",
+            "选择 C",
+            "不选择 D"
+          ],
+          "max_score": 10,
+          "student_answer": "A、B",
+          "gold_score": 6,
+          "accepted_min": 5,
+          "accepted_max": 7,
+          "should_review": false
+        },
+        {
+          "id": "q-program-2",
+          "kind": "programming",
+          "prompt": "编写函数 int max2(int a,int b)，返回较大值。",
+          "reference_answer": "int max2(int a,int b){ return a>b?a:b; }",
+          "rubric": [
+            "函数签名正确",
+            "比较逻辑正确",
+            "返回结果"
+          ],
+          "max_score": 15,
+          "student_answer": "int max2(int a,int b){if(a>b)return a;}",
+          "gold_score": 8,
+          "accepted_min": 7,
+          "accepted_max": 9,
+          "should_review": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": "grading-008",
+      "source": "synthetic",
+      "teacher_rules": "按评分要点给分，保留学生答案中的直接证据",
+      "answers": [
+        {
+          "id": "q-single-3",
+          "kind": "single_choice",
+          "prompt": "C 程序执行入口是哪个函数？A. start B. main C. init D. run",
+          "reference_answer": "B",
+          "rubric": [
+            "选择 B"
+          ],
+          "max_score": 5,
+          "student_answer": "A",
+          "gold_score": 0,
+          "accepted_min": 0,
+          "accepted_max": 1,
+          "should_review": false
+        },
+        {
+          "id": "q-multiple-3",
+          "kind": "multiple_choice",
+          "prompt": "以下哪些属于 C 的循环语句？A. for B. while C. do-while D. switch",
+          "reference_answer": "A、B、C",
+          "rubric": [
+            "选择 A",
+            "选择 B",
+            "选择 C",
+            "不选择 D"
+          ],
+          "max_score": 10,
+          "student_answer": "D",
+          "gold_score": 0,
+          "accepted_min": 0,
+          "accepted_max": 1,
+          "should_review": false
+        },
+        {
+          "id": "q-program-3",
+          "kind": "programming",
+          "prompt": "编写函数 int max2(int a,int b)，返回较大值。",
+          "reference_answer": "int max2(int a,int b){ return a>b?a:b; }",
+          "rubric": [
+            "函数签名正确",
+            "比较逻辑正确",
+            "返回结果"
+          ],
+          "max_score": 15,
+          "student_answer": "int max2(int a,int b){return a+b;}",
+          "gold_score": 2,
+          "accepted_min": 1,
+          "accepted_max": 3,
+          "should_review": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": "grading-009",
+      "source": "synthetic",
+      "teacher_rules": "按评分要点给分，保留学生答案中的直接证据",
+      "answers": [
+        {
+          "id": "q-single-4",
+          "kind": "single_choice",
+          "prompt": "C 程序执行入口是哪个函数？A. start B. main C. init D. run",
+          "reference_answer": "B",
+          "rubric": [
+            "选择 B"
+          ],
+          "max_score": 5,
+          "student_answer": "",
+          "gold_score": 0,
+          "accepted_min": 0,
+          "accepted_max": 1,
+          "should_review": false
+        },
+        {
+          "id": "q-multiple-4",
+          "kind": "multiple_choice",
+          "prompt": "以下哪些属于 C 的循环语句？A. for B. while C. do-while D. switch",
+          "reference_answer": "A、B、C",
+          "rubric": [
+            "选择 A",
+            "选择 B",
+            "选择 C",
+            "不选择 D"
+          ],
+          "max_score": 10,
+          "student_answer": "",
+          "gold_score": 0,
+          "accepted_min": 0,
+          "accepted_max": 1,
+          "should_review": false
+        },
+        {
+          "id": "q-program-4",
+          "kind": "programming",
+          "prompt": "编写函数 int max2(int a,int b)，返回较大值。",
+          "reference_answer": "int max2(int a,int b){ return a>b?a:b; }",
+          "rubric": [
+            "函数签名正确",
+            "比较逻辑正确",
+            "返回结果"
+          ],
+          "max_score": 15,
+          "student_answer": "",
+          "gold_score": 0,
+          "accepted_min": 0,
+          "accepted_max": 1,
+          "should_review": false
+        }
+      ],
+      "approved": false
+    },
+    {
+      "id": "grading-010",
+      "source": "synthetic",
+      "teacher_rules": "按评分要点给分，保留学生答案中的直接证据",
+      "answers": [
+        {
+          "id": "q-single-5",
+          "kind": "single_choice",
+          "prompt": "C 程序执行入口是哪个函数？A. start B. main C. init D. run",
+          "reference_answer": "B",
+          "rubric": [
+            "选择 B"
+          ],
+          "max_score": 5,
+          "student_answer": "我认为是B，但题目若讨论嵌入式启动代码可能不同。",
+          "gold_score": 4,
+          "accepted_min": 3,
+          "accepted_max": 5,
+          "should_review": true
+        },
+        {
+          "id": "q-multiple-5",
+          "kind": "multiple_choice",
+          "prompt": "以下哪些属于 C 的循环语句？A. for B. while C. do-while D. switch",
+          "reference_answer": "A、B、C",
+          "rubric": [
+            "选择 A",
+            "选择 B",
+            "选择 C",
+            "不选择 D"
+          ],
+          "max_score": 10,
+          "student_answer": "A、B、C，D是选择结构。",
+          "gold_score": 10,
+          "accepted_min": 9,
+          "accepted_max": 10,
+          "should_review": false
+        },
+        {
+          "id": "q-program-5",
+          "kind": "programming",
+          "prompt": "编写函数 int max2(int a,int b)，返回较大值。",
+          "reference_answer": "int max2(int a,int b){ return a>b?a:b; }",
+          "rubric": [
+            "函数签名正确",
+            "比较逻辑正确",
+            "返回结果"
+          ],
+          "max_score": 15,
+          "student_answer": "int max2(int a,int b){ return a>=b ? a : b; }",
+          "gold_score": 15,
+          "accepted_min": 14,
+          "accepted_max": 15,
+          "should_review": false
+        }
+      ],
+      "approved": false
+    }
+  ]
+}

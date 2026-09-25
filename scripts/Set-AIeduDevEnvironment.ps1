@@ -66,6 +66,10 @@ $existingNoProxy = @($env:NO_PROXY -split ',' | ForEach-Object { $_.Trim() } | W
 $env:NO_PROXY = (@($existingNoProxy + $localNoProxy) | Select-Object -Unique) -join ','
 $env:UV_PYTHON_INSTALL_DIR = 'D:\applications\aiedu-runtimes\python'
 $env:UV_CACHE_DIR = Join-Path $script:AIeduRoot '.cache\uv'
+$env:HF_HOME = Join-Path $script:AIeduRoot '.cache\huggingface'
+$env:HF_HUB_CACHE = Join-Path $env:HF_HOME 'hub'
+$env:HF_XET_CACHE = Join-Path $env:HF_HOME 'xet'
+$env:TORCH_HOME = Join-Path $script:AIeduRoot '.cache\torch'
 
 $script:AIeduBackend = Join-Path $script:AIeduRoot 'Aiedu-student-study FastAPI后端'
 $script:AIeduFrontend = Join-Path $script:AIeduRoot 'Aiedu-student-study 前端'

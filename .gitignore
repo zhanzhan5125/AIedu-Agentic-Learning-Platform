@@ -42,3 +42,5 @@ Aiedu-student-study 后端/
 # Runtime artifacts
 Aiedu-student-study FastAPI后端/.fastapi.*.log
 Aiedu-student-study FastAPI后端/.uv-cache/
+Aiedu-student-study FastAPI后端/evals/results/*
+!Aiedu-student-study FastAPI后端/evals/results/.gitkeep

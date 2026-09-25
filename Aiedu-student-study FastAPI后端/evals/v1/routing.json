@@ -1,0 +1,689 @@
+{
+  "version": "v1",
+  "contains_personal_data": false,
+  "cases": [
+    {
+      "id": "routing-001",
+      "category": "course_qa",
+      "question": "什么是 C 语言中的指针？",
+      "conversation_summary": null,
+      "recent_messages": [],
+      "expected": {
+        "intent": "course_qa",
+        "delegate_student_learning_assistant": false,
+        "search_course_materials": true,
+        "search_web": false,
+        "identity_request": false
+      },
+      "repeat": true,
+      "approved": false
+    },
+    {
+      "id": "routing-002",
+      "category": "course_qa",
+      "question": "请解释 for 循环的执行顺序。",
+      "conversation_summary": null,
+      "recent_messages": [],
+      "expected": {
+        "intent": "course_qa",
+        "delegate_student_learning_assistant": false,
+        "search_course_materials": true,
+        "search_web": false,
+        "identity_request": false
+      },
+      "repeat": true,
+      "approved": false
+    },
+    {
+      "id": "routing-003",
+      "category": "course_qa",
+      "question": "数组下标为什么从 0 开始？",
+      "conversation_summary": null,
+      "recent_messages": [],
+      "expected": {
+        "intent": "course_qa",
+        "delegate_student_learning_assistant": false,
+        "search_course_materials": true,
+        "search_web": false,
+        "identity_request": false
+      },
+      "repeat": true,
+      "approved": false
+    },
+    {
+      "id": "routing-004",
+      "category": "course_qa",
+      "question": "main 函数的返回值有什么意义？",
+      "conversation_summary": null,
+      "recent_messages": [],
+      "expected": {
+        "intent": "course_qa",
+        "delegate_student_learning_assistant": false,
+        "search_course_materials": true,
+        "search_web": false,
+        "identity_request": false
+      },
+      "repeat": true,
+      "approved": false
+    },
+    {
+      "id": "routing-005",
+      "category": "course_qa",
+      "question": "结构体和联合体有什么区别？",
+      "conversation_summary": null,
+      "recent_messages": [],
+      "expected": {
+        "intent": "course_qa",
+        "delegate_student_learning_assistant": false,
+        "search_course_materials": true,
+        "search_web": false,
+        "identity_request": false
+      },
+      "repeat": true,
+      "approved": false
+    },
+    {
+      "id": "routing-006",
+      "category": "course_qa",
+      "question": "递归函数需要满足什么条件？",
+      "conversation_summary": null,
+      "recent_messages": [],
+      "expected": {
+        "intent": "course_qa",
+        "delegate_student_learning_assistant": false,
+        "search_course_materials": true,
+        "search_web": false,
+        "identity_request": false
+      },
+      "repeat": true,
+      "approved": false
+    },
+    {
+      "id": "routing-007",
+      "category": "course_qa",
+      "question": "宏定义与函数有什么区别？",
+      "conversation_summary": null,
+      "recent_messages": [],
+      "expected": {
+        "intent": "course_qa",
+        "delegate_student_learning_assistant": false,
+        "search_course_materials": true,
+        "search_web": false,
+        "identity_request": false
+      },
+      "repeat": true,
+      "approved": false
+    },
+    {
+      "id": "routing-008",
+      "category": "course_qa",
+      "question": "如何理解变量的作用域？",
+      "conversation_summary": null,
+      "recent_messages": [],
+      "expected": {
+        "intent": "course_qa",
+        "delegate_student_learning_assistant": false,
+        "search_course_materials": true,
+        "search_web": false,
+        "identity_request": false
+      },
+      "repeat": true,
+      "approved": false
+    },
+    {
+      "id": "routing-009",
+      "category": "resource_lookup",
+      "question": "教材哪一页讲了运算符优先级？",
+      "conversation_summary": null,
+      "recent_messages": [],
+      "expected": {
+        "intent": "resource_lookup",
+        "delegate_student_learning_assistant": false,
+        "search_course_materials": true,
+        "search_web": false,
+        "identity_request": false
+      },
+      "repeat": true,
+      "approved": false
+    },
+    {
+      "id": "routing-010",
+      "category": "resource_lookup",
+      "question": "请帮我找到课件中关于二分查找的部分。",
+      "conversation_summary": null,
+      "recent_messages": [],
+      "expected": {
+        "intent": "resource_lookup",
+        "delegate_student_learning_assistant": false,
+        "search_course_materials": true,
+        "search_web": false,
+        "identity_request": false
+      },
+      "repeat": true,
+      "approved": false
+    },
+    {
+      "id": "routing-011",
+      "category": "resource_lookup",
+      "question": "课程大纲在哪一章要求学习指针？",
+      "conversation_summary": null,
+      "recent_messages": [],
+      "expected": {
+        "intent": "resource_lookup",
+        "delegate_student_learning_assistant": false,
+        "search_course_materials": true,
+        "search_web": false,
+        "identity_request": false
+      },
+      "repeat": false,
+      "approved": false
+    },
+    {
+      "id": "routing-012",
+      "category": "resource_lookup",
+      "question": "这个结论在教材中的出处是什么？",
+      "conversation_summary": null,
+      "recent_messages": [],
+      "expected": {
+        "intent": "resource_lookup",
+        "delegate_student_learning_assistant": false,
+        "search_course_materials": true,
+        "search_web": false,
+        "identity_request": false
+      },
+      "repeat": false,
+      "approved": false
+    },
+    {
+      "id": "routing-013",
+      "category": "resource_lookup",
+      "question": "请定位讲解结构体定义的资料段落。",
+      "conversation_summary": null,
+      "recent_messages": [],
+      "expected": {
+        "intent": "resource_lookup",
+        "delegate_student_learning_assistant": false,
+        "search_course_materials": true,
+        "search_web": false,
+        "identity_request": false
+      },
+      "repeat": false,
+      "approved": false
+    },
+    {
+      "id": "routing-014",
+      "category": "resource_lookup",
+      "question": "哪份课程资料提到了文件描述符？",
+      "conversation_summary": null,
+      "recent_messages": [],
+      "expected": {
+        "intent": "resource_lookup",
+        "delegate_student_learning_assistant": false,
+        "search_course_materials": true,
+        "search_web": false,
+        "identity_request": false
+      },
+      "repeat": false,
+      "approved": false
+    },
+    {
+      "id": "routing-015",
+      "category": "personalized",
+      "question": "我第一章哪些知识点最薄弱？",
+      "conversation_summary": null,
+      "recent_messages": [],
+      "expected": {
+        "intent": "personalized_learning",
+        "delegate_student_learning_assistant": true,
+        "search_course_materials": true,
+        "search_web": false,
+        "identity_request": false
+      },
+      "repeat": false,
+      "approved": false
+    },
+    {
+      "id": "routing-016",
+      "category": "personalized",
+      "question": "结合我的作业表现安排本周复习。",
+      "conversation_summary": null,
+      "recent_messages": [],
+      "expected": {
+        "intent": "personalized_learning",
+        "delegate_student_learning_assistant": true,
+        "search_course_materials": true,
+        "search_web": false,
+        "identity_request": false
+      },
+      "repeat": false,
+      "approved": false
+    },
+    {
+      "id": "routing-017",
+      "category": "personalized",
+      "question": "为什么系统认为我不熟悉变量和常量？",
+      "conversation_summary": null,
+      "recent_messages": [],
+      "expected": {
+        "intent": "personalized_learning",
+        "delegate_student_learning_assistant": true,
+        "search_course_materials": true,
+        "search_web": false,
+        "identity_request": false
+      },
+      "repeat": false,
+      "approved": false
+    },
+    {
+      "id": "routing-018",
+      "category": "personalized",
+      "question": "根据我的错题生成三道练习。",
+      "conversation_summary": null,
+      "recent_messages": [],
+      "expected": {
+        "intent": "personalized_learning",
+        "delegate_student_learning_assistant": true,
+        "search_course_materials": true,
+        "search_web": false,
+        "identity_request": false
+      },
+      "repeat": false,
+      "approved": false
+    },
+    {
+      "id": "routing-019",
+      "category": "personalized",
+      "question": "我最近的掌握度有提高吗？",
+      "conversation_summary": null,
+      "recent_messages": [],
+      "expected": {
+        "intent": "personalized_learning",
+        "delegate_student_learning_assistant": true,
+        "search_course_materials": false,
+        "search_web": false,
+        "identity_request": false
+      },
+      "repeat": false,
+      "approved": false
+    },
+    {
+      "id": "routing-020",
+      "category": "personalized",
+      "question": "分析一下我在第一章作业中丢分的原因。",
+      "conversation_summary": null,
+      "recent_messages": [],
+      "expected": {
+        "intent": "personalized_learning",
+        "delegate_student_learning_assistant": true,
+        "search_course_materials": true,
+        "search_web": false,
+        "identity_request": false
+      },
+      "repeat": false,
+      "approved": false
+    },
+    {
+      "id": "routing-021",
+      "category": "personalized",
+      "question": "我应该先复习指针还是数组？请结合我的情况。",
+      "conversation_summary": null,
+      "recent_messages": [],
+      "expected": {
+        "intent": "personalized_learning",
+        "delegate_student_learning_assistant": true,
+        "search_course_materials": true,
+        "search_web": false,
+        "identity_request": false
+      },
+      "repeat": false,
+      "approved": false
+    },
+    {
+      "id": "routing-022",
+      "category": "personalized",
+      "question": "为我制定一个由易到难的复习计划。",
+      "conversation_summary": null,
+      "recent_messages": [],
+      "expected": {
+        "intent": "personalized_learning",
+        "delegate_student_learning_assistant": true,
+        "search_course_materials": true,
+        "search_web": false,
+        "identity_request": false
+      },
+      "repeat": false,
+      "approved": false
+    },
+    {
+      "id": "routing-023",
+      "category": "identity",
+      "question": "你知道我是谁吗？",
+      "conversation_summary": null,
+      "recent_messages": [],
+      "expected": {
+        "intent": "personalized_learning",
+        "delegate_student_learning_assistant": true,
+        "search_course_materials": false,
+        "search_web": false,
+        "identity_request": true
+      },
+      "repeat": false,
+      "approved": false
+    },
+    {
+      "id": "routing-024",
+      "category": "identity",
+      "question": "我的名字是什么？",
+      "conversation_summary": null,
+      "recent_messages": [],
+      "expected": {
+        "intent": "personalized_learning",
+        "delegate_student_learning_assistant": true,
+        "search_course_materials": false,
+        "search_web": false,
+        "identity_request": true
+      },
+      "repeat": false,
+      "approved": false
+    },
+    {
+      "id": "routing-025",
+      "category": "current_web",
+      "question": "请查询 C23 标准目前的最新支持情况。",
+      "conversation_summary": null,
+      "recent_messages": [],
+      "expected": {
+        "intent": "current_web",
+        "delegate_student_learning_assistant": false,
+        "search_course_materials": true,
+        "search_web": true,
+        "identity_request": false
+      },
+      "repeat": false,
+      "approved": false
+    },
+    {
+      "id": "routing-026",
+      "category": "current_web",
+      "question": "最近发布的 GCC 版本增加了什么功能？",
+      "conversation_summary": null,
+      "recent_messages": [],
+      "expected": {
+        "intent": "current_web",
+        "delegate_student_learning_assistant": false,
+        "search_course_materials": true,
+        "search_web": true,
+        "identity_request": false
+      },
+      "repeat": false,
+      "approved": false
+    },
+    {
+      "id": "routing-027",
+      "category": "current_web",
+      "question": "帮我查一下今天 C 语言领域的新闻。",
+      "conversation_summary": null,
+      "recent_messages": [],
+      "expected": {
+        "intent": "current_web",
+        "delegate_student_learning_assistant": false,
+        "search_course_materials": true,
+        "search_web": true,
+        "identity_request": false
+      },
+      "repeat": false,
+      "approved": false
+    },
+    {
+      "id": "routing-028",
+      "category": "current_web",
+      "question": "目前最新的 Clang 稳定版本是什么？",
+      "conversation_summary": null,
+      "recent_messages": [],
+      "expected": {
+        "intent": "current_web",
+        "delegate_student_learning_assistant": false,
+        "search_course_materials": true,
+        "search_web": true,
+        "identity_request": false
+      },
+      "repeat": false,
+      "approved": false
+    },
+    {
+      "id": "routing-029",
+      "category": "chitchat",
+      "question": "你喜欢什么颜色？",
+      "conversation_summary": null,
+      "recent_messages": [],
+      "expected": {
+        "intent": "chitchat",
+        "delegate_student_learning_assistant": false,
+        "search_course_materials": false,
+        "search_web": false,
+        "identity_request": false
+      },
+      "repeat": false,
+      "approved": false
+    },
+    {
+      "id": "routing-030",
+      "category": "chitchat",
+      "question": "给我讲个和课程无关的笑话。",
+      "conversation_summary": null,
+      "recent_messages": [],
+      "expected": {
+        "intent": "chitchat",
+        "delegate_student_learning_assistant": false,
+        "search_course_materials": false,
+        "search_web": false,
+        "identity_request": false
+      },
+      "repeat": false,
+      "approved": false
+    },
+    {
+      "id": "routing-031",
+      "category": "chitchat",
+      "question": "晚安。",
+      "conversation_summary": null,
+      "recent_messages": [],
+      "expected": {
+        "intent": "chitchat",
+        "delegate_student_learning_assistant": false,
+        "search_course_materials": false,
+        "search_web": false,
+        "identity_request": false
+      },
+      "repeat": false,
+      "approved": false
+    },
+    {
+      "id": "routing-032",
+      "category": "chitchat",
+      "question": "你会唱歌吗？",
+      "conversation_summary": null,
+      "recent_messages": [],
+      "expected": {
+        "intent": "chitchat",
+        "delegate_student_learning_assistant": false,
+        "search_course_materials": false,
+        "search_web": false,
+        "identity_request": false
+      },
+      "repeat": false,
+      "approved": false
+    },
+    {
+      "id": "routing-033",
+      "category": "followup",
+      "question": "那我具体弱在哪里？",
+      "conversation_summary": null,
+      "recent_messages": [
+        {
+          "role": "user",
+          "content": "我第一章学得怎么样？"
+        },
+        {
+          "role": "assistant",
+          "content": "可以结合你的学习记录分析。"
+        }
+      ],
+      "expected": {
+        "intent": "personalized_learning",
+        "delegate_student_learning_assistant": true,
+        "search_course_materials": true,
+        "search_web": false,
+        "identity_request": false
+      },
+      "repeat": false,
+      "approved": false
+    },
+    {
+      "id": "routing-034",
+      "category": "followup",
+      "question": "那应该怎么复习？",
+      "conversation_summary": "学生正在询问个人第一章薄弱点。",
+      "recent_messages": [],
+      "expected": {
+        "intent": "personalized_learning",
+        "delegate_student_learning_assistant": true,
+        "search_course_materials": true,
+        "search_web": false,
+        "identity_request": false
+      },
+      "repeat": false,
+      "approved": false
+    },
+    {
+      "id": "routing-035",
+      "category": "followup",
+      "question": "它在教材哪一页？",
+      "conversation_summary": null,
+      "recent_messages": [
+        {
+          "role": "user",
+          "content": "请解释运算符优先级。"
+        }
+      ],
+      "expected": {
+        "intent": "resource_lookup",
+        "delegate_student_learning_assistant": false,
+        "search_course_materials": true,
+        "search_web": false,
+        "identity_request": false
+      },
+      "repeat": false,
+      "approved": false
+    },
+    {
+      "id": "routing-036",
+      "category": "followup",
+      "question": "这个和我的错题有什么关系？",
+      "conversation_summary": null,
+      "recent_messages": [
+        {
+          "role": "user",
+          "content": "什么是变量作用域？"
+        },
+        {
+          "role": "assistant",
+          "content": "作用域决定名字可见的程序范围。"
+        }
+      ],
+      "expected": {
+        "intent": "personalized_learning",
+        "delegate_student_learning_assistant": true,
+        "search_course_materials": true,
+        "search_web": false,
+        "identity_request": false
+      },
+      "repeat": false,
+      "approved": false
+    },
+    {
+      "id": "routing-037",
+      "category": "followup",
+      "question": "那我的掌握情况呢？",
+      "conversation_summary": null,
+      "recent_messages": [
+        {
+          "role": "user",
+          "content": "指针和数组有什么联系？"
+        }
+      ],
+      "expected": {
+        "intent": "personalized_learning",
+        "delegate_student_learning_assistant": true,
+        "search_course_materials": false,
+        "search_web": false,
+        "identity_request": false
+      },
+      "repeat": false,
+      "approved": false
+    },
+    {
+      "id": "routing-038",
+      "category": "followup",
+      "question": "请继续讲它的定义。",
+      "conversation_summary": null,
+      "recent_messages": [
+        {
+          "role": "user",
+          "content": "什么是结构体？"
+        }
+      ],
+      "expected": {
+        "intent": "course_qa",
+        "delegate_student_learning_assistant": false,
+        "search_course_materials": true,
+        "search_web": false,
+        "identity_request": false
+      },
+      "repeat": false,
+      "approved": false
+    },
+    {
+      "id": "routing-039",
+      "category": "followup",
+      "question": "有没有最新的官方说明？",
+      "conversation_summary": null,
+      "recent_messages": [
+        {
+          "role": "user",
+          "content": "C23 标准有哪些变化？"
+        }
+      ],
+      "expected": {
+        "intent": "current_web",
+        "delegate_student_learning_assistant": false,
+        "search_course_materials": true,
+        "search_web": true,
+        "identity_request": false
+      },
+      "repeat": false,
+      "approved": false
+    },
+    {
+      "id": "routing-040",
+      "category": "followup",
+      "question": "再告诉我出处。",
+      "conversation_summary": null,
+      "recent_messages": [
+        {
+          "role": "user",
+          "content": "刚才你解释了二分查找。"
+        }
+      ],
+      "expected": {
+        "intent": "resource_lookup",
+        "delegate_student_learning_assistant": false,
+        "search_course_materials": true,
+        "search_web": false,
+        "identity_request": false
+      },
+      "repeat": false,
+      "approved": false
+    }
+  ]
+}
