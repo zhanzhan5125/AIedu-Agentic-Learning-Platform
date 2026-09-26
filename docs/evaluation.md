@@ -4,7 +4,7 @@
 
 ## 数据状态
 
-`Aiedu-student-study FastAPI后端/evals/v1` 当前包含已完成项目内逐条审核的 v1 数据：
+`Aiedu-student-study FastAPI后端/evals/v1` 包含三组已审核基线；`evals/v2` 保留同样的问题与路由/批阅标签，并将 RAG 证据映射到结构化重切分后的 597 个有效块：
 
 | 数据集 | 数量 | 当前状态 |
 |---|---:|---|
@@ -36,7 +36,7 @@ cd "Aiedu-student-study FastAPI后端"
 uv sync --extra dev --extra reranker
 
 # 正式评测：要求全部人工确认，并要求 reranker 真正执行
-uv run python -m scripts.evaluate_agents --suite all --dataset-version v1 --offering-id 2
+uv run python -m scripts.evaluate_agents --suite all --dataset-version v2 --offering-id 2
 
 # 候选数据预跑：结果带醒目的“非正式”水印，不能写入简历
 uv run python -m scripts.evaluate_agents --suite routing --draft
@@ -66,4 +66,4 @@ RAG 对比 BM25、Dense、RRF、RRF+Rerank，报告 Recall@5/6、MRR@10、nDCG@5
 
 ## 简历结论规则
 
-commit `7d67258` 的 v1 正式评测和项目内抽查已经完成，结果、取舍与保守简历表述见 [v1 正式评测结果](evaluation-results-v1.md)。正式报告只能引用基线 JSON 中能够重新计算的指标；Rerank 和 Reflection 没有达到预设收益门槛，报告已保留负向结论。
+commit `7d67258` 的完整 v1 正式评测见 [v1 正式评测结果](evaluation-results-v1.md)；commit `aea1060` 的结构化切片 RAG 复测见 [RAG v2 正式评测结果](evaluation-results-v2.md)。正式报告只能引用基线 JSON 中能够重新计算的指标。Rerank 虽改善 v2 排序指标，但仍未达到延迟门槛；Reflection 也未产生额外收益，报告保留这些负向结论。

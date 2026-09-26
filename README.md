@@ -55,7 +55,7 @@ flowchart LR
 4. 另开终端启动 Worker：`uv run python -m app.worker`。
 5. 前端：进入 `Aiedu-student-study 前端` 后运行 `npm ci`、`npm run serve`。
 
-不安装本地 reranker 也可运行，系统自动使用 RRF 结果。需要本地重排时执行 `uv sync --extra reranker`；显存不足会回退 CPU，加载失败不会阻断问答。
+本地 reranker 默认关闭，生产使用 RRF 结果。需要复现实验时执行 `uv sync --extra reranker` 并设置 `AIEDU_ENABLE_LOCAL_RERANKER=true`；显存不足会回退 CPU，加载失败不会阻断问答。
 
 ## 验证
 
@@ -74,10 +74,10 @@ npm run build
 
 ```powershell
 cd "Aiedu-student-study FastAPI后端"
-uv run python -m scripts.evaluate_agents --suite all --dataset-version v1 --offering-id 2
+uv run python -m scripts.evaluate_agents --suite all --dataset-version v2 --offering-id 2
 ```
 
-评测会保存逐样本 JSON、Markdown 汇总、失败案例、Token 和延迟。正式运行要求全部样本经过审核，且指定 Rerank 时必须真正加载模型，禁止静默降级后伪报重排结果。当前 v1 数据已完成项目内逐条审核与正式运行：Hybrid RRF 的 Recall@5 为 92.19%、nDCG@5 为 0.7550；Rerank 未达到预设质量/延迟门槛，因此不默认启用。Structured Outputs 路由 Macro-F1 为 1.0000、工具组合 Exact Match 为 90%；批阅 Reflection 本轮未产生额外收益。详见 [评测说明](docs/evaluation.md)、[v1 审核记录](docs/evaluation-dataset-audit-v1.md)与 [v1 正式结果](docs/evaluation-results-v1.md)。
+评测会保存逐样本 JSON、Markdown 汇总、失败案例、Token 和延迟。正式运行要求全部样本经过审核，且指定 Rerank 时必须真正加载模型，禁止静默降级后伪报重排结果。结构化切片后的 v2 中，章节类 Hybrid nDCG@5 从 v1 的 0.5419 提升到 0.7827；reranker 将 v2 整体 nDCG@5 从 0.7033 提升到 0.7814，但 CPU warm p95 增加 5.85 秒、端到端 12 组对比没有获胜，因此生产仍默认使用 RRF。路由与批阅沿用 v1 正式结论。详见 [评测说明](docs/evaluation.md)、[v2 审核记录](docs/evaluation-dataset-audit-v2.md)与 [RAG v2 正式结果](docs/evaluation-results-v2.md)。
 
 ## 已知边界
 

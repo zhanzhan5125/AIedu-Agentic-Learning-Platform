@@ -56,7 +56,7 @@ class Settings(BaseSettings):
     rag_chunk_target_tokens: int = 550
     rag_chunk_max_tokens: int = 800
     rag_chunk_overlap_tokens: int = 80
-    enable_local_reranker: bool = True
+    enable_local_reranker: bool = False
     reranker_model: str = "BAAI/bge-reranker-base"
     tavily_api_key: str = ""
     tavily_base_url: str = "https://api.tavily.com/search"
