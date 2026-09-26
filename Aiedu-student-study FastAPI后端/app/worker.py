@@ -385,7 +385,8 @@ def _process_resource(payload: dict) -> None:
                 "text": row.text,
             } for row in records]
             chunk_count = index_resource(
-                resource.id, resource.offering_id, resource.title, indexed_chunks=indexed
+                resource.id, resource.offering_id, resource.title,
+                indexed_chunks=indexed, resource_type=resource.resource_type,
             )
             resource.processing_status = ProcessingStatus.ready
             resource.page_count = page_count
@@ -394,6 +395,13 @@ def _process_resource(payload: dict) -> None:
             resource.indexed_at = datetime.now()
             resource.error_message = None
         except Exception as exc:
+            # Parsing/indexing mutates chunks in the current transaction.  A
+            # failed embedding or vector write must not commit a half-built
+            # replacement and erase the last usable relational index.
+            db.rollback()
+            resource = db.get(CourseResource, resource_id)
+            if resource is None:
+                return
             logger.exception(
                 "Resource %s failed while status=%s",
                 resource.id, resource.processing_status.value,

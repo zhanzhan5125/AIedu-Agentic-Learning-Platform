@@ -150,7 +150,8 @@ def _citation(row: dict) -> dict:
         chunk_id=row.get("chunk_id"), resource_id=int(row["resource_id"]),
         title=row.get("title") or "课程资料", position=int(row.get("position", 0)),
         page_number=row.get("page_number"), slide_number=row.get("slide_number"),
-        heading_path=row.get("heading_path"), excerpt=(row.get("text") or "")[:1200],
+        heading_path=row.get("heading_path"),
+        excerpt=(row.get("context_text") or row.get("text") or "")[:1200],
         score=row.get("rerank_score", row.get("score")),
     ).model_dump()
 

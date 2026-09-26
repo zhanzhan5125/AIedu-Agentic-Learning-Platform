@@ -43,6 +43,122 @@ class RetrievalResult:
     diagnostics: dict[str, Any]
 
 
+_CHINESE_NUMBERS = {
+    "一": 1, "二": 2, "三": 3, "四": 4, "五": 5,
+    "六": 6, "七": 7, "八": 8, "九": 9, "十": 10,
+}
+_CHAPTER_PATTERN = re.compile(
+    r"^第\s*(?P<number>[一二三四五六七八九十百\d]+)\s*章\s*(?P<title>[^【]{0,80})"
+)
+_SECTION_PATTERN = re.compile(
+    r"^(?P<number>\d+(?:\s*\.\s*\d+)+)\s*\.?\s*(?P<title>\S.{0,80})$"
+)
+_CHINESE_HEADING_PATTERN = re.compile(r"^(?P<number>[一二三四五六七八九十]+)、\s*(?P<title>\S.{0,80})$")
+_BRACKET_HEADING_PATTERN = re.compile(r"^[【\[](?P<title>[^】\]]{2,40})[】\]]$")
+_PDF_NOISE_PATTERN = re.compile(
+    r"(?:www\.[a-z0-9.-]+\.[a-z]{2,}|Linux公社\s*\(LinuxIDC\.com\).*)",
+    re.IGNORECASE,
+)
+
+
+def _heading_info(value: str) -> tuple[int, str] | None:
+    """Recognize the heading conventions used by the uploaded Chinese course files."""
+    line = re.sub(r"\s+", " ", value).strip()
+    if not line or len(line) > 120 or re.search(r"\.{4,}\s*\d*\s*$", line):
+        return None
+    match = _CHAPTER_PATTERN.match(line)
+    if match:
+        title = match.group("title").strip(" ：:。")
+        if (len(title) > 36 or re.search(r"[。！？；]", line) or
+                re.search(r"第\s*[一二三四五六七八九十百\d]+\s*章", title) or
+                re.match(r"^(?:的|将|中|里|对此)", title)):
+            return None
+        return 1, f"第{match.group('number')}章" + (f" {title}" if title else "")
+    match = _SECTION_PATTERN.match(line)
+    if match:
+        number = re.sub(r"\s+", "", match.group("number"))
+        title = match.group("title").strip()
+        first_number = int(number.split(".", 1)[0])
+        if first_number > 20 or re.search(r"[。！？；]", title):
+            return None
+        return 2, f"{number} {title}"
+    match = _CHINESE_HEADING_PATTERN.match(line)
+    if match:
+        return 1, f"{match.group('number')}、{match.group('title').strip()}"
+    match = _BRACKET_HEADING_PATTERN.match(line)
+    if match:
+        return 3, match.group("title").strip()
+    return None
+
+
+def _update_heading_path(headings: list[str], level: int, value: str) -> str:
+    if level <= 1:
+        headings[:] = [value]
+    else:
+        headings[:] = headings[:level - 1]
+        while len(headings) < level - 1:
+            headings.append("")
+        headings.append(value)
+    return " > ".join(item for item in headings if item)
+
+
+def _clean_pdf_line(value: str) -> str:
+    line = re.sub(r"[ \t]+", " ", value).strip()
+    if not line or _PDF_NOISE_PATTERN.search(line):
+        return ""
+    if re.fullmatch(r"[-–—]?\s*\d{1,4}\s*[-–—]?", line):
+        return ""
+    return line
+
+
+def _pdf_repeated_edge_lines(pages: Sequence[str]) -> set[str]:
+    counts: Counter[str] = Counter()
+    for text in pages:
+        lines = [_clean_pdf_line(line) for line in text.splitlines()]
+        lines = [line for line in lines if line]
+        for line in dict.fromkeys(lines[:2] + lines[-3:]):
+            if (_heading_info(line) is None and len(line) >= 6 and
+                    not re.search(r"[{};=#<>]", line)):
+                counts[line] += 1
+    threshold = max(3, math.ceil(len(pages) * 0.08))
+    return {line for line, count in counts.items() if count >= threshold}
+
+
+def _is_toc_page(lines: Sequence[str]) -> bool:
+    dotted = sum(bool(re.search(r"\.{4,}\s*\d+\s*$", line)) for line in lines)
+    return dotted >= 3
+
+
+def _section_index_blocks(blocks: Sequence[DocumentBlock]) -> list[DocumentBlock]:
+    chapters: dict[str, dict[str, Any]] = {}
+    for block in blocks:
+        if block.block_type != "heading" or not block.heading_path:
+            continue
+        parts = [item.strip() for item in block.heading_path.split(">") if item.strip()]
+        if len(parts) == 1 and _CHAPTER_PATTERN.match(parts[0]):
+            chapters.setdefault(parts[0], {"page": block.page_number, "sections": []})
+        elif len(parts) >= 2 and _CHAPTER_PATTERN.match(parts[0]):
+            value = parts[1]
+            if _SECTION_PATTERN.match(value) is None:
+                continue
+            chapter = chapters.setdefault(
+                parts[0], {"page": block.page_number, "sections": []},
+            )
+            if value not in chapter["sections"]:
+                chapter["sections"].append(value)
+    values = []
+    for chapter, data in chapters.items():
+        sections = data["sections"]
+        if sections:
+            values.append(DocumentBlock(
+                "section_index",
+                f"{chapter}包含以下小节：" + "；".join(sections) + "。",
+                chapter,
+                page_number=data["page"],
+            ))
+    return values
+
+
 def extract_blocks(content: bytes, mime_type: str) -> tuple[list[DocumentBlock], int | None]:
     """Extract format-aware blocks while retaining citation locators."""
     blocks: list[DocumentBlock] = []
@@ -50,12 +166,39 @@ def extract_blocks(content: bytes, mime_type: str) -> tuple[list[DocumentBlock],
         from pypdf import PdfReader
 
         reader = PdfReader(io.BytesIO(content))
-        for page_number, page in enumerate(reader.pages, 1):
-            text = (page.extract_text() or "").strip()
-            for paragraph in re.split(r"\n\s*\n+", text):
-                value = " ".join(line.strip() for line in paragraph.splitlines() if line.strip())
+        raw_pages = [page.extract_text() or "" for page in reader.pages]
+        repeated_edges = _pdf_repeated_edge_lines(raw_pages)
+        headings: list[str] = []
+        for page_number, text in enumerate(raw_pages, 1):
+            raw_lines = [line.strip() for line in text.splitlines() if line.strip()]
+            if _is_toc_page(raw_lines):
+                continue
+            lines = [_clean_pdf_line(line) for line in raw_lines]
+            lines = [line for line in lines if line and line not in repeated_edges]
+            paragraph: list[str] = []
+
+            def flush_paragraph() -> None:
+                if not paragraph:
+                    return
+                value = " ".join(paragraph).strip()
                 if value:
-                    blocks.append(DocumentBlock("paragraph", value, page_number=page_number))
+                    blocks.append(DocumentBlock(
+                        "paragraph", value, " > ".join(item for item in headings if item) or None,
+                        page_number=page_number,
+                    ))
+                paragraph.clear()
+
+            for line in lines:
+                heading = _heading_info(line)
+                if heading:
+                    flush_paragraph()
+                    level, title = heading
+                    path = _update_heading_path(headings, level, title)
+                    blocks.append(DocumentBlock("heading", title, path, page_number=page_number))
+                else:
+                    paragraph.append(line)
+            flush_paragraph()
+        blocks.extend(_section_index_blocks(blocks))
         return blocks, len(reader.pages)
     if mime_type.endswith("wordprocessingml.document"):
         from docx import Document
@@ -67,19 +210,31 @@ def extract_blocks(content: bytes, mime_type: str) -> tuple[list[DocumentBlock],
             if not value:
                 continue
             style = (paragraph.style.name or "").lower() if paragraph.style else ""
+            detected = _heading_info(value)
             if style.startswith("heading") or style.startswith("标题"):
                 match = re.search(r"(\d+)$", style)
                 level = int(match.group(1)) if match else 1
-                headings = headings[:max(0, level - 1)] + [value]
-                blocks.append(DocumentBlock("heading", value, " > ".join(headings)))
+                path = _update_heading_path(headings, level, value)
+                blocks.append(DocumentBlock("heading", value, path))
+            elif detected:
+                level, title = detected
+                path = _update_heading_path(headings, level, title)
+                blocks.append(DocumentBlock("heading", title, path))
             else:
                 block_type = "list" if "list" in style or "列表" in style else "paragraph"
-                blocks.append(DocumentBlock(block_type, value, " > ".join(headings) or None))
+                blocks.append(DocumentBlock(
+                    block_type, value,
+                    " > ".join(item for item in headings if item) or None,
+                ))
         for table in document.tables:
             rows = [" | ".join(cell.text.strip() for cell in row.cells) for row in table.rows]
             value = "\n".join(row for row in rows if row.strip(" |"))
             if value:
-                blocks.append(DocumentBlock("table", value, " > ".join(headings) or None))
+                blocks.append(DocumentBlock(
+                    "table", value,
+                    " > ".join(item for item in headings if item) or None,
+                ))
+        blocks.extend(_section_index_blocks(blocks))
         return blocks, None
     if mime_type.endswith("presentationml.presentation"):
         from pptx import Presentation
@@ -197,10 +352,19 @@ def chunk_blocks(blocks: Sequence[DocumentBlock]) -> list[dict[str, Any]]:
             continue
         if meta is not None and (block.heading_path != meta.heading_path or
                                  block.page_number != meta.page_number or
-                                 block.slide_number != meta.slide_number) and current_tokens >= target // 2:
+                                 block.slide_number != meta.slide_number):
+            same_pdf_section = (
+                block.heading_path == meta.heading_path and
+                block.page_number is not None and meta.page_number is not None and
+                block.slide_number is None and meta.slide_number is None
+            )
             flush()
-            current = []
-            current_tokens = 0
+            # A PDF page break is a layout boundary, not a semantic boundary.
+            # Keep only the configured overlap when the same section continues
+            # on the next page so citations do not begin with an orphaned clause.
+            if not same_pdf_section:
+                current = []
+                current_tokens = 0
         meta = block
         for paragraph in paragraphs:
             parts = _token_bounded_parts(paragraph, max(1, maximum - overlap), 0)
@@ -215,7 +379,22 @@ def chunk_blocks(blocks: Sequence[DocumentBlock]) -> list[dict[str, Any]]:
                     flush()
                     meta = block
     flush()
-    return output
+    # A parent heading immediately followed by a child heading has no evidence
+    # of its own. Its text already survives in the child's heading_path, so do
+    # not index tiny heading-only records that would crowd out answer passages.
+    values = [item for item in output if item.get("block_type") != "heading"]
+    merged: list[dict[str, Any]] = []
+    for item in values:
+        if (item["token_count"] < 30 and merged and
+                item.get("heading_path") == merged[-1].get("heading_path") and
+                item.get("page_number") == merged[-1].get("page_number") and
+                item.get("slide_number") == merged[-1].get("slide_number") and
+                merged[-1]["token_count"] + item["token_count"] <= maximum):
+            merged[-1]["text"] = f'{merged[-1]["text"]}\n\n{item["text"]}'
+            merged[-1]["token_count"] = _estimated_tokens(merged[-1]["text"])
+        else:
+            merged.append(item)
+    return merged
 
 
 def chunks(text: str, size: int | None = None, overlap: int | None = None) -> Iterable[str]:
@@ -338,9 +517,149 @@ def _ensure_collection(client) -> None:
         )
 
 
+def _chapter_aliases(value: str) -> str:
+    def replace(match: re.Match[str]) -> str:
+        number = match.group(1)
+        if number.isdigit():
+            reverse = {value: key for key, value in _CHINESE_NUMBERS.items()}
+            chinese = reverse.get(int(number))
+            return f"第{number}章" + (f" 第{chinese}章" if chinese else "")
+        arabic = _CHINESE_NUMBERS.get(number)
+        return f"第{number}章" + (f" 第{arabic}章" if arabic else "")
+
+    return re.sub(r"第\s*([一二三四五六七八九十\d]+)\s*章", replace, value)
+
+
+def _resource_type_label(resource_type: str | None) -> str:
+    return {
+        "syllabus": "课程大纲",
+        "textbook": "教材",
+        "courseware": "课件",
+    }.get(resource_type or "", resource_type or "课程资料")
+
+
+def _structured_retrieval_text(
+    *, title: str, resource_type: str | None, heading_path: str | None, text: str,
+) -> str:
+    prefix = [f"资料类型：{_resource_type_label(resource_type)}", f"资料标题：{title}"]
+    if heading_path:
+        prefix.append(f"章节：{_chapter_aliases(heading_path)}")
+    return "\n".join(prefix + [text])
+
+
+def _candidate_retrieval_text(item: dict[str, Any]) -> str:
+    return _structured_retrieval_text(
+        title=str(item.get("title") or "课程资料"),
+        resource_type=item.get("resource_type"),
+        heading_path=item.get("heading_path"),
+        text=str(item.get("text") or ""),
+    )
+
+
+def _requested_resource_types(query: str) -> list[str]:
+    values: list[str] = []
+    for marker, resource_type in (("教材", "textbook"), ("大纲", "syllabus"), ("课件", "courseware")):
+        if marker in query:
+            values.append(resource_type)
+    # In this project, “课程第几章要求/教学目标” refers to the syllabus even
+    # when the student does not literally say “大纲”. This is a domain routing
+    # hint, not a generic semantic guess.
+    if (re.search(r"课程.{0,24}(?:要求|目标|内容|学时)", query) or
+            re.search(r"(?:教学|学习)(?:要求|目标)", query)):
+        values.append("syllabus")
+    return list(dict.fromkeys(values))
+
+
+def _chapter_number(value: str) -> int | None:
+    compact = re.sub(r"\s+", "", value)
+    if compact.isdigit():
+        return int(compact)
+    if compact in _CHINESE_NUMBERS:
+        return _CHINESE_NUMBERS[compact]
+    if compact.startswith("十"):
+        return 10 + _CHINESE_NUMBERS.get(compact[1:], 0)
+    if compact.endswith("十"):
+        return _CHINESE_NUMBERS.get(compact[:-1], 0) * 10
+    if "十" in compact:
+        tens, ones = compact.split("十", 1)
+        return _CHINESE_NUMBERS.get(tens, 1) * 10 + _CHINESE_NUMBERS.get(ones, 0)
+    return None
+
+
+def _query_chapters(query: str) -> set[int]:
+    values: set[int] = set()
+    for match in re.finditer(r"第\s*([一二三四五六七八九十百\d]+)\s*章", query):
+        number = _chapter_number(match.group(1))
+        if number is not None:
+            values.add(number)
+    return values
+
+
+def _candidate_chapter(item: dict[str, Any]) -> int | None:
+    value = str(item.get("heading_path") or item.get("text") or "")[:160]
+    match = re.search(r"第\s*([一二三四五六七八九十百\d]+)\s*章", value)
+    return _chapter_number(match.group(1)) if match else None
+
+
+def _apply_source_preferences(query: str, candidates: list[dict]) -> list[dict]:
+    requested = _requested_resource_types(query)
+    chapters = _query_chapters(query)
+    matching = [item for item in candidates if item.get("resource_type") in requested]
+    if len(requested) == 1:
+        candidates = matching or candidates
+    elif len(requested) > 1:
+        candidates = matching or candidates
+
+    def chapter_matches(item: dict) -> bool:
+        return not chapters or _candidate_chapter(item) in chapters
+
+    if not requested:
+        return sorted(candidates, key=lambda item: not chapter_matches(item))
+
+    if len(requested) > 1:
+        queues: dict[str, list[dict]] = {}
+        used: set[str] = set()
+        for resource_type in requested:
+            values = [item for item in candidates if item.get("resource_type") == resource_type]
+            queues[resource_type] = sorted(values, key=lambda item: not chapter_matches(item))
+        interleaved: list[dict] = []
+        while any(queues.values()):
+            for resource_type in requested:
+                if not queues[resource_type]:
+                    continue
+                item = queues[resource_type].pop(0)
+                key = str(item.get("chunk_id") or f"{item.get('resource_id')}:{item.get('position')}")
+                if key not in used:
+                    interleaved.append(item)
+                    used.add(key)
+        interleaved.extend(
+            item for item in candidates
+            if str(item.get("chunk_id") or f"{item.get('resource_id')}:{item.get('position')}") not in used
+        )
+        return interleaved
+
+    promoted: list[dict] = []
+    used: set[str] = set()
+    for resource_type in requested:
+        same_source = [row for row in candidates if row.get("resource_type") == resource_type]
+        item = next((row for row in same_source if chapter_matches(row)), None)
+        item = item or next(iter(same_source), None)
+        if item is not None:
+            key = str(item.get("chunk_id") or f"{item.get('resource_id')}:{item.get('position')}")
+            promoted.append(item)
+            used.add(key)
+    remaining = [
+        item for item in candidates
+        if str(item.get("chunk_id") or f"{item.get('resource_id')}:{item.get('position')}") not in used
+    ]
+    promoted.extend(sorted(remaining, key=lambda item: not chapter_matches(item)))
+    return promoted
+
+
 def index_resource(
     resource_id: int, offering_id: int, title: str,
     text: str | None = None, indexed_chunks: Sequence[dict[str, Any]] | None = None,
+    resource_type: str | None = None,
 ) -> int:
     from qdrant_client import models
 
@@ -354,7 +673,15 @@ def index_resource(
         raise ValueError("资料未提取到可索引文本")
 
     # Do not delete a usable old index until every new vector exists.
-    vectors = embed_texts([str(item["text"]) for item in values])
+    vectors = embed_texts([
+        _structured_retrieval_text(
+            title=title,
+            resource_type=resource_type,
+            heading_path=item.get("heading_path"),
+            text=str(item["text"]),
+        )
+        for item in values
+    ])
     client = _qdrant_client()
     _ensure_collection(client)
     points = []
@@ -370,6 +697,7 @@ def index_resource(
                 "resource_id": resource_id,
                 "offering_id": offering_id,
                 "title": title,
+                "resource_type": resource_type,
                 "position": position,
                 "text": value,
                 "chunk_id": item.get("id"),
@@ -380,14 +708,43 @@ def index_resource(
                 "embedding_model": settings.embedding_model,
             },
         ))
-    client.delete(
-        collection_name=settings.qdrant_collection,
-        points_selector=models.FilterSelector(filter=models.Filter(must=[
-            models.FieldCondition(key="resource_id", match=models.MatchValue(value=resource_id))
-        ])),
-        wait=True,
-    )
-    client.upsert(collection_name=settings.qdrant_collection, points=points, wait=True)
+    resource_filter = models.Filter(must=[
+        models.FieldCondition(key="resource_id", match=models.MatchValue(value=resource_id))
+    ])
+    old_point_ids: set[int | str] = set()
+    offset = None
+    while True:
+        records, offset = client.scroll(
+            collection_name=settings.qdrant_collection,
+            scroll_filter=resource_filter,
+            limit=256,
+            offset=offset,
+            with_payload=False,
+            with_vectors=False,
+        )
+        old_point_ids.update(record.id for record in records)
+        if offset is None:
+            break
+
+    # A 3072-dimensional embedding makes a few hundred points exceed Qdrant's
+    # default 32 MiB HTTP body limit. Upsert in bounded batches and only remove
+    # obsolete old point IDs after every new batch has succeeded. This also
+    # prevents a transient upload failure from first erasing the usable index.
+    batch_size = 64
+    for start in range(0, len(points), batch_size):
+        client.upsert(
+            collection_name=settings.qdrant_collection,
+            points=points[start:start + batch_size],
+            wait=True,
+        )
+    new_point_ids = {point.id for point in points}
+    stale_ids = list(old_point_ids - new_point_ids)
+    for start in range(0, len(stale_ids), 256):
+        client.delete(
+            collection_name=settings.qdrant_collection,
+            points_selector=models.PointIdsList(points=stale_ids[start:start + 256]),
+            wait=True,
+        )
     return len(points)
 
 
@@ -403,23 +760,26 @@ def _bm25_search(db: Session, offering_id: int, query: str, limit: int) -> list[
     from app.models import CourseResource, ResourceChunk
 
     rows = db.execute(
-        select(ResourceChunk, CourseResource.title)
+        select(ResourceChunk, CourseResource.title, CourseResource.resource_type)
         .join(CourseResource, CourseResource.id == ResourceChunk.resource_id)
         .where(ResourceChunk.offering_id == offering_id, CourseResource.deleted_at.is_(None))
         .order_by(ResourceChunk.id)
     ).all()
     if not rows:
         return []
-    documents = [_tokenize(chunk.text) for chunk, _ in rows]
-    query_tokens = _tokenize(query)
+    documents = [_tokenize(_structured_retrieval_text(
+        title=title, resource_type=resource_type,
+        heading_path=chunk.heading_path, text=chunk.text,
+    )) for chunk, title, resource_type in rows]
+    query_tokens = _tokenize(_chapter_aliases(query))
     if not query_tokens:
         return []
     document_frequency: Counter[str] = Counter()
     for tokens in documents:
         document_frequency.update(set(tokens))
     average_length = sum(len(tokens) for tokens in documents) / max(1, len(documents))
-    scored: list[tuple[float, Any, str]] = []
-    for (chunk, title), tokens in zip(rows, documents, strict=True):
+    scored: list[tuple[float, Any, str, str | None]] = []
+    for (chunk, title, resource_type), tokens in zip(rows, documents, strict=True):
         frequencies = Counter(tokens)
         score = 0.0
         for token in query_tokens:
@@ -431,17 +791,20 @@ def _bm25_search(db: Session, offering_id: int, query: str, limit: int) -> list[
             denominator = frequency + 1.5 * (1 - 0.75 + 0.75 * len(tokens) / max(1, average_length))
             score += idf * frequency * 2.5 / denominator
         if score > 0:
-            scored.append((score, chunk, title))
+            scored.append((score, chunk, title, resource_type))
     scored.sort(key=lambda item: item[0], reverse=True)
-    return [_chunk_result(chunk, title, round(score, 4), "bm25")
-            for score, chunk, title in scored[:limit]]
+    return [_chunk_result(chunk, title, resource_type, round(score, 4), "bm25")
+            for score, chunk, title, resource_type in scored[:limit]]
 
 
-def _chunk_result(chunk, title: str, score: float, source: str) -> dict:
+def _chunk_result(
+    chunk, title: str, resource_type: str | None, score: float, source: str,
+) -> dict:
     return {
         "chunk_id": chunk.id,
         "resource_id": chunk.resource_id,
         "title": title,
+        "resource_type": resource_type,
         "position": chunk.position,
         "text": chunk.text,
         "score": score,
@@ -453,12 +816,73 @@ def _chunk_result(chunk, title: str, score: float, source: str) -> dict:
     }
 
 
+def _complete_sentence_tail(text: str, limit: int = 360) -> str:
+    parts = [part.strip() for part in re.split(r"(?<=[。！？；])", text) if part.strip()]
+    complete = [part for part in parts[:-1] if re.search(r"[。！？；]$", part)]
+    value = "".join(complete[-2:])
+    return value[-limit:].lstrip() if value else ""
+
+
+def _complete_sentence_head(text: str, limit: int = 360) -> str:
+    parts = [part.strip() for part in re.split(r"(?<=[。！？；])", text) if part.strip()]
+    complete = [part for part in parts if re.search(r"[。！？；]$", part)]
+    value = "".join(complete[:2])
+    return value[:limit].rstrip() if value else ""
+
+
+def _attach_context_windows(db: Session, results: list[dict]) -> list[dict]:
+    """Attach readable neighbour context without changing the ranked chunk ID."""
+    from app.models import ResourceChunk
+
+    resource_ids = {int(item["resource_id"]) for item in results if item.get("resource_id")}
+    if not resource_ids:
+        return results
+    rows = db.scalars(
+        select(ResourceChunk)
+        .where(ResourceChunk.resource_id.in_(resource_ids))
+        .order_by(ResourceChunk.resource_id, ResourceChunk.position)
+    ).all()
+    grouped: dict[int, list[Any]] = {}
+    locations: dict[int, tuple[list[Any], int]] = {}
+    for chunk in rows:
+        grouped.setdefault(chunk.resource_id, []).append(chunk)
+    for values in grouped.values():
+        for index, chunk in enumerate(values):
+            locations[chunk.id] = (values, index)
+
+    contextualized: list[dict] = []
+    for result in results:
+        value = dict(result)
+        current_text = str(value.get("text") or "").strip()
+        pieces: list[str] = []
+        location = locations.get(value.get("chunk_id"))
+        if location:
+            siblings, index = location
+            current = siblings[index]
+            if index > 0 and siblings[index - 1].heading_path == current.heading_path:
+                previous = _complete_sentence_tail(siblings[index - 1].text)
+                if previous and not current_text.startswith(previous):
+                    pieces.append(previous)
+            pieces.append(current_text)
+            if index + 1 < len(siblings) and siblings[index + 1].heading_path == current.heading_path:
+                following = _complete_sentence_head(siblings[index + 1].text)
+                if following and not current_text.endswith(following):
+                    pieces.append(following)
+        else:
+            pieces.append(current_text)
+        heading = str(value.get("heading_path") or "").strip()
+        context = "\n\n".join(piece for piece in pieces if piece)
+        value["context_text"] = f"{heading}\n\n{context}" if heading else context
+        contextualized.append(value)
+    return contextualized
+
+
 def _dense_search(offering_id: int, query: str, limit: int) -> list[dict]:
     from qdrant_client import models
 
     settings = get_settings()
     try:
-        query_vector = embed_texts([query])[0]
+        query_vector = embed_texts([_chapter_aliases(query)])[0]
         result = _qdrant_client(timeout=5).query_points(
             collection_name=settings.qdrant_collection,
             query=query_vector,
@@ -473,6 +897,7 @@ def _dense_search(offering_id: int, query: str, limit: int) -> list[dict]:
         "chunk_id": item.payload.get("chunk_id"),
         "resource_id": item.payload["resource_id"],
         "title": item.payload["title"],
+        "resource_type": item.payload.get("resource_type"),
         "position": item.payload["position"],
         "text": item.payload["text"],
         "score": round(float(item.score), 4),
@@ -555,7 +980,7 @@ def _rerank_with_diagnostics(
         return candidates, diagnostics
     try:
         scores = model.predict(
-            [(query, item["text"]) for item in candidates[:12]],
+            [(_chapter_aliases(query), _candidate_retrieval_text(item)) for item in candidates[:12]],
             show_progress_bar=False,
         )
         for item, score in zip(candidates[:12], scores, strict=True):
@@ -615,12 +1040,12 @@ def retrieve_course(
             diagnostics["bm25_candidates"] = len(lexical)
 
         if mode == "bm25":
-            results = lexical
+            results = _apply_source_preferences(query, lexical)
         elif mode == "dense":
-            results = dense
+            results = _apply_source_preferences(query, dense)
         else:
             phase = perf_counter()
-            results = _rrf(dense, lexical)
+            results = _apply_source_preferences(query, _rrf(dense, lexical))
             timings["fusion"] = round((perf_counter() - phase) * 1000, 3)
             diagnostics["fused_candidates"] = len(results)
             if mode == "hybrid_rerank":
@@ -628,11 +1053,12 @@ def retrieve_course(
                 results, rerank_diagnostics = _rerank_with_diagnostics(
                     query, results, required=require_reranker,
                 )
+                results = _apply_source_preferences(query, results)
                 timings["rerank"] = round((perf_counter() - phase) * 1000, 3)
                 diagnostics.update(rerank_diagnostics)
         timings["total"] = round((perf_counter() - started) * 1000, 3)
         return RetrievalResult(
-            mode=mode, results=results[:limit], timings_ms=timings,
+            mode=mode, results=_attach_context_windows(session, results[:limit]), timings_ms=timings,
             diagnostics=diagnostics,
         )
     finally:
@@ -657,12 +1083,15 @@ def retrieve_course_variants(
         lexical = _bm25_search(session, offering_id, query, 20)
         bm25_ms = round((perf_counter() - phase) * 1000, 3)
         phase = perf_counter()
-        fused = _rrf(dense, lexical)
+        dense = _apply_source_preferences(query, dense)
+        lexical = _apply_source_preferences(query, lexical)
+        fused = _apply_source_preferences(query, _rrf(dense, lexical))
         fusion_ms = round((perf_counter() - phase) * 1000, 3)
         phase = perf_counter()
         reranked, rerank_diagnostics = _rerank_with_diagnostics(
             query, [dict(item) for item in fused], required=require_reranker,
         )
+        reranked = _apply_source_preferences(query, reranked)
         rerank_ms = round((perf_counter() - phase) * 1000, 3)
         base_diagnostics = {
             "dense_candidates": len(dense), "bm25_candidates": len(lexical),
@@ -770,7 +1199,10 @@ def search_course_supporting(
                 scored.append((score, chunk, resource))
         scored.sort(key=lambda item: item[0], reverse=True)
         return [{
-            **_chunk_result(chunk, resource.title, round(score, 4), "bm25_support"),
+            **_chunk_result(
+                chunk, resource.title, resource.resource_type,
+                round(score, 4), "bm25_support",
+            ),
             "resource_type": resource.resource_type,
         } for score, chunk, resource in scored[:limit]]
     finally:

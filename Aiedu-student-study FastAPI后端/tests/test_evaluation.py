@@ -56,6 +56,7 @@ def test_explicit_retrieval_modes_use_distinct_paths(monkeypatch):
                 "retrieval_source": "bm25", "score": 4.0, "text": "lexical"}]
     monkeypatch.setattr(rag, "_dense_search", lambda *_: list(dense))
     monkeypatch.setattr(rag, "_bm25_search", lambda *_: list(lexical))
+    monkeypatch.setattr(rag, "_attach_context_windows", lambda db, values: values)
     monkeypatch.setattr(rag, "_rerank_with_diagnostics", lambda query, values, required=False: (
         list(reversed(values)), {
             "reranker_requested": True, "reranker_applied": True,
@@ -167,8 +168,9 @@ def test_unapproved_or_privacy_shaped_dataset_is_rejected():
         RAGEvalDataset.model_validate(payload)
 
 
-def test_shipped_v1_datasets_are_approved_and_balanced():
-    root = Path(__file__).parents[1] / "evals" / "v1"
+@pytest.mark.parametrize("version", ["v1", "v2"])
+def test_shipped_datasets_are_approved_and_balanced(version):
+    root = Path(__file__).parents[1] / "evals" / version
     rag_dataset = runner.load_dataset(
         root / "rag.json", RAGEvalDataset, official=True, suite="rag",
     )

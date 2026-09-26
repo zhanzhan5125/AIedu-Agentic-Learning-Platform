@@ -1,0 +1,614 @@
+{
+  "version": "v2",
+  "offering_id": 2,
+  "contains_personal_data": false,
+  "cases": [
+    {
+      "id": "rag-001",
+      "category": "exact",
+      "query": "main 函数为什么是 C 程序的入口？",
+      "answerable": true,
+      "relevant_chunks": [
+        {
+          "resource_title": "The C Programming Language 中文版",
+          "content_hash": "7a92569c9796f45d6379d81f6dd3020fdb2b6c198ca6e9734a4bbf7ff2fd4a57",
+          "relevance": 3
+        }
+      ],
+      "end_to_end": true,
+      "approved": true
+    },
+    {
+      "id": "rag-002",
+      "category": "exact",
+      "query": "printf 如何完成格式化输出？",
+      "answerable": true,
+      "relevant_chunks": [
+        {
+          "resource_title": "The C Programming Language 中文版",
+          "content_hash": "71b4c299502c7e12daa1b4743cf9b2a9fd018024cbef7f5c19fd9d3b3e3475f0",
+          "relevance": 3
+        }
+      ],
+      "end_to_end": false,
+      "approved": true
+    },
+    {
+      "id": "rag-003",
+      "category": "exact",
+      "query": "#include 预处理指令支持哪些文件名形式？",
+      "answerable": true,
+      "relevant_chunks": [
+        {
+          "resource_title": "The C Programming Language 中文版",
+          "content_hash": "eee7e06fffd59c26d62769695b1954f07323f3953411e898b57ae86743468c2e",
+          "relevance": 3
+        }
+      ],
+      "end_to_end": false,
+      "approved": true
+    },
+    {
+      "id": "rag-004",
+      "category": "exact",
+      "query": "变量和常量在表达式中起什么作用，const 声明表示什么？",
+      "answerable": true,
+      "relevant_chunks": [
+        {
+          "resource_title": "The C Programming Language 中文版",
+          "content_hash": "836a91ddc3010eeb8b1240d3041708d9a223925ce92d0e8539e5cd45bb7c789a",
+          "relevance": 3
+        },
+        {
+          "resource_title": "The C Programming Language 中文版",
+          "content_hash": "47301b009443fab438ab6a217534ba963779ea2d125a274a7c2782647567b057",
+          "relevance": 3
+        }
+      ],
+      "end_to_end": true,
+      "approved": true
+    },
+    {
+      "id": "rag-005",
+      "category": "exact",
+      "query": "C 语言的基本数据类型和变量声明有哪些要点？",
+      "answerable": true,
+      "relevant_chunks": [
+        {
+          "resource_title": "The C Programming Language 中文版",
+          "content_hash": "66983f3ba2d3e56f21923c09a7ef8c9be82944cd63be7f3ba06a99388b67b2b4",
+          "relevance": 3
+        }
+      ],
+      "end_to_end": false,
+      "approved": true
+    },
+    {
+      "id": "rag-006",
+      "category": "exact",
+      "query": "C 语言运算符的优先级如何理解？",
+      "answerable": true,
+      "relevant_chunks": [
+        {
+          "resource_title": "The C Programming Language 中文版",
+          "content_hash": "c14914a81d0c19f97e0fabd1e9b05ed6bc07b519bd37b101d5f64ca0728c071c",
+          "relevance": 3
+        }
+      ],
+      "end_to_end": false,
+      "approved": true
+    },
+    {
+      "id": "rag-007",
+      "category": "exact",
+      "query": "if-else 在 C 语言中用于解决什么问题？",
+      "answerable": true,
+      "relevant_chunks": [
+        {
+          "resource_title": "The C Programming Language 中文版",
+          "content_hash": "621b1ee7d35f9a071538ce6fce7735f5c96b3b523693336cb56c7904614b6de8",
+          "relevance": 3
+        }
+      ],
+      "end_to_end": false,
+      "approved": true
+    },
+    {
+      "id": "rag-008",
+      "category": "exact",
+      "query": "for 循环省略测试条件时会发生什么？",
+      "answerable": true,
+      "relevant_chunks": [
+        {
+          "resource_title": "The C Programming Language 中文版",
+          "content_hash": "61bb357752eba200f3cc683ab2cabc7fee7b61e711efbf53ec076791659e2c14",
+          "relevance": 3
+        }
+      ],
+      "end_to_end": true,
+      "approved": true
+    },
+    {
+      "id": "rag-009",
+      "category": "semantic",
+      "query": "函数原型中的参数名是否必需，它有什么作用？",
+      "answerable": true,
+      "relevant_chunks": [
+        {
+          "resource_title": "The C Programming Language 中文版",
+          "content_hash": "6e1d9c77ab15b8a793bc22acea42fd1b544f9cc1097e688c5431c742aba98803",
+          "relevance": 3
+        }
+      ],
+      "end_to_end": false,
+      "approved": true
+    },
+    {
+      "id": "rag-010",
+      "category": "semantic",
+      "query": "数组和指针在表达式中有什么联系？",
+      "answerable": true,
+      "relevant_chunks": [
+        {
+          "resource_title": "The C Programming Language 中文版",
+          "content_hash": "234268790eb299a3d5aba911d98e44a6857bbbca8c46a958ebe27599ef31178f",
+          "relevance": 3
+        },
+        {
+          "resource_title": "The C Programming Language 中文版",
+          "content_hash": "f91581a30a8c8a246bd099724d28ce77ff79e1667567b3e9329d9cf7f96e7bff",
+          "relevance": 3
+        }
+      ],
+      "end_to_end": true,
+      "approved": true
+    },
+    {
+      "id": "rag-011",
+      "category": "semantic",
+      "query": "C 字符串末尾为什么需要空字符？",
+      "answerable": true,
+      "relevant_chunks": [
+        {
+          "resource_title": "The C Programming Language 中文版",
+          "content_hash": "d09a0c3922434271390c08046175379f42995568deb3b7d535848c7a84242dd5",
+          "relevance": 3
+        }
+      ],
+      "end_to_end": false,
+      "approved": true
+    },
+    {
+      "id": "rag-012",
+      "category": "semantic",
+      "query": "局部自动变量的作用域如何确定？",
+      "answerable": true,
+      "relevant_chunks": [
+        {
+          "resource_title": "The C Programming Language 中文版",
+          "content_hash": "73e852ccfef6b710ce632e06d2a17088b2bad7990cca273b95217f5f2366bd43",
+          "relevance": 3
+        }
+      ],
+      "end_to_end": false,
+      "approved": true
+    },
+    {
+      "id": "rag-013",
+      "category": "semantic",
+      "query": "递归如何用于快速排序的子数组处理？",
+      "answerable": true,
+      "relevant_chunks": [
+        {
+          "resource_title": "The C Programming Language 中文版",
+          "content_hash": "dfe301527403be70dfbb1e98f7fde45109e146c7d298e3f6e309d9e872cac3b2",
+          "relevance": 3
+        }
+      ],
+      "end_to_end": true,
+      "approved": true
+    },
+    {
+      "id": "rag-014",
+      "category": "semantic",
+      "query": "课程中结构体和链表包含哪些学习内容？",
+      "answerable": true,
+      "relevant_chunks": [
+        {
+          "resource_title": "程序设计课程大纲",
+          "content_hash": "54252ec4fcdcfbe5b949b4d196bc0f68cc21d9aa8a6a64f882e6e0610ddb35a5",
+          "relevance": 3
+        }
+      ],
+      "end_to_end": false,
+      "approved": true
+    },
+    {
+      "id": "rag-015",
+      "category": "semantic",
+      "query": "文件描述符在 UNIX 输入输出中起什么作用？",
+      "answerable": true,
+      "relevant_chunks": [
+        {
+          "resource_title": "The C Programming Language 中文版",
+          "content_hash": "274260178fea158f9696f30159a49cceb9c970aac78b9728ea695ab367c068fa",
+          "relevance": 3
+        }
+      ],
+      "end_to_end": false,
+      "approved": true
+    },
+    {
+      "id": "rag-016",
+      "category": "semantic",
+      "query": "realloc 调整内存块大小时如何处理原有内容？",
+      "answerable": true,
+      "relevant_chunks": [
+        {
+          "resource_title": "The C Programming Language 中文版",
+          "content_hash": "0e173637cf3e67cd6ba2f97e1f15ea0e328afa7db2b5bf114e86e4f7a263ce35",
+          "relevance": 3
+        }
+      ],
+      "end_to_end": true,
+      "approved": true
+    },
+    {
+      "id": "rag-017",
+      "category": "chapter",
+      "query": "第一章课程安排包含哪些 C 语言入门内容？",
+      "answerable": true,
+      "relevant_chunks": [
+        {
+          "resource_title": "程序设计课程大纲",
+          "content_hash": "0150fcf1a1fdca575c391d453d8d2ec1e44a8463b1cff1dc2375f71115aa1275",
+          "relevance": 3
+        }
+      ],
+      "end_to_end": false,
+      "approved": true
+    },
+    {
+      "id": "rag-018",
+      "category": "chapter",
+      "query": "第二章关于变量、常量和基本语法的要求是什么？",
+      "answerable": true,
+      "relevant_chunks": [
+        {
+          "resource_title": "程序设计课程大纲",
+          "content_hash": "fce9fabe44565f2f0c59c1e99d7f5ccd7938683f77dc14d30263f8393d9920e0",
+          "relevance": 3
+        }
+      ],
+      "end_to_end": false,
+      "approved": true
+    },
+    {
+      "id": "rag-019",
+      "category": "chapter",
+      "query": "教材第三章主要介绍什么？",
+      "answerable": true,
+      "relevant_chunks": [
+        {
+          "resource_title": "The C Programming Language 中文版",
+          "content_hash": "fe01ebd2dc679dc4ff899dfd16440507cae5d2984f0c703286805f883763ca54",
+          "relevance": 3
+        }
+      ],
+      "end_to_end": false,
+      "approved": true
+    },
+    {
+      "id": "rag-020",
+      "category": "chapter",
+      "query": "第四章模块化程序设计有哪些核心学习内容？",
+      "answerable": true,
+      "relevant_chunks": [
+        {
+          "resource_title": "程序设计课程大纲",
+          "content_hash": "887005c3db45a1f415b271afa1641f677e72cdcb5bc683a3f086d9b76cd16457",
+          "relevance": 3
+        }
+      ],
+      "end_to_end": true,
+      "approved": true
+    },
+    {
+      "id": "rag-021",
+      "category": "chapter",
+      "query": "教材第五章“指针与数组”涉及哪些主题？",
+      "answerable": true,
+      "relevant_chunks": [
+        {
+          "resource_title": "The C Programming Language 中文版",
+          "content_hash": "03c65e009d3c72787780792a99cd5b6e7c1529aaf38bbc3138683ce03ccb8583",
+          "relevance": 3
+        }
+      ],
+      "end_to_end": false,
+      "approved": true
+    },
+    {
+      "id": "rag-022",
+      "category": "chapter",
+      "query": "课程大纲中的指针章节强调哪些能力？",
+      "answerable": true,
+      "relevant_chunks": [
+        {
+          "resource_title": "程序设计课程大纲",
+          "content_hash": "dc35d85783dacb33b1aae4ea8768bad0b1b5b3cba6870d6984560f1d116de204",
+          "relevance": 3
+        }
+      ],
+      "end_to_end": false,
+      "approved": true
+    },
+    {
+      "id": "rag-023",
+      "category": "chapter",
+      "query": "结构体章节包含哪些数据结构内容？",
+      "answerable": true,
+      "relevant_chunks": [
+        {
+          "resource_title": "程序设计课程大纲",
+          "content_hash": "54252ec4fcdcfbe5b949b4d196bc0f68cc21d9aa8a6a64f882e6e0610ddb35a5",
+          "relevance": 3
+        }
+      ],
+      "end_to_end": false,
+      "approved": true
+    },
+    {
+      "id": "rag-024",
+      "category": "chapter",
+      "query": "教材如何介绍 UNIX 文件接口？",
+      "answerable": true,
+      "relevant_chunks": [
+        {
+          "resource_title": "The C Programming Language 中文版",
+          "content_hash": "274260178fea158f9696f30159a49cceb9c970aac78b9728ea695ab367c068fa",
+          "relevance": 3
+        }
+      ],
+      "end_to_end": false,
+      "approved": true
+    },
+    {
+      "id": "rag-025",
+      "category": "multi_evidence",
+      "query": "结合教材和课程大纲，说明 break 与 continue 的区别及其所属学习内容。",
+      "answerable": true,
+      "relevant_chunks": [
+        {
+          "resource_title": "The C Programming Language 中文版",
+          "content_hash": "93c4a731829d90b56bde412f4c82f79cab2a17ca3a63a3860541713b05b453d1",
+          "relevance": 3
+        },
+        {
+          "resource_title": "程序设计课程大纲",
+          "content_hash": "c1c40faed6db6cb356988a05bd75893034a9dc7f85bbe12f2413f3de8db555cf",
+          "relevance": 3
+        }
+      ],
+      "end_to_end": false,
+      "approved": true
+    },
+    {
+      "id": "rag-026",
+      "category": "multi_evidence",
+      "query": "教材如何区分 #define 符号常量的文本替换与 const 对象的只读约束？",
+      "answerable": true,
+      "relevant_chunks": [
+        {
+          "resource_title": "The C Programming Language 中文版",
+          "content_hash": "aa89ae8931145ef7ab7eaebe53f555bec628fb9598b639f1808f303c1f3b36ba",
+          "relevance": 3
+        },
+        {
+          "resource_title": "The C Programming Language 中文版",
+          "content_hash": "47301b009443fab438ab6a217534ba963779ea2d125a274a7c2782647567b057",
+          "relevance": 3
+        }
+      ],
+      "end_to_end": false,
+      "approved": true
+    },
+    {
+      "id": "rag-027",
+      "category": "multi_evidence",
+      "query": "char *lineptr[MAXLINES] 与 int (*)[] 分别声明了什么类型？",
+      "answerable": true,
+      "relevant_chunks": [
+        {
+          "resource_title": "The C Programming Language 中文版",
+          "content_hash": "4362ec4caa249f284dd679f7a18de24df0a3bb6863604fa2941abeb965a1f8cc",
+          "relevance": 3
+        },
+        {
+          "resource_title": "The C Programming Language 中文版",
+          "content_hash": "f76633adae19474a68f6261180a735e527f9644bb5225f68a79372c2ac210c6f",
+          "relevance": 3
+        }
+      ],
+      "end_to_end": false,
+      "approved": true
+    },
+    {
+      "id": "rag-028",
+      "category": "multi_evidence",
+      "query": "课程为何要求掌握变量存储属性，教材如何说明自动、静态与外部变量的初始化和生存期？",
+      "answerable": true,
+      "relevant_chunks": [
+        {
+          "resource_title": "The C Programming Language 中文版",
+          "content_hash": "2aa1b1038e48aa65f26ed0600f350fb3da620b4ee4bb53f7c59afc67b26a8eca",
+          "relevance": 3
+        },
+        {
+          "resource_title": "The C Programming Language 中文版",
+          "content_hash": "ab08de6e83f920008a3dee83ece763a9ddf2824965ac811a08474bc6411c6548",
+          "relevance": 3
+        },
+        {
+          "resource_title": "程序设计课程大纲",
+          "content_hash": "94face432332571c3f6f0d03b3d03393731f82955364387f44c64737f0e8cc3f",
+          "relevance": 3
+        }
+      ],
+      "end_to_end": true,
+      "approved": true
+    },
+    {
+      "id": "rag-029",
+      "category": "multi_evidence",
+      "query": "课程第一章对 C 程序编译运行有什么要求，教材如何演示 hello.c 的编译与运行？",
+      "answerable": true,
+      "relevant_chunks": [
+        {
+          "resource_title": "程序设计课程大纲",
+          "content_hash": "6b78b78481b8eee43ebffedfc204025dc02d50bebd93c9ea92563a2071c7aa8a",
+          "relevance": 3
+        },
+        {
+          "resource_title": "The C Programming Language 中文版",
+          "content_hash": "7a92569c9796f45d6379d81f6dd3020fdb2b6c198ca6e9734a4bbf7ff2fd4a57",
+          "relevance": 3
+        }
+      ],
+      "end_to_end": false,
+      "approved": true
+    },
+    {
+      "id": "rag-030",
+      "category": "multi_evidence",
+      "query": "教材如何用多路判定和循环实现折半查找，课程大纲把它归入哪些结构与算法内容？",
+      "answerable": true,
+      "relevant_chunks": [
+        {
+          "resource_title": "The C Programming Language 中文版",
+          "content_hash": "495d4ce7e14f789fee3a0a7a03d23c9c90c725c8c4e5071ababb9d2c721f20b4",
+          "relevance": 3
+        },
+        {
+          "resource_title": "程序设计课程大纲",
+          "content_hash": "c1c40faed6db6cb356988a05bd75893034a9dc7f85bbe12f2413f3de8db555cf",
+          "relevance": 3
+        }
+      ],
+      "end_to_end": false,
+      "approved": true
+    },
+    {
+      "id": "rag-031",
+      "category": "multi_evidence",
+      "query": "课程大纲要求掌握哪三种基本结构，教材第三章如何介绍控制流与条件分支？",
+      "answerable": true,
+      "relevant_chunks": [
+        {
+          "resource_title": "程序设计课程大纲",
+          "content_hash": "28ad320f0a2c2c4ce8edcae3bb874d65aa147fdad734aa0df8896d52e82ba1ec",
+          "relevance": 3
+        },
+        {
+          "resource_title": "The C Programming Language 中文版",
+          "content_hash": "621b1ee7d35f9a071538ce6fce7735f5c96b3b523693336cb56c7904614b6de8",
+          "relevance": 3
+        }
+      ],
+      "end_to_end": false,
+      "approved": true
+    },
+    {
+      "id": "rag-032",
+      "category": "multi_evidence",
+      "query": "课程第一章要求掌握哪些 C 语言特点，教材如何解释 C 程序的可移植性？",
+      "answerable": true,
+      "relevant_chunks": [
+        {
+          "resource_title": "The C Programming Language 中文版",
+          "content_hash": "091a89f45480da42e4ed46fdf706582d4273941cf1eac8fcfb147889f1121fce",
+          "relevance": 3
+        },
+        {
+          "resource_title": "程序设计课程大纲",
+          "content_hash": "6b78b78481b8eee43ebffedfc204025dc02d50bebd93c9ea92563a2071c7aa8a",
+          "relevance": 3
+        }
+      ],
+      "end_to_end": false,
+      "approved": true
+    },
+    {
+      "id": "rag-033",
+      "category": "unanswerable",
+      "query": "Python 的 GIL 如何影响多线程性能？",
+      "answerable": false,
+      "relevant_chunks": [],
+      "end_to_end": true,
+      "approved": true
+    },
+    {
+      "id": "rag-034",
+      "category": "unanswerable",
+      "query": "Java 垃圾回收器 G1 的分区策略是什么？",
+      "answerable": false,
+      "relevant_chunks": [],
+      "end_to_end": true,
+      "approved": true
+    },
+    {
+      "id": "rag-035",
+      "category": "unanswerable",
+      "query": "React useEffect 的依赖数组如何工作？",
+      "answerable": false,
+      "relevant_chunks": [],
+      "end_to_end": true,
+      "approved": true
+    },
+    {
+      "id": "rag-036",
+      "category": "unanswerable",
+      "query": "MySQL InnoDB 的 MVCC 如何实现？",
+      "answerable": false,
+      "relevant_chunks": [],
+      "end_to_end": true,
+      "approved": true
+    },
+    {
+      "id": "rag-037",
+      "category": "unanswerable",
+      "query": "请解释卷积神经网络的反向传播。",
+      "answerable": false,
+      "relevant_chunks": [],
+      "end_to_end": false,
+      "approved": true
+    },
+    {
+      "id": "rag-038",
+      "category": "unanswerable",
+      "query": "量子纠缠是否能实现超光速通信？",
+      "answerable": false,
+      "relevant_chunks": [],
+      "end_to_end": false,
+      "approved": true
+    },
+    {
+      "id": "rag-039",
+      "category": "unanswerable",
+      "query": "今天杭州的实时天气如何？",
+      "answerable": false,
+      "relevant_chunks": [],
+      "end_to_end": false,
+      "approved": true
+    },
+    {
+      "id": "rag-040",
+      "category": "unanswerable",
+      "query": "中华人民共和国合同法最新司法解释有哪些变化？",
+      "answerable": false,
+      "relevant_chunks": [],
+      "end_to_end": false,
+      "approved": true
+    }
+  ]
+}
