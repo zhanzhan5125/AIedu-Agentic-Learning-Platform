@@ -66,4 +66,4 @@ RAG 对比 BM25、Dense、RRF、RRF+Rerank，报告 Recall@5/6、MRR@10、nDCG@5
 
 ## 简历结论规则
 
-在正式报告运行完成并完成人工抽查前，不填写提升数字。正式报告生成后，只能引用 JSON 中能够重新计算的指标；如果 Rerank 或 Reflection 没有提升，则保留消融结果并说明最终取舍。
+commit `7d67258` 的 v1 正式评测和项目内抽查已经完成，结果、取舍与保守简历表述见 [v1 正式评测结果](evaluation-results-v1.md)。正式报告只能引用基线 JSON 中能够重新计算的指标；Rerank 和 Reflection 没有达到预设收益门槛，报告已保留负向结论。

@@ -1,0 +1,2488 @@
+{
+  "official": true,
+  "generated_at": "2026-09-26T01:53:54.098538+00:00",
+  "metadata": {
+    "git_commit": "7d6725801067e4db4c7e7bef1dafb2dd312394f6",
+    "dataset_version": "v1",
+    "python": "3.11.16",
+    "platform": "Windows-10-10.0.22631-SP0",
+    "llm_model": "deepseek-v3.2",
+    "embedding_model": "text-embedding-3-large",
+    "embedding_dimensions": 3072,
+    "reranker_model": "BAAI/bge-reranker-base",
+    "seed": 42,
+    "repeat": 1
+  },
+  "suites": [
+    {
+      "suite": "routing",
+      "summary": {
+        "rules": {
+          "accuracy": 0.675,
+          "macro_f1": 0.6043,
+          "delegation": {
+            "precision": 1.0,
+            "recall": 0.6429,
+            "f1": 0.7826
+          },
+          "tool_exact_match": 0.7,
+          "unnecessary_delegation_rate": 0.0,
+          "missed_delegation_rate": 0.3571
+        },
+        "model": {
+          "accuracy": 1.0,
+          "macro_f1": 1.0,
+          "delegation": {
+            "precision": 1.0,
+            "recall": 1.0,
+            "f1": 1.0
+          },
+          "tool_exact_match": 0.9,
+          "unnecessary_delegation_rate": 0.0,
+          "missed_delegation_rate": 0.0
+        }
+      },
+      "performance": {
+        "structured_output_failure_rate": 0.0,
+        "fallback_rate": 0.0,
+        "repeat_consistency_rate": 1.0,
+        "latency_p50_ms": 3102.9685,
+        "latency_p95_ms": 4107.8765,
+        "prompt_tokens": 35769,
+        "completion_tokens": 3398
+      },
+      "cases": [
+        {
+          "id": "routing-001",
+          "category": "course_qa",
+          "question": "什么是 C 语言中的指针？",
+          "expected": {
+            "intent": "course_qa",
+            "delegate_student_learning_assistant": false,
+            "search_course_materials": true,
+            "search_web": false,
+            "identity_request": false
+          },
+          "rules": {
+            "decision": {
+              "intent": "course_qa",
+              "delegate_student_learning_assistant": false,
+              "search_course_materials": true,
+              "search_web": false,
+              "identity_request": false,
+              "rationale": "模型路由不可用，按普通课程问答处理。"
+            }
+          },
+          "model": {
+            "decision": {
+              "intent": "course_qa",
+              "delegate_student_learning_assistant": false,
+              "search_course_materials": true,
+              "search_web": false,
+              "identity_request": false,
+              "rationale": "这是一个关于C语言基础概念的课程问题，应优先检索课程资料来回答。"
+            },
+            "route_mode": "model"
+          },
+          "model_runs": [
+            {
+              "intent": "course_qa",
+              "delegate_student_learning_assistant": false,
+              "search_course_materials": true,
+              "search_web": false,
+              "identity_request": false,
+              "rationale": "这是一个关于C语言基础概念的课程问题，应优先检索课程资料来回答。"
+            },
+            {
+              "intent": "course_qa",
+              "delegate_student_learning_assistant": false,
+              "search_course_materials": true,
+              "search_web": false,
+              "identity_request": false,
+              "rationale": "这是一个关于C语言基础概念的课程问题，应优先检索课程资料来回答。"
+            }
+          ],
+          "route_modes": [
+            "model",
+            "model"
+          ],
+          "consistent": true,
+          "latency_ms": [
+            6164.217,
+            3180.886
+          ],
+          "token_usage": [
+            {
+              "prompt": 710,
+              "completion": 67,
+              "total": 777
+            },
+            {
+              "prompt": 710,
+              "completion": 67,
+              "total": 777
+            }
+          ]
+        },
+        {
+          "id": "routing-002",
+          "category": "course_qa",
+          "question": "请解释 for 循环的执行顺序。",
+          "expected": {
+            "intent": "course_qa",
+            "delegate_student_learning_assistant": false,
+            "search_course_materials": true,
+            "search_web": false,
+            "identity_request": false
+          },
+          "rules": {
+            "decision": {
+              "intent": "course_qa",
+              "delegate_student_learning_assistant": false,
+              "search_course_materials": true,
+              "search_web": false,
+              "identity_request": false,
+              "rationale": "模型路由不可用，按普通课程问答处理。"
+            }
+          },
+          "model": {
+            "decision": {
+              "intent": "course_qa",
+              "delegate_student_learning_assistant": false,
+              "search_course_materials": true,
+              "search_web": false,
+              "identity_request": false,
+              "rationale": "这是一个关于编程基础概念的问题，属于课程知识问答范畴。"
+            },
+            "route_mode": "model"
+          },
+          "model_runs": [
+            {
+              "intent": "course_qa",
+              "delegate_student_learning_assistant": false,
+              "search_course_materials": true,
+              "search_web": false,
+              "identity_request": false,
+              "rationale": "这是一个关于编程基础概念的问题，属于课程知识问答范畴。"
+            }
+          ],
+          "route_modes": [
+            "model"
+          ],
+          "consistent": true,
+          "latency_ms": [
+            3245.643
+          ],
+          "token_usage": [
+            {
+              "prompt": 711,
+              "completion": 63,
+              "total": 774
+            }
+          ]
+        },
+        {
+          "id": "routing-003",
+          "category": "course_qa",
+          "question": "数组下标为什么从 0 开始？",
+          "expected": {
+            "intent": "course_qa",
+            "delegate_student_learning_assistant": false,
+            "search_course_materials": true,
+            "search_web": false,
+            "identity_request": false
+          },
+          "rules": {
+            "decision": {
+              "intent": "course_qa",
+              "delegate_student_learning_assistant": false,
+              "search_course_materials": true,
+              "search_web": false,
+              "identity_request": false,
+              "rationale": "模型路由不可用，按普通课程问答处理。"
+            }
+          },
+          "model": {
+            "decision": {
+              "intent": "course_qa",
+              "delegate_student_learning_assistant": false,
+              "search_course_materials": true,
+              "search_web": false,
+              "identity_request": false,
+              "rationale": "这是一个关于编程语言基础概念的课程问题，应优先检索课程资料来回答。"
+            },
+            "route_mode": "model"
+          },
+          "model_runs": [
+            {
+              "intent": "course_qa",
+              "delegate_student_learning_assistant": false,
+              "search_course_materials": true,
+              "search_web": false,
+              "identity_request": false,
+              "rationale": "这是一个关于编程语言基础概念的课程问题，应优先检索课程资料来回答。"
+            }
+          ],
+          "route_modes": [
+            "model"
+          ],
+          "consistent": true,
+          "latency_ms": [
+            2817.141
+          ],
+          "token_usage": [
+            {
+              "prompt": 712,
+              "completion": 67,
+              "total": 779
+            }
+          ]
+        },
+        {
+          "id": "routing-004",
+          "category": "course_qa",
+          "question": "main 函数的返回值有什么意义？",
+          "expected": {
+            "intent": "course_qa",
+            "delegate_student_learning_assistant": false,
+            "search_course_materials": true,
+            "search_web": false,
+            "identity_request": false
+          },
+          "rules": {
+            "decision": {
+              "intent": "course_qa",
+              "delegate_student_learning_assistant": false,
+              "search_course_materials": true,
+              "search_web": false,
+              "identity_request": false,
+              "rationale": "模型路由不可用，按普通课程问答处理。"
+            }
+          },
+          "model": {
+            "decision": {
+              "intent": "course_qa",
+              "delegate_student_learning_assistant": false,
+              "search_course_materials": true,
+              "search_web": false,
+              "identity_request": false,
+              "rationale": "这是一个关于C/C++编程语言中main函数返回值的课程知识问题。"
+            },
+            "route_mode": "model"
+          },
+          "model_runs": [
+            {
+              "intent": "course_qa",
+              "delegate_student_learning_assistant": false,
+              "search_course_materials": true,
+              "search_web": false,
+              "identity_request": false,
+              "rationale": "这是一个关于C/C++编程语言中main函数返回值的课程知识问题。"
+            }
+          ],
+          "route_modes": [
+            "model"
+          ],
+          "consistent": true,
+          "latency_ms": [
+            2754.645
+          ],
+          "token_usage": [
+            {
+              "prompt": 710,
+              "completion": 66,
+              "total": 776
+            }
+          ]
+        },
+        {
+          "id": "routing-005",
+          "category": "course_qa",
+          "question": "结构体和联合体有什么区别？",
+          "expected": {
+            "intent": "course_qa",
+            "delegate_student_learning_assistant": false,
+            "search_course_materials": true,
+            "search_web": false,
+            "identity_request": false
+          },
+          "rules": {
+            "decision": {
+              "intent": "course_qa",
+              "delegate_student_learning_assistant": false,
+              "search_course_materials": true,
+              "search_web": false,
+              "identity_request": false,
+              "rationale": "模型路由不可用，按普通课程问答处理。"
+            }
+          },
+          "model": {
+            "decision": {
+              "intent": "course_qa",
+              "delegate_student_learning_assistant": false,
+              "search_course_materials": true,
+              "search_web": false,
+              "identity_request": false,
+              "rationale": "这是一个关于C语言编程基础概念的课程问题，需要从课程资料中检索答案。"
+            },
+            "route_mode": "model"
+          },
+          "model_runs": [
+            {
+              "intent": "course_qa",
+              "delegate_student_learning_assistant": false,
+              "search_course_materials": true,
+              "search_web": false,
+              "identity_request": false,
+              "rationale": "这是一个关于C语言编程基础概念的课程问题，需要从课程资料中检索答案。"
+            }
+          ],
+          "route_modes": [
+            "model"
+          ],
+          "consistent": true,
+          "latency_ms": [
+            2826.791
+          ],
+          "token_usage": [
+            {
+              "prompt": 709,
+              "completion": 68,
+              "total": 777
+            }
+          ]
+        },
+        {
+          "id": "routing-006",
+          "category": "course_qa",
+          "question": "递归函数需要满足什么条件？",
+          "expected": {
+            "intent": "course_qa",
+            "delegate_student_learning_assistant": false,
+            "search_course_materials": true,
+            "search_web": false,
+            "identity_request": false
+          },
+          "rules": {
+            "decision": {
+              "intent": "course_qa",
+              "delegate_student_learning_assistant": false,
+              "search_course_materials": true,
+              "search_web": false,
+              "identity_request": false,
+              "rationale": "模型路由不可用，按普通课程问答处理。"
+            }
+          },
+          "model": {
+            "decision": {
+              "intent": "course_qa",
+              "delegate_student_learning_assistant": false,
+              "search_course_materials": true,
+              "search_web": false,
+              "identity_request": false,
+              "rationale": "这是一个关于递归函数定义的课程知识问题，应优先检索课程资料来回答。"
+            },
+            "route_mode": "model"
+          },
+          "model_runs": [
+            {
+              "intent": "course_qa",
+              "delegate_student_learning_assistant": false,
+              "search_course_materials": true,
+              "search_web": false,
+              "identity_request": false,
+              "rationale": "这是一个关于递归函数定义的课程知识问题，应优先检索课程资料来回答。"
+            }
+          ],
+          "route_modes": [
+            "model"
+          ],
+          "consistent": true,
+          "latency_ms": [
+            3540.454
+          ],
+          "token_usage": [
+            {
+              "prompt": 710,
+              "completion": 67,
+              "total": 777
+            }
+          ]
+        },
+        {
+          "id": "routing-007",
+          "category": "course_qa",
+          "question": "宏定义与函数有什么区别？",
+          "expected": {
+            "intent": "course_qa",
+            "delegate_student_learning_assistant": false,
+            "search_course_materials": true,
+            "search_web": false,
+            "identity_request": false
+          },
+          "rules": {
+            "decision": {
+              "intent": "course_qa",
+              "delegate_student_learning_assistant": false,
+              "search_course_materials": true,
+              "search_web": false,
+              "identity_request": false,
+              "rationale": "模型路由不可用，按普通课程问答处理。"
+            }
+          },
+          "model": {
+            "decision": {
+              "intent": "course_qa",
+              "delegate_student_learning_assistant": false,
+              "search_course_materials": true,
+              "search_web": false,
+              "identity_request": false,
+              "rationale": "这是一个关于C语言编程基础概念的课程问题，需要从课程资料中查找答案。"
+            },
+            "route_mode": "model"
+          },
+          "model_runs": [
+            {
+              "intent": "course_qa",
+              "delegate_student_learning_assistant": false,
+              "search_course_materials": true,
+              "search_web": false,
+              "identity_request": false,
+              "rationale": "这是一个关于C语言编程基础概念的课程问题，需要从课程资料中查找答案。"
+            }
+          ],
+          "route_modes": [
+            "model"
+          ],
+          "consistent": true,
+          "latency_ms": [
+            2902.554
+          ],
+          "token_usage": [
+            {
+              "prompt": 709,
+              "completion": 68,
+              "total": 777
+            }
+          ]
+        },
+        {
+          "id": "routing-008",
+          "category": "course_qa",
+          "question": "如何理解变量的作用域？",
+          "expected": {
+            "intent": "course_qa",
+            "delegate_student_learning_assistant": false,
+            "search_course_materials": true,
+            "search_web": false,
+            "identity_request": false
+          },
+          "rules": {
+            "decision": {
+              "intent": "course_qa",
+              "delegate_student_learning_assistant": false,
+              "search_course_materials": true,
+              "search_web": false,
+              "identity_request": false,
+              "rationale": "模型路由不可用，按普通课程问答处理。"
+            }
+          },
+          "model": {
+            "decision": {
+              "intent": "course_qa",
+              "delegate_student_learning_assistant": false,
+              "search_course_materials": true,
+              "search_web": false,
+              "identity_request": false,
+              "rationale": "这是一个关于编程基础概念的课程问题，需要从课程资料中获取解释。"
+            },
+            "route_mode": "model"
+          },
+          "model_runs": [
+            {
+              "intent": "course_qa",
+              "delegate_student_learning_assistant": false,
+              "search_course_materials": true,
+              "search_web": false,
+              "identity_request": false,
+              "rationale": "这是一个关于编程基础概念的课程问题，需要从课程资料中获取解释。"
+            }
+          ],
+          "route_modes": [
+            "model"
+          ],
+          "consistent": true,
+          "latency_ms": [
+            2781.257
+          ],
+          "token_usage": [
+            {
+              "prompt": 709,
+              "completion": 66,
+              "total": 775
+            }
+          ]
+        },
+        {
+          "id": "routing-009",
+          "category": "resource_lookup",
+          "question": "教材哪一页讲了运算符优先级？",
+          "expected": {
+            "intent": "resource_lookup",
+            "delegate_student_learning_assistant": false,
+            "search_course_materials": true,
+            "search_web": false,
+            "identity_request": false
+          },
+          "rules": {
+            "decision": {
+              "intent": "resource_lookup",
+              "delegate_student_learning_assistant": false,
+              "search_course_materials": true,
+              "search_web": false,
+              "identity_request": false,
+              "rationale": "模型路由不可用，问题包含明确的资料定位请求。"
+            }
+          },
+          "model": {
+            "decision": {
+              "intent": "resource_lookup",
+              "delegate_student_learning_assistant": false,
+              "search_course_materials": true,
+              "search_web": false,
+              "identity_request": false,
+              "rationale": "用户询问教材中关于运算符优先级的具体页码，属于资料定位问题。"
+            },
+            "route_mode": "model"
+          },
+          "model_runs": [
+            {
+              "intent": "resource_lookup",
+              "delegate_student_learning_assistant": false,
+              "search_course_materials": true,
+              "search_web": false,
+              "identity_request": false,
+              "rationale": "用户询问教材中关于运算符优先级的具体页码，属于资料定位问题。"
+            },
+            {
+              "intent": "resource_lookup",
+              "delegate_student_learning_assistant": false,
+              "search_course_materials": true,
+              "search_web": false,
+              "identity_request": false,
+              "rationale": "用户询问教材中关于运算符优先级的具体页码，属于资源定位问题。"
+            }
+          ],
+          "route_modes": [
+            "model",
+            "model"
+          ],
+          "consistent": true,
+          "latency_ms": [
+            2786.224,
+            3016.499
+          ],
+          "token_usage": [
+            {
+              "prompt": 711,
+              "completion": 65,
+              "total": 776
+            },
+            {
+              "prompt": 711,
+              "completion": 65,
+              "total": 776
+            }
+          ]
+        },
+        {
+          "id": "routing-010",
+          "category": "resource_lookup",
+          "question": "请帮我找到课件中关于二分查找的部分。",
+          "expected": {
+            "intent": "resource_lookup",
+            "delegate_student_learning_assistant": false,
+            "search_course_materials": true,
+            "search_web": false,
+            "identity_request": false
+          },
+          "rules": {
+            "decision": {
+              "intent": "course_qa",
+              "delegate_student_learning_assistant": false,
+              "search_course_materials": true,
+              "search_web": false,
+              "identity_request": false,
+              "rationale": "模型路由不可用，按普通课程问答处理。"
+            }
+          },
+          "model": {
+            "decision": {
+              "intent": "resource_lookup",
+              "delegate_student_learning_assistant": false,
+              "search_course_materials": true,
+              "search_web": false,
+              "identity_request": false,
+              "rationale": "用户明确要求定位课件中的特定内容（二分查找），属于资源查找意图。"
+            },
+            "route_mode": "model"
+          },
+          "model_runs": [
+            {
+              "intent": "resource_lookup",
+              "delegate_student_learning_assistant": false,
+              "search_course_materials": true,
+              "search_web": false,
+              "identity_request": false,
+              "rationale": "用户明确要求定位课件中的特定内容（二分查找），属于资源查找意图。"
+            }
+          ],
+          "route_modes": [
+            "model"
+          ],
+          "consistent": true,
+          "latency_ms": [
+            2883.275
+          ],
+          "token_usage": [
+            {
+              "prompt": 713,
+              "completion": 67,
+              "total": 780
+            }
+          ]
+        },
+        {
+          "id": "routing-011",
+          "category": "resource_lookup",
+          "question": "课程大纲在哪一章要求学习指针？",
+          "expected": {
+            "intent": "resource_lookup",
+            "delegate_student_learning_assistant": false,
+            "search_course_materials": true,
+            "search_web": false,
+            "identity_request": false
+          },
+          "rules": {
+            "decision": {
+              "intent": "course_qa",
+              "delegate_student_learning_assistant": false,
+              "search_course_materials": true,
+              "search_web": false,
+              "identity_request": false,
+              "rationale": "模型路由不可用，按普通课程问答处理。"
+            }
+          },
+          "model": {
+            "decision": {
+              "intent": "resource_lookup",
+              "delegate_student_learning_assistant": false,
+              "search_course_materials": true,
+              "search_web": false,
+              "identity_request": false,
+              "rationale": "用户询问课程大纲中关于特定知识点（指针）的位置，属于资料出处定位问题。"
+            },
+            "route_mode": "model"
+          },
+          "model_runs": [
+            {
+              "intent": "resource_lookup",
+              "delegate_student_learning_assistant": false,
+              "search_course_materials": true,
+              "search_web": false,
+              "identity_request": false,
+              "rationale": "用户询问课程大纲中关于特定知识点（指针）的位置，属于资料出处定位问题。"
+            }
+          ],
+          "route_modes": [
+            "model"
+          ],
+          "consistent": true,
+          "latency_ms": [
+            3095.653
+          ],
+          "token_usage": [
+            {
+              "prompt": 711,
+              "completion": 69,
+              "total": 780
+            }
+          ]
+        },
+        {
+          "id": "routing-012",
+          "category": "resource_lookup",
+          "question": "这个结论在教材中的出处是什么？",
+          "expected": {
+            "intent": "resource_lookup",
+            "delegate_student_learning_assistant": false,
+            "search_course_materials": true,
+            "search_web": false,
+            "identity_request": false
+          },
+          "rules": {
+            "decision": {
+              "intent": "resource_lookup",
+              "delegate_student_learning_assistant": false,
+              "search_course_materials": true,
+              "search_web": false,
+              "identity_request": false,
+              "rationale": "模型路由不可用，问题包含明确的资料定位请求。"
+            }
+          },
+          "model": {
+            "decision": {
+              "intent": "resource_lookup",
+              "delegate_student_learning_assistant": false,
+              "search_course_materials": true,
+              "search_web": false,
+              "identity_request": false,
+              "rationale": "用户询问一个具体结论在教材中的出处，这属于资源定位问题。"
+            },
+            "route_mode": "model"
+          },
+          "model_runs": [
+            {
+              "intent": "resource_lookup",
+              "delegate_student_learning_assistant": false,
+              "search_course_materials": true,
+              "search_web": false,
+              "identity_request": false,
+              "rationale": "用户询问一个具体结论在教材中的出处，这属于资源定位问题。"
+            }
+          ],
+          "route_modes": [
+            "model"
+          ],
+          "consistent": true,
+          "latency_ms": [
+            3476.501
+          ],
+          "token_usage": [
+            {
+              "prompt": 736,
+              "completion": 66,
+              "total": 802
+            }
+          ]
+        },
+        {
+          "id": "routing-013",
+          "category": "resource_lookup",
+          "question": "请定位讲解结构体定义的资料段落。",
+          "expected": {
+            "intent": "resource_lookup",
+            "delegate_student_learning_assistant": false,
+            "search_course_materials": true,
+            "search_web": false,
+            "identity_request": false
+          },
+          "rules": {
+            "decision": {
+              "intent": "resource_lookup",
+              "delegate_student_learning_assistant": false,
+              "search_course_materials": true,
+              "search_web": false,
+              "identity_request": false,
+              "rationale": "模型路由不可用，问题包含明确的资料定位请求。"
+            }
+          },
+          "model": {
+            "decision": {
+              "intent": "resource_lookup",
+              "delegate_student_learning_assistant": false,
+              "search_course_materials": true,
+              "search_web": false,
+              "identity_request": false,
+              "rationale": "用户明确要求定位课程资料中关于结构体定义的特定段落。"
+            },
+            "route_mode": "model"
+          },
+          "model_runs": [
+            {
+              "intent": "resource_lookup",
+              "delegate_student_learning_assistant": false,
+              "search_course_materials": true,
+              "search_web": false,
+              "identity_request": false,
+              "rationale": "用户明确要求定位课程资料中关于结构体定义的特定段落。"
+            }
+          ],
+          "route_modes": [
+            "model"
+          ],
+          "consistent": true,
+          "latency_ms": [
+            2777.341
+          ],
+          "token_usage": [
+            {
+              "prompt": 712,
+              "completion": 64,
+              "total": 776
+            }
+          ]
+        },
+        {
+          "id": "routing-014",
+          "category": "resource_lookup",
+          "question": "哪份课程资料提到了文件描述符？",
+          "expected": {
+            "intent": "resource_lookup",
+            "delegate_student_learning_assistant": false,
+            "search_course_materials": true,
+            "search_web": false,
+            "identity_request": false
+          },
+          "rules": {
+            "decision": {
+              "intent": "course_qa",
+              "delegate_student_learning_assistant": false,
+              "search_course_materials": true,
+              "search_web": false,
+              "identity_request": false,
+              "rationale": "模型路由不可用，按普通课程问答处理。"
+            }
+          },
+          "model": {
+            "decision": {
+              "intent": "resource_lookup",
+              "delegate_student_learning_assistant": false,
+              "search_course_materials": true,
+              "search_web": false,
+              "identity_request": false,
+              "rationale": "用户询问特定概念（文件描述符）在课程资料中的出处，属于资料定位问题。"
+            },
+            "route_mode": "model"
+          },
+          "model_runs": [
+            {
+              "intent": "resource_lookup",
+              "delegate_student_learning_assistant": false,
+              "search_course_materials": true,
+              "search_web": false,
+              "identity_request": false,
+              "rationale": "用户询问特定概念（文件描述符）在课程资料中的出处，属于资料定位问题。"
+            }
+          ],
+          "route_modes": [
+            "model"
+          ],
+          "consistent": true,
+          "latency_ms": [
+            3110.284
+          ],
+          "token_usage": [
+            {
+              "prompt": 712,
+              "completion": 70,
+              "total": 782
+            }
+          ]
+        },
+        {
+          "id": "routing-015",
+          "category": "personalized",
+          "question": "我第一章哪些知识点最薄弱？",
+          "expected": {
+            "intent": "personalized_learning",
+            "delegate_student_learning_assistant": true,
+            "search_course_materials": false,
+            "search_web": false,
+            "identity_request": false
+          },
+          "rules": {
+            "decision": {
+              "intent": "personalized_learning",
+              "delegate_student_learning_assistant": true,
+              "search_course_materials": true,
+              "search_web": false,
+              "identity_request": false,
+              "rationale": "模型路由不可用，使用受控的个人学习问题回退规则。"
+            }
+          },
+          "model": {
+            "decision": {
+              "intent": "personalized_learning",
+              "delegate_student_learning_assistant": true,
+              "search_course_materials": false,
+              "search_web": false,
+              "identity_request": false,
+              "rationale": "用户询问个人薄弱知识点，需要学生学习助手提供基于其学习画像的个性化分析。"
+            },
+            "route_mode": "model"
+          },
+          "model_runs": [
+            {
+              "intent": "personalized_learning",
+              "delegate_student_learning_assistant": true,
+              "search_course_materials": false,
+              "search_web": false,
+              "identity_request": false,
+              "rationale": "用户询问个人薄弱知识点，需要学生学习助手提供基于其学习画像的个性化分析。"
+            },
+            {
+              "intent": "personalized_learning",
+              "delegate_student_learning_assistant": true,
+              "search_course_materials": false,
+              "search_web": false,
+              "identity_request": false,
+              "rationale": "用户询问个人在第一章的薄弱知识点，这需要访问其个人学习画像和掌握情况，属于个性化学习范畴。"
+            }
+          ],
+          "route_modes": [
+            "model",
+            "model"
+          ],
+          "consistent": true,
+          "latency_ms": [
+            3010.23,
+            3343.924
+          ],
+          "token_usage": [
+            {
+              "prompt": 710,
+              "completion": 69,
+              "total": 779
+            },
+            {
+              "prompt": 710,
+              "completion": 76,
+              "total": 786
+            }
+          ]
+        },
+        {
+          "id": "routing-016",
+          "category": "personalized",
+          "question": "结合我的作业表现安排本周复习。",
+          "expected": {
+            "intent": "personalized_learning",
+            "delegate_student_learning_assistant": true,
+            "search_course_materials": true,
+            "search_web": false,
+            "identity_request": false
+          },
+          "rules": {
+            "decision": {
+              "intent": "personalized_learning",
+              "delegate_student_learning_assistant": true,
+              "search_course_materials": true,
+              "search_web": false,
+              "identity_request": false,
+              "rationale": "模型路由不可用，使用受控的个人学习问题回退规则。"
+            }
+          },
+          "model": {
+            "decision": {
+              "intent": "personalized_learning",
+              "delegate_student_learning_assistant": true,
+              "search_course_materials": true,
+              "search_web": false,
+              "identity_request": false,
+              "rationale": "用户请求基于其个人作业表现制定复习计划，这需要获取其身份和学习画像以进行个性化安排。"
+            },
+            "route_mode": "model"
+          },
+          "model_runs": [
+            {
+              "intent": "personalized_learning",
+              "delegate_student_learning_assistant": true,
+              "search_course_materials": true,
+              "search_web": false,
+              "identity_request": false,
+              "rationale": "用户请求基于其个人作业表现制定复习计划，这需要获取其身份和学习画像以进行个性化安排。"
+            }
+          ],
+          "route_modes": [
+            "model"
+          ],
+          "consistent": true,
+          "latency_ms": [
+            2940.937
+          ],
+          "token_usage": [
+            {
+              "prompt": 711,
+              "completion": 74,
+              "total": 785
+            }
+          ]
+        },
+        {
+          "id": "routing-017",
+          "category": "personalized",
+          "question": "为什么系统认为我不熟悉变量和常量？",
+          "expected": {
+            "intent": "personalized_learning",
+            "delegate_student_learning_assistant": true,
+            "search_course_materials": false,
+            "search_web": false,
+            "identity_request": false
+          },
+          "rules": {
+            "decision": {
+              "intent": "course_qa",
+              "delegate_student_learning_assistant": false,
+              "search_course_materials": true,
+              "search_web": false,
+              "identity_request": false,
+              "rationale": "模型路由不可用，按普通课程问答处理。"
+            }
+          },
+          "model": {
+            "decision": {
+              "intent": "personalized_learning",
+              "delegate_student_learning_assistant": true,
+              "search_course_materials": false,
+              "search_web": false,
+              "identity_request": false,
+              "rationale": "用户询问系统对其个人学习情况的判断原因，这需要访问其个人学习画像和掌握情况数据。"
+            },
+            "route_mode": "model"
+          },
+          "model_runs": [
+            {
+              "intent": "personalized_learning",
+              "delegate_student_learning_assistant": true,
+              "search_course_materials": false,
+              "search_web": false,
+              "identity_request": false,
+              "rationale": "用户询问系统对其个人学习情况的判断原因，这需要访问其个人学习画像和掌握情况数据。"
+            }
+          ],
+          "route_modes": [
+            "model"
+          ],
+          "consistent": true,
+          "latency_ms": [
+            3091.001
+          ],
+          "token_usage": [
+            {
+              "prompt": 712,
+              "completion": 81,
+              "total": 793
+            }
+          ]
+        },
+        {
+          "id": "routing-018",
+          "category": "personalized",
+          "question": "根据我的错题生成三道练习。",
+          "expected": {
+            "intent": "personalized_learning",
+            "delegate_student_learning_assistant": true,
+            "search_course_materials": true,
+            "search_web": false,
+            "identity_request": false
+          },
+          "rules": {
+            "decision": {
+              "intent": "personalized_learning",
+              "delegate_student_learning_assistant": true,
+              "search_course_materials": true,
+              "search_web": false,
+              "identity_request": false,
+              "rationale": "模型路由不可用，使用受控的个人学习问题回退规则。"
+            }
+          },
+          "model": {
+            "decision": {
+              "intent": "personalized_learning",
+              "delegate_student_learning_assistant": true,
+              "search_course_materials": false,
+              "search_web": false,
+              "identity_request": false,
+              "rationale": "用户请求基于其错题生成个性化练习，这需要访问其个人学习数据。"
+            },
+            "route_mode": "model"
+          },
+          "model_runs": [
+            {
+              "intent": "personalized_learning",
+              "delegate_student_learning_assistant": true,
+              "search_course_materials": false,
+              "search_web": false,
+              "identity_request": false,
+              "rationale": "用户请求基于其错题生成个性化练习，这需要访问其个人学习数据。"
+            }
+          ],
+          "route_modes": [
+            "model"
+          ],
+          "consistent": true,
+          "latency_ms": [
+            2841.501
+          ],
+          "token_usage": [
+            {
+              "prompt": 711,
+              "completion": 69,
+              "total": 780
+            }
+          ]
+        },
+        {
+          "id": "routing-019",
+          "category": "personalized",
+          "question": "我最近的掌握度有提高吗？",
+          "expected": {
+            "intent": "personalized_learning",
+            "delegate_student_learning_assistant": true,
+            "search_course_materials": false,
+            "search_web": false,
+            "identity_request": false
+          },
+          "rules": {
+            "decision": {
+              "intent": "course_qa",
+              "delegate_student_learning_assistant": false,
+              "search_course_materials": true,
+              "search_web": false,
+              "identity_request": false,
+              "rationale": "模型路由不可用，按普通课程问答处理。"
+            }
+          },
+          "model": {
+            "decision": {
+              "intent": "personalized_learning",
+              "delegate_student_learning_assistant": true,
+              "search_course_materials": false,
+              "search_web": false,
+              "identity_request": false,
+              "rationale": "用户询问个人学习进展，需要访问其学习画像来评估掌握度变化。"
+            },
+            "route_mode": "model"
+          },
+          "model_runs": [
+            {
+              "intent": "personalized_learning",
+              "delegate_student_learning_assistant": true,
+              "search_course_materials": false,
+              "search_web": false,
+              "identity_request": false,
+              "rationale": "用户询问个人学习进展，需要访问其学习画像来评估掌握度变化。"
+            },
+            {
+              "intent": "personalized_learning",
+              "delegate_student_learning_assistant": true,
+              "search_course_materials": false,
+              "search_web": false,
+              "identity_request": false,
+              "rationale": "用户询问个人学习进展，需要访问其学习画像来评估掌握度变化。"
+            }
+          ],
+          "route_modes": [
+            "model",
+            "model"
+          ],
+          "consistent": true,
+          "latency_ms": [
+            2762.524,
+            3610.587
+          ],
+          "token_usage": [
+            {
+              "prompt": 711,
+              "completion": 68,
+              "total": 779
+            },
+            {
+              "prompt": 711,
+              "completion": 68,
+              "total": 779
+            }
+          ]
+        },
+        {
+          "id": "routing-020",
+          "category": "personalized",
+          "question": "分析一下我在第一章作业中丢分的原因。",
+          "expected": {
+            "intent": "personalized_learning",
+            "delegate_student_learning_assistant": true,
+            "search_course_materials": false,
+            "search_web": false,
+            "identity_request": false
+          },
+          "rules": {
+            "decision": {
+              "intent": "course_qa",
+              "delegate_student_learning_assistant": false,
+              "search_course_materials": true,
+              "search_web": false,
+              "identity_request": false,
+              "rationale": "模型路由不可用，按普通课程问答处理。"
+            }
+          },
+          "model": {
+            "decision": {
+              "intent": "personalized_learning",
+              "delegate_student_learning_assistant": true,
+              "search_course_materials": false,
+              "search_web": false,
+              "identity_request": false,
+              "rationale": "用户请求分析个人作业丢分原因，这需要获取其身份和学习画像以进行个性化诊断。"
+            },
+            "route_mode": "model"
+          },
+          "model_runs": [
+            {
+              "intent": "personalized_learning",
+              "delegate_student_learning_assistant": true,
+              "search_course_materials": false,
+              "search_web": false,
+              "identity_request": false,
+              "rationale": "用户请求分析个人作业丢分原因，这需要获取其身份和学习画像以进行个性化诊断。"
+            }
+          ],
+          "route_modes": [
+            "model"
+          ],
+          "consistent": true,
+          "latency_ms": [
+            3944.694
+          ],
+          "token_usage": [
+            {
+              "prompt": 713,
+              "completion": 72,
+              "total": 785
+            }
+          ]
+        },
+        {
+          "id": "routing-021",
+          "category": "personalized",
+          "question": "我应该先复习指针还是数组？请结合我的情况。",
+          "expected": {
+            "intent": "personalized_learning",
+            "delegate_student_learning_assistant": true,
+            "search_course_materials": true,
+            "search_web": false,
+            "identity_request": false
+          },
+          "rules": {
+            "decision": {
+              "intent": "personalized_learning",
+              "delegate_student_learning_assistant": true,
+              "search_course_materials": true,
+              "search_web": false,
+              "identity_request": false,
+              "rationale": "模型路由不可用，使用受控的个人学习问题回退规则。"
+            }
+          },
+          "model": {
+            "decision": {
+              "intent": "personalized_learning",
+              "delegate_student_learning_assistant": true,
+              "search_course_materials": false,
+              "search_web": false,
+              "identity_request": false,
+              "rationale": "用户询问结合其个人情况的复习顺序建议，这需要获取其学习画像和掌握情况，属于个性化学习规划。"
+            },
+            "route_mode": "model"
+          },
+          "model_runs": [
+            {
+              "intent": "personalized_learning",
+              "delegate_student_learning_assistant": true,
+              "search_course_materials": false,
+              "search_web": false,
+              "identity_request": false,
+              "rationale": "用户询问结合其个人情况的复习顺序建议，这需要获取其学习画像和掌握情况，属于个性化学习规划。"
+            }
+          ],
+          "route_modes": [
+            "model"
+          ],
+          "consistent": true,
+          "latency_ms": [
+            3344.058
+          ],
+          "token_usage": [
+            {
+              "prompt": 715,
+              "completion": 76,
+              "total": 791
+            }
+          ]
+        },
+        {
+          "id": "routing-022",
+          "category": "personalized",
+          "question": "为我制定一个由易到难的复习计划。",
+          "expected": {
+            "intent": "personalized_learning",
+            "delegate_student_learning_assistant": true,
+            "search_course_materials": true,
+            "search_web": false,
+            "identity_request": false
+          },
+          "rules": {
+            "decision": {
+              "intent": "personalized_learning",
+              "delegate_student_learning_assistant": true,
+              "search_course_materials": true,
+              "search_web": false,
+              "identity_request": false,
+              "rationale": "模型路由不可用，使用受控的个人学习问题回退规则。"
+            }
+          },
+          "model": {
+            "decision": {
+              "intent": "personalized_learning",
+              "delegate_student_learning_assistant": true,
+              "search_course_materials": true,
+              "search_web": false,
+              "identity_request": false,
+              "rationale": "用户请求制定个性化的复习计划，这需要了解其身份和学习画像以提供由易到难的计划。"
+            },
+            "route_mode": "model"
+          },
+          "model_runs": [
+            {
+              "intent": "personalized_learning",
+              "delegate_student_learning_assistant": true,
+              "search_course_materials": true,
+              "search_web": false,
+              "identity_request": false,
+              "rationale": "用户请求制定个性化的复习计划，这需要了解其身份和学习画像以提供由易到难的计划。"
+            }
+          ],
+          "route_modes": [
+            "model"
+          ],
+          "consistent": true,
+          "latency_ms": [
+            4046.117
+          ],
+          "token_usage": [
+            {
+              "prompt": 713,
+              "completion": 73,
+              "total": 786
+            }
+          ]
+        },
+        {
+          "id": "routing-023",
+          "category": "identity",
+          "question": "你知道我是谁吗？",
+          "expected": {
+            "intent": "personalized_learning",
+            "delegate_student_learning_assistant": true,
+            "search_course_materials": false,
+            "search_web": false,
+            "identity_request": true
+          },
+          "rules": {
+            "decision": {
+              "intent": "personalized_learning",
+              "delegate_student_learning_assistant": true,
+              "search_course_materials": false,
+              "search_web": false,
+              "identity_request": true,
+              "rationale": "模型路由不可用，使用受控的个人学习问题回退规则。"
+            }
+          },
+          "model": {
+            "decision": {
+              "intent": "personalized_learning",
+              "delegate_student_learning_assistant": true,
+              "search_course_materials": false,
+              "search_web": false,
+              "identity_request": true,
+              "rationale": "身份问题使用受控委派读取当前登录学生信息。"
+            },
+            "route_mode": "model"
+          },
+          "model_runs": [
+            {
+              "intent": "personalized_learning",
+              "delegate_student_learning_assistant": true,
+              "search_course_materials": false,
+              "search_web": false,
+              "identity_request": true,
+              "rationale": "身份问题使用受控委派读取当前登录学生信息。"
+            },
+            {
+              "intent": "personalized_learning",
+              "delegate_student_learning_assistant": true,
+              "search_course_materials": false,
+              "search_web": false,
+              "identity_request": true,
+              "rationale": "身份问题使用受控委派读取当前登录学生信息。"
+            }
+          ],
+          "route_modes": [
+            "model",
+            "model"
+          ],
+          "consistent": true,
+          "latency_ms": [
+            4468.815,
+            3533.072
+          ],
+          "token_usage": [
+            {
+              "prompt": 708,
+              "completion": 66,
+              "total": 774
+            },
+            {
+              "prompt": 708,
+              "completion": 66,
+              "total": 774
+            }
+          ]
+        },
+        {
+          "id": "routing-024",
+          "category": "identity",
+          "question": "我的名字是什么？",
+          "expected": {
+            "intent": "personalized_learning",
+            "delegate_student_learning_assistant": true,
+            "search_course_materials": false,
+            "search_web": false,
+            "identity_request": true
+          },
+          "rules": {
+            "decision": {
+              "intent": "personalized_learning",
+              "delegate_student_learning_assistant": true,
+              "search_course_materials": false,
+              "search_web": false,
+              "identity_request": true,
+              "rationale": "模型路由不可用，使用受控的个人学习问题回退规则。"
+            }
+          },
+          "model": {
+            "decision": {
+              "intent": "personalized_learning",
+              "delegate_student_learning_assistant": true,
+              "search_course_materials": false,
+              "search_web": false,
+              "identity_request": true,
+              "rationale": "身份问题使用受控委派读取当前登录学生信息。"
+            },
+            "route_mode": "model"
+          },
+          "model_runs": [
+            {
+              "intent": "personalized_learning",
+              "delegate_student_learning_assistant": true,
+              "search_course_materials": false,
+              "search_web": false,
+              "identity_request": true,
+              "rationale": "身份问题使用受控委派读取当前登录学生信息。"
+            }
+          ],
+          "route_modes": [
+            "model"
+          ],
+          "consistent": true,
+          "latency_ms": [
+            2952.016
+          ],
+          "token_usage": [
+            {
+              "prompt": 707,
+              "completion": 67,
+              "total": 774
+            }
+          ]
+        },
+        {
+          "id": "routing-025",
+          "category": "current_web",
+          "question": "请查询 C23 标准目前的最新支持情况。",
+          "expected": {
+            "intent": "current_web",
+            "delegate_student_learning_assistant": false,
+            "search_course_materials": false,
+            "search_web": true,
+            "identity_request": false
+          },
+          "rules": {
+            "decision": {
+              "intent": "current_web",
+              "delegate_student_learning_assistant": false,
+              "search_course_materials": false,
+              "search_web": true,
+              "identity_request": false,
+              "rationale": "模型路由不可用，问题包含明显的时效信息请求。"
+            }
+          },
+          "model": {
+            "decision": {
+              "intent": "current_web",
+              "delegate_student_learning_assistant": false,
+              "search_course_materials": false,
+              "search_web": true,
+              "identity_request": false,
+              "rationale": "用户询问的是关于C23编程语言标准的最新支持情况，这是一个需要实时外部信息的问题，超出了课程资料的范围。"
+            },
+            "route_mode": "model"
+          },
+          "model_runs": [
+            {
+              "intent": "current_web",
+              "delegate_student_learning_assistant": false,
+              "search_course_materials": false,
+              "search_web": true,
+              "identity_request": false,
+              "rationale": "用户询问的是关于C23编程语言标准的最新支持情况，这是一个需要实时外部信息的问题，超出了课程资料的范围。"
+            },
+            {
+              "intent": "current_web",
+              "delegate_student_learning_assistant": false,
+              "search_course_materials": false,
+              "search_web": true,
+              "identity_request": false,
+              "rationale": "用户询问C23标准的最新支持情况，这是一个需要实时外部信息的问题。"
+            }
+          ],
+          "route_modes": [
+            "model",
+            "model"
+          ],
+          "consistent": true,
+          "latency_ms": [
+            3257.443,
+            3110.903
+          ],
+          "token_usage": [
+            {
+              "prompt": 714,
+              "completion": 75,
+              "total": 789
+            },
+            {
+              "prompt": 714,
+              "completion": 66,
+              "total": 780
+            }
+          ]
+        },
+        {
+          "id": "routing-026",
+          "category": "current_web",
+          "question": "最近发布的 GCC 版本增加了什么功能？",
+          "expected": {
+            "intent": "current_web",
+            "delegate_student_learning_assistant": false,
+            "search_course_materials": false,
+            "search_web": true,
+            "identity_request": false
+          },
+          "rules": {
+            "decision": {
+              "intent": "course_qa",
+              "delegate_student_learning_assistant": false,
+              "search_course_materials": true,
+              "search_web": false,
+              "identity_request": false,
+              "rationale": "模型路由不可用，按普通课程问答处理。"
+            }
+          },
+          "model": {
+            "decision": {
+              "intent": "current_web",
+              "delegate_student_learning_assistant": false,
+              "search_course_materials": false,
+              "search_web": true,
+              "identity_request": false,
+              "rationale": "问题询问GCC编译器最新版本的功能，这需要获取实时或最新的外部信息，超出了课程资料的范围。"
+            },
+            "route_mode": "model"
+          },
+          "model_runs": [
+            {
+              "intent": "current_web",
+              "delegate_student_learning_assistant": false,
+              "search_course_materials": false,
+              "search_web": true,
+              "identity_request": false,
+              "rationale": "问题询问GCC编译器最新版本的功能，这需要获取实时或最新的外部信息，超出了课程资料的范围。"
+            }
+          ],
+          "route_modes": [
+            "model"
+          ],
+          "consistent": true,
+          "latency_ms": [
+            2851.411
+          ],
+          "token_usage": [
+            {
+              "prompt": 712,
+              "completion": 73,
+              "total": 785
+            }
+          ]
+        },
+        {
+          "id": "routing-027",
+          "category": "current_web",
+          "question": "帮我查一下今天 C 语言领域的新闻。",
+          "expected": {
+            "intent": "current_web",
+            "delegate_student_learning_assistant": false,
+            "search_course_materials": false,
+            "search_web": true,
+            "identity_request": false
+          },
+          "rules": {
+            "decision": {
+              "intent": "current_web",
+              "delegate_student_learning_assistant": false,
+              "search_course_materials": false,
+              "search_web": true,
+              "identity_request": false,
+              "rationale": "模型路由不可用，问题包含明显的时效信息请求。"
+            }
+          },
+          "model": {
+            "decision": {
+              "intent": "current_web",
+              "delegate_student_learning_assistant": false,
+              "search_course_materials": false,
+              "search_web": true,
+              "identity_request": false,
+              "rationale": "用户明确要求查找今天C语言领域的新闻，这需要获取最新的实时信息，超出了课程资料的范围。"
+            },
+            "route_mode": "model"
+          },
+          "model_runs": [
+            {
+              "intent": "current_web",
+              "delegate_student_learning_assistant": false,
+              "search_course_materials": false,
+              "search_web": true,
+              "identity_request": false,
+              "rationale": "用户明确要求查找今天C语言领域的新闻，这需要获取最新的实时信息，超出了课程资料的范围。"
+            }
+          ],
+          "route_modes": [
+            "model"
+          ],
+          "consistent": true,
+          "latency_ms": [
+            3029.495
+          ],
+          "token_usage": [
+            {
+              "prompt": 713,
+              "completion": 72,
+              "total": 785
+            }
+          ]
+        },
+        {
+          "id": "routing-028",
+          "category": "current_web",
+          "question": "目前最新的 Clang 稳定版本是什么？",
+          "expected": {
+            "intent": "current_web",
+            "delegate_student_learning_assistant": false,
+            "search_course_materials": false,
+            "search_web": true,
+            "identity_request": false
+          },
+          "rules": {
+            "decision": {
+              "intent": "current_web",
+              "delegate_student_learning_assistant": false,
+              "search_course_materials": false,
+              "search_web": true,
+              "identity_request": false,
+              "rationale": "模型路由不可用，问题包含明显的时效信息请求。"
+            }
+          },
+          "model": {
+            "decision": {
+              "intent": "current_web",
+              "delegate_student_learning_assistant": false,
+              "search_course_materials": false,
+              "search_web": true,
+              "identity_request": false,
+              "rationale": "问题询问的是Clang编译器的最新稳定版本，这是一个需要实时外部信息才能准确回答的问题。"
+            },
+            "route_mode": "model"
+          },
+          "model_runs": [
+            {
+              "intent": "current_web",
+              "delegate_student_learning_assistant": false,
+              "search_course_materials": false,
+              "search_web": true,
+              "identity_request": false,
+              "rationale": "问题询问的是Clang编译器的最新稳定版本，这是一个需要实时外部信息才能准确回答的问题。"
+            }
+          ],
+          "route_modes": [
+            "model"
+          ],
+          "consistent": true,
+          "latency_ms": [
+            2918.786
+          ],
+          "token_usage": [
+            {
+              "prompt": 712,
+              "completion": 70,
+              "total": 782
+            }
+          ]
+        },
+        {
+          "id": "routing-029",
+          "category": "chitchat",
+          "question": "你喜欢什么颜色？",
+          "expected": {
+            "intent": "chitchat",
+            "delegate_student_learning_assistant": false,
+            "search_course_materials": false,
+            "search_web": false,
+            "identity_request": false
+          },
+          "rules": {
+            "decision": {
+              "intent": "course_qa",
+              "delegate_student_learning_assistant": false,
+              "search_course_materials": true,
+              "search_web": false,
+              "identity_request": false,
+              "rationale": "模型路由不可用，按普通课程问答处理。"
+            }
+          },
+          "model": {
+            "decision": {
+              "intent": "chitchat",
+              "delegate_student_learning_assistant": false,
+              "search_course_materials": false,
+              "search_web": false,
+              "identity_request": false,
+              "rationale": "这是一个与课程学习无关的闲聊问题。"
+            },
+            "route_mode": "model"
+          },
+          "model_runs": [
+            {
+              "intent": "chitchat",
+              "delegate_student_learning_assistant": false,
+              "search_course_materials": false,
+              "search_web": false,
+              "identity_request": false,
+              "rationale": "这是一个与课程学习无关的闲聊问题。"
+            },
+            {
+              "intent": "chitchat",
+              "delegate_student_learning_assistant": false,
+              "search_course_materials": false,
+              "search_web": false,
+              "identity_request": false,
+              "rationale": "这是一个与课程学习无关的闲聊问题。"
+            }
+          ],
+          "route_modes": [
+            "model",
+            "model"
+          ],
+          "consistent": true,
+          "latency_ms": [
+            2809.875,
+            2516.646
+          ],
+          "token_usage": [
+            {
+              "prompt": 707,
+              "completion": 59,
+              "total": 766
+            },
+            {
+              "prompt": 707,
+              "completion": 59,
+              "total": 766
+            }
+          ]
+        },
+        {
+          "id": "routing-030",
+          "category": "chitchat",
+          "question": "给我讲个和课程无关的笑话。",
+          "expected": {
+            "intent": "chitchat",
+            "delegate_student_learning_assistant": false,
+            "search_course_materials": false,
+            "search_web": false,
+            "identity_request": false
+          },
+          "rules": {
+            "decision": {
+              "intent": "course_qa",
+              "delegate_student_learning_assistant": false,
+              "search_course_materials": true,
+              "search_web": false,
+              "identity_request": false,
+              "rationale": "模型路由不可用，按普通课程问答处理。"
+            }
+          },
+          "model": {
+            "decision": {
+              "intent": "chitchat",
+              "delegate_student_learning_assistant": false,
+              "search_course_materials": false,
+              "search_web": false,
+              "identity_request": false,
+              "rationale": "用户请求的是与课程学习无关的闲聊内容。"
+            },
+            "route_mode": "model"
+          },
+          "model_runs": [
+            {
+              "intent": "chitchat",
+              "delegate_student_learning_assistant": false,
+              "search_course_materials": false,
+              "search_web": false,
+              "identity_request": false,
+              "rationale": "用户请求的是与课程学习无关的闲聊内容。"
+            }
+          ],
+          "route_modes": [
+            "model"
+          ],
+          "consistent": true,
+          "latency_ms": [
+            3838.384
+          ],
+          "token_usage": [
+            {
+              "prompt": 712,
+              "completion": 61,
+              "total": 773
+            }
+          ]
+        },
+        {
+          "id": "routing-031",
+          "category": "chitchat",
+          "question": "晚安。",
+          "expected": {
+            "intent": "chitchat",
+            "delegate_student_learning_assistant": false,
+            "search_course_materials": false,
+            "search_web": false,
+            "identity_request": false
+          },
+          "rules": {
+            "decision": {
+              "intent": "course_qa",
+              "delegate_student_learning_assistant": false,
+              "search_course_materials": true,
+              "search_web": false,
+              "identity_request": false,
+              "rationale": "模型路由不可用，按普通课程问答处理。"
+            }
+          },
+          "model": {
+            "decision": {
+              "intent": "chitchat",
+              "delegate_student_learning_assistant": false,
+              "search_course_materials": false,
+              "search_web": false,
+              "identity_request": false,
+              "rationale": "用户问候与课程学习无关，属于闲聊。"
+            },
+            "route_mode": "model"
+          },
+          "model_runs": [
+            {
+              "intent": "chitchat",
+              "delegate_student_learning_assistant": false,
+              "search_course_materials": false,
+              "search_web": false,
+              "identity_request": false,
+              "rationale": "用户问候与课程学习无关，属于闲聊。"
+            }
+          ],
+          "route_modes": [
+            "model"
+          ],
+          "consistent": true,
+          "latency_ms": [
+            2623.23
+          ],
+          "token_usage": [
+            {
+              "prompt": 705,
+              "completion": 60,
+              "total": 765
+            }
+          ]
+        },
+        {
+          "id": "routing-032",
+          "category": "chitchat",
+          "question": "你会唱歌吗？",
+          "expected": {
+            "intent": "chitchat",
+            "delegate_student_learning_assistant": false,
+            "search_course_materials": false,
+            "search_web": false,
+            "identity_request": false
+          },
+          "rules": {
+            "decision": {
+              "intent": "course_qa",
+              "delegate_student_learning_assistant": false,
+              "search_course_materials": true,
+              "search_web": false,
+              "identity_request": false,
+              "rationale": "模型路由不可用，按普通课程问答处理。"
+            }
+          },
+          "model": {
+            "decision": {
+              "intent": "chitchat",
+              "delegate_student_learning_assistant": false,
+              "search_course_materials": false,
+              "search_web": false,
+              "identity_request": false,
+              "rationale": "这是一个与课程学习无关的闲聊问题。"
+            },
+            "route_mode": "model"
+          },
+          "model_runs": [
+            {
+              "intent": "chitchat",
+              "delegate_student_learning_assistant": false,
+              "search_course_materials": false,
+              "search_web": false,
+              "identity_request": false,
+              "rationale": "这是一个与课程学习无关的闲聊问题。"
+            }
+          ],
+          "route_modes": [
+            "model"
+          ],
+          "consistent": true,
+          "latency_ms": [
+            3879.055
+          ],
+          "token_usage": [
+            {
+              "prompt": 707,
+              "completion": 59,
+              "total": 766
+            }
+          ]
+        },
+        {
+          "id": "routing-033",
+          "category": "followup",
+          "question": "那我具体弱在哪里？",
+          "expected": {
+            "intent": "personalized_learning",
+            "delegate_student_learning_assistant": true,
+            "search_course_materials": false,
+            "search_web": false,
+            "identity_request": false
+          },
+          "rules": {
+            "decision": {
+              "intent": "course_qa",
+              "delegate_student_learning_assistant": false,
+              "search_course_materials": true,
+              "search_web": false,
+              "identity_request": false,
+              "rationale": "模型路由不可用，按普通课程问答处理。"
+            }
+          },
+          "model": {
+            "decision": {
+              "intent": "personalized_learning",
+              "delegate_student_learning_assistant": true,
+              "search_course_materials": true,
+              "search_web": false,
+              "identity_request": false,
+              "rationale": "用户询问个人薄弱点，需要学生学习助手分析其学习画像来提供个性化诊断。"
+            },
+            "route_mode": "model"
+          },
+          "model_runs": [
+            {
+              "intent": "personalized_learning",
+              "delegate_student_learning_assistant": true,
+              "search_course_materials": true,
+              "search_web": false,
+              "identity_request": false,
+              "rationale": "用户询问个人薄弱点，需要学生学习助手分析其学习画像来提供个性化诊断。"
+            },
+            {
+              "intent": "personalized_learning",
+              "delegate_student_learning_assistant": true,
+              "search_course_materials": true,
+              "search_web": false,
+              "identity_request": false,
+              "rationale": "用户询问个人薄弱点，需要学生学习助手分析其学习记录和掌握情况。"
+            }
+          ],
+          "route_modes": [
+            "model",
+            "model"
+          ],
+          "consistent": true,
+          "latency_ms": [
+            2919.824,
+            3825.134
+          ],
+          "token_usage": [
+            {
+              "prompt": 744,
+              "completion": 69,
+              "total": 813
+            },
+            {
+              "prompt": 744,
+              "completion": 68,
+              "total": 812
+            }
+          ]
+        },
+        {
+          "id": "routing-034",
+          "category": "followup",
+          "question": "那应该怎么复习？",
+          "expected": {
+            "intent": "personalized_learning",
+            "delegate_student_learning_assistant": true,
+            "search_course_materials": true,
+            "search_web": false,
+            "identity_request": false
+          },
+          "rules": {
+            "decision": {
+              "intent": "personalized_learning",
+              "delegate_student_learning_assistant": true,
+              "search_course_materials": true,
+              "search_web": false,
+              "identity_request": false,
+              "rationale": "模型路由不可用，使用受控的个人学习问题回退规则。"
+            }
+          },
+          "model": {
+            "decision": {
+              "intent": "personalized_learning",
+              "delegate_student_learning_assistant": true,
+              "search_course_materials": true,
+              "search_web": false,
+              "identity_request": false,
+              "rationale": "学生询问复习方法，属于基于个人学习情况的个性化指导。"
+            },
+            "route_mode": "model"
+          },
+          "model_runs": [
+            {
+              "intent": "personalized_learning",
+              "delegate_student_learning_assistant": true,
+              "search_course_materials": true,
+              "search_web": false,
+              "identity_request": false,
+              "rationale": "学生询问复习方法，属于基于个人学习情况的个性化指导。"
+            }
+          ],
+          "route_modes": [
+            "model"
+          ],
+          "consistent": true,
+          "latency_ms": [
+            3221.201
+          ],
+          "token_usage": [
+            {
+              "prompt": 716,
+              "completion": 64,
+              "total": 780
+            }
+          ]
+        },
+        {
+          "id": "routing-035",
+          "category": "followup",
+          "question": "它在教材哪一页？",
+          "expected": {
+            "intent": "resource_lookup",
+            "delegate_student_learning_assistant": false,
+            "search_course_materials": true,
+            "search_web": false,
+            "identity_request": false
+          },
+          "rules": {
+            "decision": {
+              "intent": "resource_lookup",
+              "delegate_student_learning_assistant": false,
+              "search_course_materials": true,
+              "search_web": false,
+              "identity_request": false,
+              "rationale": "模型路由不可用，问题包含明确的资料定位请求。"
+            }
+          },
+          "model": {
+            "decision": {
+              "intent": "resource_lookup",
+              "delegate_student_learning_assistant": false,
+              "search_course_materials": true,
+              "search_web": false,
+              "identity_request": false,
+              "rationale": "用户询问先前讨论的运算符优先级概念在教材中的具体页码。"
+            },
+            "route_mode": "model"
+          },
+          "model_runs": [
+            {
+              "intent": "resource_lookup",
+              "delegate_student_learning_assistant": false,
+              "search_course_materials": true,
+              "search_web": false,
+              "identity_request": false,
+              "rationale": "用户询问先前讨论的运算符优先级概念在教材中的具体页码。"
+            },
+            {
+              "intent": "resource_lookup",
+              "delegate_student_learning_assistant": false,
+              "search_course_materials": true,
+              "search_web": false,
+              "identity_request": false,
+              "rationale": "用户询问先前讨论概念（运算符优先级）在教材中的具体位置，属于资源查找意图。"
+            }
+          ],
+          "route_modes": [
+            "model",
+            "model"
+          ],
+          "consistent": true,
+          "latency_ms": [
+            3115.241,
+            4158.407
+          ],
+          "token_usage": [
+            {
+              "prompt": 725,
+              "completion": 64,
+              "total": 789
+            },
+            {
+              "prompt": 725,
+              "completion": 70,
+              "total": 795
+            }
+          ]
+        },
+        {
+          "id": "routing-036",
+          "category": "followup",
+          "question": "这个和我的错题有什么关系？",
+          "expected": {
+            "intent": "personalized_learning",
+            "delegate_student_learning_assistant": true,
+            "search_course_materials": true,
+            "search_web": false,
+            "identity_request": false
+          },
+          "rules": {
+            "decision": {
+              "intent": "course_qa",
+              "delegate_student_learning_assistant": false,
+              "search_course_materials": true,
+              "search_web": false,
+              "identity_request": false,
+              "rationale": "模型路由不可用，按普通课程问答处理。"
+            }
+          },
+          "model": {
+            "decision": {
+              "intent": "personalized_learning",
+              "delegate_student_learning_assistant": true,
+              "search_course_materials": false,
+              "search_web": false,
+              "identity_request": false,
+              "rationale": "用户询问当前内容与其错题的关系，这需要结合其个人学习历史和错题记录进行个性化分析。"
+            },
+            "route_mode": "model"
+          },
+          "model_runs": [
+            {
+              "intent": "personalized_learning",
+              "delegate_student_learning_assistant": true,
+              "search_course_materials": false,
+              "search_web": false,
+              "identity_request": false,
+              "rationale": "用户询问当前内容与其错题的关系，这需要结合其个人学习历史和错题记录进行个性化分析。"
+            }
+          ],
+          "route_modes": [
+            "model"
+          ],
+          "consistent": true,
+          "latency_ms": [
+            3223.315
+          ],
+          "token_usage": [
+            {
+              "prompt": 746,
+              "completion": 74,
+              "total": 820
+            }
+          ]
+        },
+        {
+          "id": "routing-037",
+          "category": "followup",
+          "question": "那我的掌握情况呢？",
+          "expected": {
+            "intent": "personalized_learning",
+            "delegate_student_learning_assistant": true,
+            "search_course_materials": false,
+            "search_web": false,
+            "identity_request": false
+          },
+          "rules": {
+            "decision": {
+              "intent": "personalized_learning",
+              "delegate_student_learning_assistant": true,
+              "search_course_materials": true,
+              "search_web": false,
+              "identity_request": false,
+              "rationale": "模型路由不可用，使用受控的个人学习问题回退规则。"
+            }
+          },
+          "model": {
+            "decision": {
+              "intent": "personalized_learning",
+              "delegate_student_learning_assistant": true,
+              "search_course_materials": false,
+              "search_web": false,
+              "identity_request": false,
+              "rationale": "用户询问个人掌握情况，这需要访问其学习画像，属于个性化学习范畴。"
+            },
+            "route_mode": "model"
+          },
+          "model_runs": [
+            {
+              "intent": "personalized_learning",
+              "delegate_student_learning_assistant": true,
+              "search_course_materials": false,
+              "search_web": false,
+              "identity_request": false,
+              "rationale": "用户询问个人掌握情况，这需要访问其学习画像，属于个性化学习范畴。"
+            }
+          ],
+          "route_modes": [
+            "model"
+          ],
+          "consistent": true,
+          "latency_ms": [
+            2910.18
+          ],
+          "token_usage": [
+            {
+              "prompt": 727,
+              "completion": 69,
+              "total": 796
+            }
+          ]
+        },
+        {
+          "id": "routing-038",
+          "category": "followup",
+          "question": "请继续讲它的定义。",
+          "expected": {
+            "intent": "course_qa",
+            "delegate_student_learning_assistant": false,
+            "search_course_materials": true,
+            "search_web": false,
+            "identity_request": false
+          },
+          "rules": {
+            "decision": {
+              "intent": "course_qa",
+              "delegate_student_learning_assistant": false,
+              "search_course_materials": true,
+              "search_web": false,
+              "identity_request": false,
+              "rationale": "模型路由不可用，按普通课程问答处理。"
+            }
+          },
+          "model": {
+            "decision": {
+              "intent": "course_qa",
+              "delegate_student_learning_assistant": false,
+              "search_course_materials": true,
+              "search_web": false,
+              "identity_request": false,
+              "rationale": "用户请求继续讲解结构体的定义，这是一个明确的课程内容问题，需要从课程资料中获取信息。"
+            },
+            "route_mode": "model"
+          },
+          "model_runs": [
+            {
+              "intent": "course_qa",
+              "delegate_student_learning_assistant": false,
+              "search_course_materials": true,
+              "search_web": false,
+              "identity_request": false,
+              "rationale": "用户请求继续讲解结构体的定义，这是一个明确的课程内容问题，需要从课程资料中获取信息。"
+            }
+          ],
+          "route_modes": [
+            "model"
+          ],
+          "consistent": true,
+          "latency_ms": [
+            3452.616
+          ],
+          "token_usage": [
+            {
+              "prompt": 725,
+              "completion": 72,
+              "total": 797
+            }
+          ]
+        },
+        {
+          "id": "routing-039",
+          "category": "followup",
+          "question": "有没有最新的官方说明？",
+          "expected": {
+            "intent": "current_web",
+            "delegate_student_learning_assistant": false,
+            "search_course_materials": false,
+            "search_web": true,
+            "identity_request": false
+          },
+          "rules": {
+            "decision": {
+              "intent": "current_web",
+              "delegate_student_learning_assistant": false,
+              "search_course_materials": false,
+              "search_web": true,
+              "identity_request": false,
+              "rationale": "模型路由不可用，问题包含明显的时效信息请求。"
+            }
+          },
+          "model": {
+            "decision": {
+              "intent": "current_web",
+              "delegate_student_learning_assistant": false,
+              "search_course_materials": false,
+              "search_web": true,
+              "identity_request": false,
+              "rationale": "用户询问最新的官方说明，这需要获取实时或最新的外部信息，超出了课程资料的静态范围。"
+            },
+            "route_mode": "model"
+          },
+          "model_runs": [
+            {
+              "intent": "current_web",
+              "delegate_student_learning_assistant": false,
+              "search_course_materials": false,
+              "search_web": true,
+              "identity_request": false,
+              "rationale": "用户询问最新的官方说明，这需要获取实时或最新的外部信息，超出了课程资料的静态范围。"
+            },
+            {
+              "intent": "current_web",
+              "delegate_student_learning_assistant": false,
+              "search_course_materials": false,
+              "search_web": true,
+              "identity_request": false,
+              "rationale": "用户询问最新的官方说明，这需要获取实时或最新的外部信息。"
+            }
+          ],
+          "route_modes": [
+            "model",
+            "model"
+          ],
+          "consistent": true,
+          "latency_ms": [
+            3150.401,
+            2998.624
+          ],
+          "token_usage": [
+            {
+              "prompt": 727,
+              "completion": 71,
+              "total": 798
+            },
+            {
+              "prompt": 727,
+              "completion": 65,
+              "total": 792
+            }
+          ]
+        },
+        {
+          "id": "routing-040",
+          "category": "followup",
+          "question": "再告诉我出处。",
+          "expected": {
+            "intent": "resource_lookup",
+            "delegate_student_learning_assistant": false,
+            "search_course_materials": true,
+            "search_web": false,
+            "identity_request": false
+          },
+          "rules": {
+            "decision": {
+              "intent": "resource_lookup",
+              "delegate_student_learning_assistant": false,
+              "search_course_materials": true,
+              "search_web": false,
+              "identity_request": false,
+              "rationale": "模型路由不可用，问题包含明确的资料定位请求。"
+            }
+          },
+          "model": {
+            "decision": {
+              "intent": "resource_lookup",
+              "delegate_student_learning_assistant": false,
+              "search_course_materials": true,
+              "search_web": false,
+              "identity_request": false,
+              "rationale": "用户要求提供先前解释（二分查找）的出处，这属于资料定位请求。"
+            },
+            "route_mode": "model"
+          },
+          "model_runs": [
+            {
+              "intent": "resource_lookup",
+              "delegate_student_learning_assistant": false,
+              "search_course_materials": true,
+              "search_web": false,
+              "identity_request": false,
+              "rationale": "用户要求提供先前解释（二分查找）的出处，这属于资料定位请求。"
+            }
+          ],
+          "route_modes": [
+            "model"
+          ],
+          "consistent": true,
+          "latency_ms": [
+            3514.982
+          ],
+          "token_usage": [
+            {
+              "prompt": 724,
+              "completion": 68,
+              "total": 792
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

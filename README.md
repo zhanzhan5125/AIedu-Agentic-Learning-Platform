@@ -77,7 +77,7 @@ cd "Aiedu-student-study FastAPI后端"
 uv run python -m scripts.evaluate_agents --suite all --dataset-version v1 --offering-id 2
 ```
 
-评测会保存逐样本 JSON、Markdown 汇总、失败案例、Token 和延迟。正式运行要求全部样本经过审核，且指定 Rerank 时必须真正加载模型，禁止静默降级后伪报重排结果。当前 v1 数据已完成项目内逐条审核；在正式运行和结果抽查完成前，README 仍不展示任何提升数字。详见 [评测说明](docs/evaluation.md)与 [v1 审核记录](docs/evaluation-dataset-audit-v1.md)。
+评测会保存逐样本 JSON、Markdown 汇总、失败案例、Token 和延迟。正式运行要求全部样本经过审核，且指定 Rerank 时必须真正加载模型，禁止静默降级后伪报重排结果。当前 v1 数据已完成项目内逐条审核与正式运行：Hybrid RRF 的 Recall@5 为 92.19%、nDCG@5 为 0.7550；Rerank 未达到预设质量/延迟门槛，因此不默认启用。Structured Outputs 路由 Macro-F1 为 1.0000、工具组合 Exact Match 为 90%；批阅 Reflection 本轮未产生额外收益。详见 [评测说明](docs/evaluation.md)、[v1 审核记录](docs/evaluation-dataset-audit-v1.md)与 [v1 正式结果](docs/evaluation-results-v1.md)。
 
 ## 已知边界
 

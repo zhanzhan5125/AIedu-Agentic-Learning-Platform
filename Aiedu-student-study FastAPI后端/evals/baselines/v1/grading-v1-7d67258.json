@@ -1,0 +1,1997 @@
+{
+  "official": true,
+  "generated_at": "2026-09-26T01:50:53.843755+00:00",
+  "metadata": {
+    "git_commit": "7d6725801067e4db4c7e7bef1dafb2dd312394f6",
+    "dataset_version": "v1",
+    "python": "3.11.16",
+    "platform": "Windows-10-10.0.22631-SP0",
+    "llm_model": "deepseek-v3.2",
+    "embedding_model": "text-embedding-3-large",
+    "embedding_dimensions": 3072,
+    "reranker_model": "BAAI/bge-reranker-base",
+    "seed": 42,
+    "repeat": 1
+  },
+  "suites": [
+    {
+      "suite": "grading",
+      "summary": {
+        "raw": {
+          "normalized_mae": 0.0389,
+          "within_accepted_range": 0.8667,
+          "boundary_valid_rate": 1.0,
+          "answer_coverage_rate": 1.0,
+          "evidence_support_rate": 1.0,
+          "total_consistency_rate": 1.0,
+          "human_review": {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1": 0.0
+          },
+          "validation_pass_rate": 1.0,
+          "validation_issue_counts": {}
+        },
+        "validate": {
+          "normalized_mae": 0.0389,
+          "within_accepted_range": 0.8667,
+          "boundary_valid_rate": 1.0,
+          "answer_coverage_rate": 1.0,
+          "evidence_support_rate": 1.0,
+          "total_consistency_rate": 1.0,
+          "human_review": {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1": 0.0
+          },
+          "validation_pass_rate": 1.0,
+          "validation_issue_counts": {}
+        },
+        "reflect": {
+          "normalized_mae": 0.0389,
+          "within_accepted_range": 0.8667,
+          "boundary_valid_rate": 1.0,
+          "answer_coverage_rate": 1.0,
+          "evidence_support_rate": 1.0,
+          "total_consistency_rate": 1.0,
+          "human_review": {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1": 0.0
+          },
+          "validation_pass_rate": 1.0,
+          "validation_issue_counts": {}
+        }
+      },
+      "reflection": {
+        "trigger_rate": 0.0,
+        "repair_success_rate": 0.0,
+        "regression_rate": 0.0,
+        "retain_conditional_reflection": false
+      },
+      "performance": {
+        "raw_latency_p50_ms": 11959.2525,
+        "raw_latency_p95_ms": 14241.7622,
+        "reflection_latency_p50_ms": 0.0845,
+        "total_latency_p50_ms": 11959.6415,
+        "total_latency_p95_ms": 14241.9895,
+        "prompt_tokens": 15351,
+        "completion_tokens": 4711,
+        "estimated_cost_usd": null,
+        "average_estimated_cost_usd": null
+      },
+      "cases": [
+        {
+          "id": "grading-001",
+          "raw": {
+            "result": {
+              "items": [
+                {
+                  "answer_id": 1,
+                  "score": 10,
+                  "max_score": 10,
+                  "rubric": [
+                    "指出预处理指令（3分）",
+                    "指出 main 函数（3分）",
+                    "指出其他函数或全局声明（4分）"
+                  ],
+                  "comment": "答案完整地列出了所有组成部分：预处理指令、全局声明、main函数、其他函数和注释，与参考答案语义完全一致。",
+                  "error_type": null,
+                  "evidence_excerpt": "预处理指令、全局声明、main函数、其他函数和注释共同组成程序。",
+                  "confidence": 95
+                },
+                {
+                  "answer_id": 2,
+                  "score": 10,
+                  "max_score": 10,
+                  "rubric": [
+                    "说明值是否可变（4分）",
+                    "说明存储或定义方式（3分）",
+                    "说明典型用途（3分）"
+                  ],
+                  "comment": "答案正确说明了变量值可变、常量值固定，并区分了宏常量（文本替换）和const对象（有存储），覆盖了所有评分要点。",
+                  "error_type": null,
+                  "evidence_excerpt": "变量的值可以改变，常量的值固定；宏常量会文本替换，const对象通常有存储。",
+                  "confidence": 95
+                },
+                {
+                  "answer_id": 3,
+                  "score": 10,
+                  "max_score": 10,
+                  "rubric": [
+                    "预处理",
+                    "编译",
+                    "汇编",
+                    "链接"
+                  ],
+                  "comment": "答案正确列出了四个阶段：预处理、编译、汇编、链接，顺序正确，内容完整。",
+                  "error_type": null,
+                  "evidence_excerpt": "预处理、编译、汇编、链接。",
+                  "confidence": 95
+                }
+              ],
+              "total_score": 30,
+              "overall_comment": "所有题目均回答正确，覆盖了参考答案的所有要点，获得了满分。",
+              "confidence": 95,
+              "needs_review": false,
+              "review_reason": null
+            },
+            "validation": {
+              "valid": true,
+              "issues": [],
+              "evidence_sufficient": true,
+              "requires_human_review": true
+            }
+          },
+          "validate": {
+            "result": {
+              "items": [
+                {
+                  "answer_id": 1,
+                  "score": 10,
+                  "max_score": 10,
+                  "rubric": [
+                    "指出预处理指令（3分）",
+                    "指出 main 函数（3分）",
+                    "指出其他函数或全局声明（4分）"
+                  ],
+                  "comment": "答案完整地列出了所有组成部分：预处理指令、全局声明、main函数、其他函数和注释，与参考答案语义完全一致。",
+                  "error_type": null,
+                  "evidence_excerpt": "预处理指令、全局声明、main函数、其他函数和注释共同组成程序。",
+                  "confidence": 95
+                },
+                {
+                  "answer_id": 2,
+                  "score": 10,
+                  "max_score": 10,
+                  "rubric": [
+                    "说明值是否可变（4分）",
+                    "说明存储或定义方式（3分）",
+                    "说明典型用途（3分）"
+                  ],
+                  "comment": "答案正确说明了变量值可变、常量值固定，并区分了宏常量（文本替换）和const对象（有存储），覆盖了所有评分要点。",
+                  "error_type": null,
+                  "evidence_excerpt": "变量的值可以改变，常量的值固定；宏常量会文本替换，const对象通常有存储。",
+                  "confidence": 95
+                },
+                {
+                  "answer_id": 3,
+                  "score": 10,
+                  "max_score": 10,
+                  "rubric": [
+                    "预处理",
+                    "编译",
+                    "汇编",
+                    "链接"
+                  ],
+                  "comment": "答案正确列出了四个阶段：预处理、编译、汇编、链接，顺序正确，内容完整。",
+                  "error_type": null,
+                  "evidence_excerpt": "预处理、编译、汇编、链接。",
+                  "confidence": 95
+                }
+              ],
+              "total_score": 30,
+              "overall_comment": "所有题目均回答正确，覆盖了参考答案的所有要点，获得了满分。",
+              "confidence": 95,
+              "needs_review": false,
+              "review_reason": null
+            },
+            "validation": {
+              "valid": true,
+              "issues": [],
+              "evidence_sufficient": true,
+              "requires_human_review": true
+            }
+          },
+          "reflect": {
+            "result": {
+              "items": [
+                {
+                  "answer_id": 1,
+                  "score": 10,
+                  "max_score": 10,
+                  "rubric": [
+                    "指出预处理指令（3分）",
+                    "指出 main 函数（3分）",
+                    "指出其他函数或全局声明（4分）"
+                  ],
+                  "comment": "答案完整地列出了所有组成部分：预处理指令、全局声明、main函数、其他函数和注释，与参考答案语义完全一致。",
+                  "error_type": null,
+                  "evidence_excerpt": "预处理指令、全局声明、main函数、其他函数和注释共同组成程序。",
+                  "confidence": 95
+                },
+                {
+                  "answer_id": 2,
+                  "score": 10,
+                  "max_score": 10,
+                  "rubric": [
+                    "说明值是否可变（4分）",
+                    "说明存储或定义方式（3分）",
+                    "说明典型用途（3分）"
+                  ],
+                  "comment": "答案正确说明了变量值可变、常量值固定，并区分了宏常量（文本替换）和const对象（有存储），覆盖了所有评分要点。",
+                  "error_type": null,
+                  "evidence_excerpt": "变量的值可以改变，常量的值固定；宏常量会文本替换，const对象通常有存储。",
+                  "confidence": 95
+                },
+                {
+                  "answer_id": 3,
+                  "score": 10,
+                  "max_score": 10,
+                  "rubric": [
+                    "预处理",
+                    "编译",
+                    "汇编",
+                    "链接"
+                  ],
+                  "comment": "答案正确列出了四个阶段：预处理、编译、汇编、链接，顺序正确，内容完整。",
+                  "error_type": null,
+                  "evidence_excerpt": "预处理、编译、汇编、链接。",
+                  "confidence": 95
+                }
+              ],
+              "total_score": 30,
+              "overall_comment": "所有题目均回答正确，覆盖了参考答案的所有要点，获得了满分。",
+              "confidence": 95,
+              "needs_review": false,
+              "review_reason": null
+            },
+            "validation": {
+              "valid": true,
+              "issues": [],
+              "evidence_sufficient": true,
+              "requires_human_review": true
+            }
+          },
+          "raw_latency_ms": 14116.668,
+          "reflection_latency_ms": 0.081,
+          "total_latency_ms": 14116.903,
+          "token_usage": {
+            "prompt": 1558,
+            "completion": 446,
+            "total": 2004
+          },
+          "reflection_triggered": false,
+          "reflection_repaired": false,
+          "reflection_regressed": false
+        },
+        {
+          "id": "grading-002",
+          "raw": {
+            "result": {
+              "items": [
+                {
+                  "answer_id": 1,
+                  "score": 6,
+                  "max_score": 10,
+                  "rubric": [
+                    "指出预处理指令（3分）",
+                    "指出 main 函数（3分）",
+                    "指出其他函数或全局声明（4分）"
+                  ],
+                  "comment": "你正确指出了main函数和其他函数，获得了6分。但答案缺少了预处理指令和全局声明等组成部分，因此未能获得满分。请补充说明C程序通常还包括预处理指令（如#include）和全局变量声明等部分。",
+                  "error_type": "内容缺失",
+                  "evidence_excerpt": "主要有main函数和其他函数。",
+                  "confidence": 90
+                },
+                {
+                  "answer_id": 2,
+                  "score": 4,
+                  "max_score": 10,
+                  "rubric": [
+                    "说明值是否可变（4分）",
+                    "说明存储或定义方式（3分）",
+                    "说明典型用途（3分）"
+                  ],
+                  "comment": "你正确指出了变量和常量在值是否可变上的核心区别，获得了4分。但答案过于简略，没有说明它们在存储、定义方式（如宏常量、const）或典型用途上的区别，因此未能获得更高分数。请尝试更全面地描述两者的不同。",
+                  "error_type": "内容不完整",
+                  "evidence_excerpt": "变量能改，常量不能改。",
+                  "confidence": 90
+                },
+                {
+                  "answer_id": 3,
+                  "score": 5,
+                  "max_score": 10,
+                  "rubric": [
+                    "预处理",
+                    "编译",
+                    "汇编",
+                    "链接"
+                  ],
+                  "comment": "你提到了编译和链接两个阶段，获得了5分。但完整的流程包括四个阶段：预处理、编译、汇编、链接。你的答案遗漏了预处理和汇编阶段。请记住C程序从源代码到可执行文件的完整转换过程。",
+                  "error_type": "内容缺失",
+                  "evidence_excerpt": "先编译，再链接。",
+                  "confidence": 90
+                }
+              ],
+              "total_score": 15,
+              "overall_comment": "本次作答在核心概念上基本正确，但普遍存在答案不完整的问题。第一题遗漏了预处理指令；第二题仅说明了可变性，未涉及存储和定义方式；第三题遗漏了预处理和汇编阶段。请注意，简答题需要抓住评分要点，进行完整、准确的阐述。建议复习C程序的基本结构和编译流程。",
+              "confidence": 90,
+              "needs_review": false,
+              "review_reason": null
+            },
+            "validation": {
+              "valid": true,
+              "issues": [],
+              "evidence_sufficient": true,
+              "requires_human_review": true
+            }
+          },
+          "validate": {
+            "result": {
+              "items": [
+                {
+                  "answer_id": 1,
+                  "score": 6,
+                  "max_score": 10,
+                  "rubric": [
+                    "指出预处理指令（3分）",
+                    "指出 main 函数（3分）",
+                    "指出其他函数或全局声明（4分）"
+                  ],
+                  "comment": "你正确指出了main函数和其他函数，获得了6分。但答案缺少了预处理指令和全局声明等组成部分，因此未能获得满分。请补充说明C程序通常还包括预处理指令（如#include）和全局变量声明等部分。",
+                  "error_type": "内容缺失",
+                  "evidence_excerpt": "主要有main函数和其他函数。",
+                  "confidence": 90
+                },
+                {
+                  "answer_id": 2,
+                  "score": 4,
+                  "max_score": 10,
+                  "rubric": [
+                    "说明值是否可变（4分）",
+                    "说明存储或定义方式（3分）",
+                    "说明典型用途（3分）"
+                  ],
+                  "comment": "你正确指出了变量和常量在值是否可变上的核心区别，获得了4分。但答案过于简略，没有说明它们在存储、定义方式（如宏常量、const）或典型用途上的区别，因此未能获得更高分数。请尝试更全面地描述两者的不同。",
+                  "error_type": "内容不完整",
+                  "evidence_excerpt": "变量能改，常量不能改。",
+                  "confidence": 90
+                },
+                {
+                  "answer_id": 3,
+                  "score": 5,
+                  "max_score": 10,
+                  "rubric": [
+                    "预处理",
+                    "编译",
+                    "汇编",
+                    "链接"
+                  ],
+                  "comment": "你提到了编译和链接两个阶段，获得了5分。但完整的流程包括四个阶段：预处理、编译、汇编、链接。你的答案遗漏了预处理和汇编阶段。请记住C程序从源代码到可执行文件的完整转换过程。",
+                  "error_type": "内容缺失",
+                  "evidence_excerpt": "先编译，再链接。",
+                  "confidence": 90
+                }
+              ],
+              "total_score": 15,
+              "overall_comment": "本次作答在核心概念上基本正确，但普遍存在答案不完整的问题。第一题遗漏了预处理指令；第二题仅说明了可变性，未涉及存储和定义方式；第三题遗漏了预处理和汇编阶段。请注意，简答题需要抓住评分要点，进行完整、准确的阐述。建议复习C程序的基本结构和编译流程。",
+              "confidence": 90,
+              "needs_review": false,
+              "review_reason": null
+            },
+            "validation": {
+              "valid": true,
+              "issues": [],
+              "evidence_sufficient": true,
+              "requires_human_review": true
+            }
+          },
+          "reflect": {
+            "result": {
+              "items": [
+                {
+                  "answer_id": 1,
+                  "score": 6,
+                  "max_score": 10,
+                  "rubric": [
+                    "指出预处理指令（3分）",
+                    "指出 main 函数（3分）",
+                    "指出其他函数或全局声明（4分）"
+                  ],
+                  "comment": "你正确指出了main函数和其他函数，获得了6分。但答案缺少了预处理指令和全局声明等组成部分，因此未能获得满分。请补充说明C程序通常还包括预处理指令（如#include）和全局变量声明等部分。",
+                  "error_type": "内容缺失",
+                  "evidence_excerpt": "主要有main函数和其他函数。",
+                  "confidence": 90
+                },
+                {
+                  "answer_id": 2,
+                  "score": 4,
+                  "max_score": 10,
+                  "rubric": [
+                    "说明值是否可变（4分）",
+                    "说明存储或定义方式（3分）",
+                    "说明典型用途（3分）"
+                  ],
+                  "comment": "你正确指出了变量和常量在值是否可变上的核心区别，获得了4分。但答案过于简略，没有说明它们在存储、定义方式（如宏常量、const）或典型用途上的区别，因此未能获得更高分数。请尝试更全面地描述两者的不同。",
+                  "error_type": "内容不完整",
+                  "evidence_excerpt": "变量能改，常量不能改。",
+                  "confidence": 90
+                },
+                {
+                  "answer_id": 3,
+                  "score": 5,
+                  "max_score": 10,
+                  "rubric": [
+                    "预处理",
+                    "编译",
+                    "汇编",
+                    "链接"
+                  ],
+                  "comment": "你提到了编译和链接两个阶段，获得了5分。但完整的流程包括四个阶段：预处理、编译、汇编、链接。你的答案遗漏了预处理和汇编阶段。请记住C程序从源代码到可执行文件的完整转换过程。",
+                  "error_type": "内容缺失",
+                  "evidence_excerpt": "先编译，再链接。",
+                  "confidence": 90
+                }
+              ],
+              "total_score": 15,
+              "overall_comment": "本次作答在核心概念上基本正确，但普遍存在答案不完整的问题。第一题遗漏了预处理指令；第二题仅说明了可变性，未涉及存储和定义方式；第三题遗漏了预处理和汇编阶段。请注意，简答题需要抓住评分要点，进行完整、准确的阐述。建议复习C程序的基本结构和编译流程。",
+              "confidence": 90,
+              "needs_review": false,
+              "review_reason": null
+            },
+            "validation": {
+              "valid": true,
+              "issues": [],
+              "evidence_sufficient": true,
+              "requires_human_review": true
+            }
+          },
+          "raw_latency_ms": 13293.481,
+          "reflection_latency_ms": 0.084,
+          "total_latency_ms": 13293.68,
+          "token_usage": {
+            "prompt": 1531,
+            "completion": 559,
+            "total": 2090
+          },
+          "reflection_triggered": false,
+          "reflection_repaired": false,
+          "reflection_regressed": false
+        },
+        {
+          "id": "grading-003",
+          "raw": {
+            "result": {
+              "items": [
+                {
+                  "answer_id": 1,
+                  "score": 3,
+                  "max_score": 10,
+                  "rubric": [
+                    "指出预处理指令（3分）",
+                    "指出 main 函数（3分）",
+                    "指出其他函数或全局声明（4分）"
+                  ],
+                  "comment": "你正确指出了C程序包含main函数，因此获得3分。但答案不完整，缺少预处理指令、全局声明、其他函数定义等主要组成部分。请复习C程序的基本结构。",
+                  "error_type": "内容不完整",
+                  "evidence_excerpt": "C程序只有main函数。",
+                  "confidence": 95
+                },
+                {
+                  "answer_id": 2,
+                  "score": 0,
+                  "max_score": 10,
+                  "rubric": [
+                    "说明值是否可变（4分）",
+                    "说明存储或定义方式（3分）",
+                    "说明典型用途（3分）"
+                  ],
+                  "comment": "你的回答“变量和常量完全一样”是错误的。变量和常量在值是否可变、定义方式及用途上均有本质区别。请重新学习变量与常量的概念。",
+                  "error_type": "概念错误",
+                  "evidence_excerpt": "变量和常量完全一样。",
+                  "confidence": 95
+                },
+                {
+                  "answer_id": 3,
+                  "score": 0,
+                  "max_score": 10,
+                  "rubric": [
+                    "预处理",
+                    "编译",
+                    "汇编",
+                    "链接"
+                  ],
+                  "comment": "你的回答“程序直接由源代码运行”是错误的。C语言是编译型语言，源代码需要经过预处理、编译、汇编和链接四个阶段才能生成可执行文件。请复习程序的编译过程。",
+                  "error_type": "概念错误",
+                  "evidence_excerpt": "程序直接由源代码运行。",
+                  "confidence": 95
+                }
+              ],
+              "total_score": 3,
+              "overall_comment": "本次作答共得3分（满分30分）。你仅在第一题中答出了main函数。第二题和第三题的回答存在根本性的概念错误。需要重点复习C程序的基本结构、变量与常量的区别，以及源代码到可执行文件的编译过程。",
+              "confidence": 95,
+              "needs_review": false,
+              "review_reason": null
+            },
+            "validation": {
+              "valid": true,
+              "issues": [],
+              "evidence_sufficient": true,
+              "requires_human_review": true
+            }
+          },
+          "validate": {
+            "result": {
+              "items": [
+                {
+                  "answer_id": 1,
+                  "score": 3,
+                  "max_score": 10,
+                  "rubric": [
+                    "指出预处理指令（3分）",
+                    "指出 main 函数（3分）",
+                    "指出其他函数或全局声明（4分）"
+                  ],
+                  "comment": "你正确指出了C程序包含main函数，因此获得3分。但答案不完整，缺少预处理指令、全局声明、其他函数定义等主要组成部分。请复习C程序的基本结构。",
+                  "error_type": "内容不完整",
+                  "evidence_excerpt": "C程序只有main函数。",
+                  "confidence": 95
+                },
+                {
+                  "answer_id": 2,
+                  "score": 0,
+                  "max_score": 10,
+                  "rubric": [
+                    "说明值是否可变（4分）",
+                    "说明存储或定义方式（3分）",
+                    "说明典型用途（3分）"
+                  ],
+                  "comment": "你的回答“变量和常量完全一样”是错误的。变量和常量在值是否可变、定义方式及用途上均有本质区别。请重新学习变量与常量的概念。",
+                  "error_type": "概念错误",
+                  "evidence_excerpt": "变量和常量完全一样。",
+                  "confidence": 95
+                },
+                {
+                  "answer_id": 3,
+                  "score": 0,
+                  "max_score": 10,
+                  "rubric": [
+                    "预处理",
+                    "编译",
+                    "汇编",
+                    "链接"
+                  ],
+                  "comment": "你的回答“程序直接由源代码运行”是错误的。C语言是编译型语言，源代码需要经过预处理、编译、汇编和链接四个阶段才能生成可执行文件。请复习程序的编译过程。",
+                  "error_type": "概念错误",
+                  "evidence_excerpt": "程序直接由源代码运行。",
+                  "confidence": 95
+                }
+              ],
+              "total_score": 3,
+              "overall_comment": "本次作答共得3分（满分30分）。你仅在第一题中答出了main函数。第二题和第三题的回答存在根本性的概念错误。需要重点复习C程序的基本结构、变量与常量的区别，以及源代码到可执行文件的编译过程。",
+              "confidence": 95,
+              "needs_review": false,
+              "review_reason": null
+            },
+            "validation": {
+              "valid": true,
+              "issues": [],
+              "evidence_sufficient": true,
+              "requires_human_review": true
+            }
+          },
+          "reflect": {
+            "result": {
+              "items": [
+                {
+                  "answer_id": 1,
+                  "score": 3,
+                  "max_score": 10,
+                  "rubric": [
+                    "指出预处理指令（3分）",
+                    "指出 main 函数（3分）",
+                    "指出其他函数或全局声明（4分）"
+                  ],
+                  "comment": "你正确指出了C程序包含main函数，因此获得3分。但答案不完整，缺少预处理指令、全局声明、其他函数定义等主要组成部分。请复习C程序的基本结构。",
+                  "error_type": "内容不完整",
+                  "evidence_excerpt": "C程序只有main函数。",
+                  "confidence": 95
+                },
+                {
+                  "answer_id": 2,
+                  "score": 0,
+                  "max_score": 10,
+                  "rubric": [
+                    "说明值是否可变（4分）",
+                    "说明存储或定义方式（3分）",
+                    "说明典型用途（3分）"
+                  ],
+                  "comment": "你的回答“变量和常量完全一样”是错误的。变量和常量在值是否可变、定义方式及用途上均有本质区别。请重新学习变量与常量的概念。",
+                  "error_type": "概念错误",
+                  "evidence_excerpt": "变量和常量完全一样。",
+                  "confidence": 95
+                },
+                {
+                  "answer_id": 3,
+                  "score": 0,
+                  "max_score": 10,
+                  "rubric": [
+                    "预处理",
+                    "编译",
+                    "汇编",
+                    "链接"
+                  ],
+                  "comment": "你的回答“程序直接由源代码运行”是错误的。C语言是编译型语言，源代码需要经过预处理、编译、汇编和链接四个阶段才能生成可执行文件。请复习程序的编译过程。",
+                  "error_type": "概念错误",
+                  "evidence_excerpt": "程序直接由源代码运行。",
+                  "confidence": 95
+                }
+              ],
+              "total_score": 3,
+              "overall_comment": "本次作答共得3分（满分30分）。你仅在第一题中答出了main函数。第二题和第三题的回答存在根本性的概念错误。需要重点复习C程序的基本结构、变量与常量的区别，以及源代码到可执行文件的编译过程。",
+              "confidence": 95,
+              "needs_review": false,
+              "review_reason": null
+            },
+            "validation": {
+              "valid": true,
+              "issues": [],
+              "evidence_sufficient": true,
+              "requires_human_review": true
+            }
+          },
+          "raw_latency_ms": 11939.587,
+          "reflection_latency_ms": 0.122,
+          "total_latency_ms": 11940.138,
+          "token_usage": {
+            "prompt": 1529,
+            "completion": 504,
+            "total": 2033
+          },
+          "reflection_triggered": false,
+          "reflection_repaired": false,
+          "reflection_regressed": false
+        },
+        {
+          "id": "grading-004",
+          "raw": {
+            "result": {
+              "items": [
+                {
+                  "answer_id": 1,
+                  "score": 0,
+                  "max_score": 10,
+                  "rubric": [
+                    "指出预处理指令（3分）",
+                    "指出 main 函数（3分）",
+                    "指出其他函数或全局声明（4分）"
+                  ],
+                  "comment": "答案未作答，未能提供任何关于C语言源程序组成部分的信息。",
+                  "error_type": "未作答",
+                  "evidence_excerpt": "未作答",
+                  "confidence": 100
+                },
+                {
+                  "answer_id": 2,
+                  "score": 0,
+                  "max_score": 10,
+                  "rubric": [
+                    "说明值是否可变（4分）",
+                    "说明存储或定义方式（3分）",
+                    "说明典型用途（3分）"
+                  ],
+                  "comment": "答案未作答，未能说明变量与常量的区别。",
+                  "error_type": "未作答",
+                  "evidence_excerpt": "未作答",
+                  "confidence": 100
+                },
+                {
+                  "answer_id": 3,
+                  "score": 0,
+                  "max_score": 10,
+                  "rubric": [
+                    "预处理",
+                    "编译",
+                    "汇编",
+                    "链接"
+                  ],
+                  "comment": "答案未作答，未能列出C源程序到可执行文件经历的阶段。",
+                  "error_type": "未作答",
+                  "evidence_excerpt": "未作答",
+                  "confidence": 100
+                }
+              ],
+              "total_score": 0,
+              "overall_comment": "本次提交的三道简答题均未作答，总得分为0分。请认真审题并完成作答。",
+              "confidence": 100,
+              "needs_review": false,
+              "review_reason": null
+            },
+            "validation": {
+              "valid": true,
+              "issues": [],
+              "evidence_sufficient": true,
+              "requires_human_review": true
+            }
+          },
+          "validate": {
+            "result": {
+              "items": [
+                {
+                  "answer_id": 1,
+                  "score": 0,
+                  "max_score": 10,
+                  "rubric": [
+                    "指出预处理指令（3分）",
+                    "指出 main 函数（3分）",
+                    "指出其他函数或全局声明（4分）"
+                  ],
+                  "comment": "答案未作答，未能提供任何关于C语言源程序组成部分的信息。",
+                  "error_type": "未作答",
+                  "evidence_excerpt": "未作答",
+                  "confidence": 100
+                },
+                {
+                  "answer_id": 2,
+                  "score": 0,
+                  "max_score": 10,
+                  "rubric": [
+                    "说明值是否可变（4分）",
+                    "说明存储或定义方式（3分）",
+                    "说明典型用途（3分）"
+                  ],
+                  "comment": "答案未作答，未能说明变量与常量的区别。",
+                  "error_type": "未作答",
+                  "evidence_excerpt": "未作答",
+                  "confidence": 100
+                },
+                {
+                  "answer_id": 3,
+                  "score": 0,
+                  "max_score": 10,
+                  "rubric": [
+                    "预处理",
+                    "编译",
+                    "汇编",
+                    "链接"
+                  ],
+                  "comment": "答案未作答，未能列出C源程序到可执行文件经历的阶段。",
+                  "error_type": "未作答",
+                  "evidence_excerpt": "未作答",
+                  "confidence": 100
+                }
+              ],
+              "total_score": 0,
+              "overall_comment": "本次提交的三道简答题均未作答，总得分为0分。请认真审题并完成作答。",
+              "confidence": 100,
+              "needs_review": false,
+              "review_reason": null
+            },
+            "validation": {
+              "valid": true,
+              "issues": [],
+              "evidence_sufficient": true,
+              "requires_human_review": true
+            }
+          },
+          "reflect": {
+            "result": {
+              "items": [
+                {
+                  "answer_id": 1,
+                  "score": 0,
+                  "max_score": 10,
+                  "rubric": [
+                    "指出预处理指令（3分）",
+                    "指出 main 函数（3分）",
+                    "指出其他函数或全局声明（4分）"
+                  ],
+                  "comment": "答案未作答，未能提供任何关于C语言源程序组成部分的信息。",
+                  "error_type": "未作答",
+                  "evidence_excerpt": "未作答",
+                  "confidence": 100
+                },
+                {
+                  "answer_id": 2,
+                  "score": 0,
+                  "max_score": 10,
+                  "rubric": [
+                    "说明值是否可变（4分）",
+                    "说明存储或定义方式（3分）",
+                    "说明典型用途（3分）"
+                  ],
+                  "comment": "答案未作答，未能说明变量与常量的区别。",
+                  "error_type": "未作答",
+                  "evidence_excerpt": "未作答",
+                  "confidence": 100
+                },
+                {
+                  "answer_id": 3,
+                  "score": 0,
+                  "max_score": 10,
+                  "rubric": [
+                    "预处理",
+                    "编译",
+                    "汇编",
+                    "链接"
+                  ],
+                  "comment": "答案未作答，未能列出C源程序到可执行文件经历的阶段。",
+                  "error_type": "未作答",
+                  "evidence_excerpt": "未作答",
+                  "confidence": 100
+                }
+              ],
+              "total_score": 0,
+              "overall_comment": "本次提交的三道简答题均未作答，总得分为0分。请认真审题并完成作答。",
+              "confidence": 100,
+              "needs_review": false,
+              "review_reason": null
+            },
+            "validation": {
+              "valid": true,
+              "issues": [],
+              "evidence_sufficient": true,
+              "requires_human_review": true
+            }
+          },
+          "raw_latency_ms": 11020.916,
+          "reflection_latency_ms": 0.106,
+          "total_latency_ms": 11021.162,
+          "token_usage": {
+            "prompt": 1511,
+            "completion": 383,
+            "total": 1894
+          },
+          "reflection_triggered": false,
+          "reflection_repaired": false,
+          "reflection_regressed": false
+        },
+        {
+          "id": "grading-005",
+          "raw": {
+            "result": {
+              "items": [
+                {
+                  "answer_id": 1,
+                  "score": 10,
+                  "max_score": 10,
+                  "rubric": [
+                    "指出预处理指令（3分）",
+                    "指出 main 函数（3分）",
+                    "指出其他函数或全局声明（4分）"
+                  ],
+                  "comment": "答案完整覆盖了所有评分要点。提到了预处理指令（include等指令）、main函数作为入口，以及全局声明和注释（属于全局声明和注释部分）。语义与参考答案等价，因此得满分。",
+                  "error_type": null,
+                  "evidence_excerpt": "程序会先处理include等指令，再由main作为入口调用其他函数；还可有全局声明和注释。",
+                  "confidence": 95
+                },
+                {
+                  "answer_id": 2,
+                  "score": 10,
+                  "max_score": 10,
+                  "rubric": [
+                    "说明值是否可变（4分）",
+                    "说明存储或定义方式（3分）",
+                    "说明典型用途（3分）"
+                  ],
+                  "comment": "答案正确说明了变量值可变（承载运行时可变数据）和常量值固定（表达固定含义）。同时，正确区分了两种常量的定义方式：宏常量（define是替换）和const常量（受只读约束的对象）。答案覆盖了所有评分要点，语义与参考答案一致，得满分。",
+                  "error_type": null,
+                  "evidence_excerpt": "前者承载运行时可变数据，后者表达固定含义；define是替换，const是受只读约束的对象。",
+                  "confidence": 95
+                },
+                {
+                  "answer_id": 3,
+                  "score": 8,
+                  "max_score": 10,
+                  "rubric": [
+                    "预处理",
+                    "编译",
+                    "汇编",
+                    "链接"
+                  ],
+                  "comment": "答案提到了四个关键阶段，但表述不够精确。‘翻译成汇编’通常对应‘编译’阶段，‘形成目标代码’对应‘汇编’阶段。答案正确指出了预处理（展开预处理内容）和链接（与库链接）。由于没有明确使用‘编译’和‘汇编’这两个标准术语，表述存在模糊性，因此扣2分。",
+                  "error_type": "术语不精确",
+                  "evidence_excerpt": "源文件先展开预处理内容，翻译成汇编，再形成目标代码，最后与库链接。",
+                  "confidence": 90
+                }
+              ],
+              "total_score": 28,
+              "overall_comment": "总体回答质量良好。第一、二题准确回答了问题要点，获得满分。第三题理解了处理流程，但阶段名称的表述不够标准，略有扣分。请注意在回答概念性问题时使用准确的术语。",
+              "confidence": 93,
+              "needs_review": false,
+              "review_reason": null
+            },
+            "validation": {
+              "valid": true,
+              "issues": [],
+              "evidence_sufficient": true,
+              "requires_human_review": true
+            }
+          },
+          "validate": {
+            "result": {
+              "items": [
+                {
+                  "answer_id": 1,
+                  "score": 10,
+                  "max_score": 10,
+                  "rubric": [
+                    "指出预处理指令（3分）",
+                    "指出 main 函数（3分）",
+                    "指出其他函数或全局声明（4分）"
+                  ],
+                  "comment": "答案完整覆盖了所有评分要点。提到了预处理指令（include等指令）、main函数作为入口，以及全局声明和注释（属于全局声明和注释部分）。语义与参考答案等价，因此得满分。",
+                  "error_type": null,
+                  "evidence_excerpt": "程序会先处理include等指令，再由main作为入口调用其他函数；还可有全局声明和注释。",
+                  "confidence": 95
+                },
+                {
+                  "answer_id": 2,
+                  "score": 10,
+                  "max_score": 10,
+                  "rubric": [
+                    "说明值是否可变（4分）",
+                    "说明存储或定义方式（3分）",
+                    "说明典型用途（3分）"
+                  ],
+                  "comment": "答案正确说明了变量值可变（承载运行时可变数据）和常量值固定（表达固定含义）。同时，正确区分了两种常量的定义方式：宏常量（define是替换）和const常量（受只读约束的对象）。答案覆盖了所有评分要点，语义与参考答案一致，得满分。",
+                  "error_type": null,
+                  "evidence_excerpt": "前者承载运行时可变数据，后者表达固定含义；define是替换，const是受只读约束的对象。",
+                  "confidence": 95
+                },
+                {
+                  "answer_id": 3,
+                  "score": 8,
+                  "max_score": 10,
+                  "rubric": [
+                    "预处理",
+                    "编译",
+                    "汇编",
+                    "链接"
+                  ],
+                  "comment": "答案提到了四个关键阶段，但表述不够精确。‘翻译成汇编’通常对应‘编译’阶段，‘形成目标代码’对应‘汇编’阶段。答案正确指出了预处理（展开预处理内容）和链接（与库链接）。由于没有明确使用‘编译’和‘汇编’这两个标准术语，表述存在模糊性，因此扣2分。",
+                  "error_type": "术语不精确",
+                  "evidence_excerpt": "源文件先展开预处理内容，翻译成汇编，再形成目标代码，最后与库链接。",
+                  "confidence": 90
+                }
+              ],
+              "total_score": 28,
+              "overall_comment": "总体回答质量良好。第一、二题准确回答了问题要点，获得满分。第三题理解了处理流程，但阶段名称的表述不够标准，略有扣分。请注意在回答概念性问题时使用准确的术语。",
+              "confidence": 93,
+              "needs_review": false,
+              "review_reason": null
+            },
+            "validation": {
+              "valid": true,
+              "issues": [],
+              "evidence_sufficient": true,
+              "requires_human_review": true
+            }
+          },
+          "reflect": {
+            "result": {
+              "items": [
+                {
+                  "answer_id": 1,
+                  "score": 10,
+                  "max_score": 10,
+                  "rubric": [
+                    "指出预处理指令（3分）",
+                    "指出 main 函数（3分）",
+                    "指出其他函数或全局声明（4分）"
+                  ],
+                  "comment": "答案完整覆盖了所有评分要点。提到了预处理指令（include等指令）、main函数作为入口，以及全局声明和注释（属于全局声明和注释部分）。语义与参考答案等价，因此得满分。",
+                  "error_type": null,
+                  "evidence_excerpt": "程序会先处理include等指令，再由main作为入口调用其他函数；还可有全局声明和注释。",
+                  "confidence": 95
+                },
+                {
+                  "answer_id": 2,
+                  "score": 10,
+                  "max_score": 10,
+                  "rubric": [
+                    "说明值是否可变（4分）",
+                    "说明存储或定义方式（3分）",
+                    "说明典型用途（3分）"
+                  ],
+                  "comment": "答案正确说明了变量值可变（承载运行时可变数据）和常量值固定（表达固定含义）。同时，正确区分了两种常量的定义方式：宏常量（define是替换）和const常量（受只读约束的对象）。答案覆盖了所有评分要点，语义与参考答案一致，得满分。",
+                  "error_type": null,
+                  "evidence_excerpt": "前者承载运行时可变数据，后者表达固定含义；define是替换，const是受只读约束的对象。",
+                  "confidence": 95
+                },
+                {
+                  "answer_id": 3,
+                  "score": 8,
+                  "max_score": 10,
+                  "rubric": [
+                    "预处理",
+                    "编译",
+                    "汇编",
+                    "链接"
+                  ],
+                  "comment": "答案提到了四个关键阶段，但表述不够精确。‘翻译成汇编’通常对应‘编译’阶段，‘形成目标代码’对应‘汇编’阶段。答案正确指出了预处理（展开预处理内容）和链接（与库链接）。由于没有明确使用‘编译’和‘汇编’这两个标准术语，表述存在模糊性，因此扣2分。",
+                  "error_type": "术语不精确",
+                  "evidence_excerpt": "源文件先展开预处理内容，翻译成汇编，再形成目标代码，最后与库链接。",
+                  "confidence": 90
+                }
+              ],
+              "total_score": 28,
+              "overall_comment": "总体回答质量良好。第一、二题准确回答了问题要点，获得满分。第三题理解了处理流程，但阶段名称的表述不够标准，略有扣分。请注意在回答概念性问题时使用准确的术语。",
+              "confidence": 93,
+              "needs_review": false,
+              "review_reason": null
+            },
+            "validation": {
+              "valid": true,
+              "issues": [],
+              "evidence_sufficient": true,
+              "requires_human_review": true
+            }
+          },
+          "raw_latency_ms": 14344.112,
+          "reflection_latency_ms": 0.086,
+          "total_latency_ms": 14344.333,
+          "token_usage": {
+            "prompt": 1578,
+            "completion": 600,
+            "total": 2178
+          },
+          "reflection_triggered": false,
+          "reflection_repaired": false,
+          "reflection_regressed": false
+        },
+        {
+          "id": "grading-006",
+          "raw": {
+            "result": {
+              "items": [
+                {
+                  "answer_id": 1,
+                  "score": 5,
+                  "max_score": 5,
+                  "rubric": [
+                    "选择 B（5分）"
+                  ],
+                  "comment": "答案正确，选择了C程序的执行入口函数main。",
+                  "error_type": null,
+                  "evidence_excerpt": "B",
+                  "confidence": 100
+                },
+                {
+                  "answer_id": 2,
+                  "score": 10,
+                  "max_score": 10,
+                  "rubric": [
+                    "选择 A（2分）",
+                    "选择 B（2分）",
+                    "选择 C（2分）",
+                    "不选择 D（4分）"
+                  ],
+                  "comment": "答案完全正确，正确选择了C语言的所有循环语句（for, while, do-while），并且没有选择不属于循环语句的switch。",
+                  "error_type": null,
+                  "evidence_excerpt": "A、B、C",
+                  "confidence": 100
+                },
+                {
+                  "answer_id": 3,
+                  "score": 15,
+                  "max_score": 15,
+                  "rubric": [
+                    "函数签名正确（5分）",
+                    "比较两个参数的逻辑正确（5分）",
+                    "所有输入路径均返回较大值（5分）"
+                  ],
+                  "comment": "函数实现完全正确。函数签名`int max2(int a,int b)`正确。使用三元运算符`a>b?a:b`正确比较并返回较大值，逻辑清晰，覆盖所有输入情况。",
+                  "error_type": null,
+                  "evidence_excerpt": "int max2(int a,int b){return a>b?a:b;}",
+                  "confidence": 100
+                }
+              ],
+              "total_score": 30,
+              "overall_comment": "所有题目均回答正确。单选题和多选题答案准确。编程题函数实现简洁有效，符合题目要求。",
+              "confidence": 100,
+              "needs_review": false,
+              "review_reason": null
+            },
+            "validation": {
+              "valid": true,
+              "issues": [],
+              "evidence_sufficient": true,
+              "requires_human_review": true
+            }
+          },
+          "validate": {
+            "result": {
+              "items": [
+                {
+                  "answer_id": 1,
+                  "score": 5,
+                  "max_score": 5,
+                  "rubric": [
+                    "选择 B（5分）"
+                  ],
+                  "comment": "答案正确，选择了C程序的执行入口函数main。",
+                  "error_type": null,
+                  "evidence_excerpt": "B",
+                  "confidence": 100
+                },
+                {
+                  "answer_id": 2,
+                  "score": 10,
+                  "max_score": 10,
+                  "rubric": [
+                    "选择 A（2分）",
+                    "选择 B（2分）",
+                    "选择 C（2分）",
+                    "不选择 D（4分）"
+                  ],
+                  "comment": "答案完全正确，正确选择了C语言的所有循环语句（for, while, do-while），并且没有选择不属于循环语句的switch。",
+                  "error_type": null,
+                  "evidence_excerpt": "A、B、C",
+                  "confidence": 100
+                },
+                {
+                  "answer_id": 3,
+                  "score": 15,
+                  "max_score": 15,
+                  "rubric": [
+                    "函数签名正确（5分）",
+                    "比较两个参数的逻辑正确（5分）",
+                    "所有输入路径均返回较大值（5分）"
+                  ],
+                  "comment": "函数实现完全正确。函数签名`int max2(int a,int b)`正确。使用三元运算符`a>b?a:b`正确比较并返回较大值，逻辑清晰，覆盖所有输入情况。",
+                  "error_type": null,
+                  "evidence_excerpt": "int max2(int a,int b){return a>b?a:b;}",
+                  "confidence": 100
+                }
+              ],
+              "total_score": 30,
+              "overall_comment": "所有题目均回答正确。单选题和多选题答案准确。编程题函数实现简洁有效，符合题目要求。",
+              "confidence": 100,
+              "needs_review": false,
+              "review_reason": null
+            },
+            "validation": {
+              "valid": true,
+              "issues": [],
+              "evidence_sufficient": true,
+              "requires_human_review": true
+            }
+          },
+          "reflect": {
+            "result": {
+              "items": [
+                {
+                  "answer_id": 1,
+                  "score": 5,
+                  "max_score": 5,
+                  "rubric": [
+                    "选择 B（5分）"
+                  ],
+                  "comment": "答案正确，选择了C程序的执行入口函数main。",
+                  "error_type": null,
+                  "evidence_excerpt": "B",
+                  "confidence": 100
+                },
+                {
+                  "answer_id": 2,
+                  "score": 10,
+                  "max_score": 10,
+                  "rubric": [
+                    "选择 A（2分）",
+                    "选择 B（2分）",
+                    "选择 C（2分）",
+                    "不选择 D（4分）"
+                  ],
+                  "comment": "答案完全正确，正确选择了C语言的所有循环语句（for, while, do-while），并且没有选择不属于循环语句的switch。",
+                  "error_type": null,
+                  "evidence_excerpt": "A、B、C",
+                  "confidence": 100
+                },
+                {
+                  "answer_id": 3,
+                  "score": 15,
+                  "max_score": 15,
+                  "rubric": [
+                    "函数签名正确（5分）",
+                    "比较两个参数的逻辑正确（5分）",
+                    "所有输入路径均返回较大值（5分）"
+                  ],
+                  "comment": "函数实现完全正确。函数签名`int max2(int a,int b)`正确。使用三元运算符`a>b?a:b`正确比较并返回较大值，逻辑清晰，覆盖所有输入情况。",
+                  "error_type": null,
+                  "evidence_excerpt": "int max2(int a,int b){return a>b?a:b;}",
+                  "confidence": 100
+                }
+              ],
+              "total_score": 30,
+              "overall_comment": "所有题目均回答正确。单选题和多选题答案准确。编程题函数实现简洁有效，符合题目要求。",
+              "confidence": 100,
+              "needs_review": false,
+              "review_reason": null
+            },
+            "validation": {
+              "valid": true,
+              "issues": [],
+              "evidence_sufficient": true,
+              "requires_human_review": true
+            }
+          },
+          "raw_latency_ms": 11301.889,
+          "reflection_latency_ms": 0.064,
+          "total_latency_ms": 11302.046,
+          "token_usage": {
+            "prompt": 1530,
+            "completion": 430,
+            "total": 1960
+          },
+          "reflection_triggered": false,
+          "reflection_repaired": false,
+          "reflection_regressed": false
+        },
+        {
+          "id": "grading-007",
+          "raw": {
+            "result": {
+              "items": [
+                {
+                  "answer_id": 1,
+                  "score": 5,
+                  "max_score": 5,
+                  "rubric": [
+                    "选择 B（5分）"
+                  ],
+                  "comment": "答案正确，选择了C程序的执行入口函数main。",
+                  "error_type": null,
+                  "evidence_excerpt": "B",
+                  "confidence": 100
+                },
+                {
+                  "answer_id": 2,
+                  "score": 4,
+                  "max_score": 10,
+                  "rubric": [
+                    "选择 A（2分）",
+                    "选择 B（2分）",
+                    "选择 C（2分）",
+                    "不选择 D（4分）"
+                  ],
+                  "comment": "得分点：正确选择了for和while循环语句。待改进点：漏选了do-while循环语句，且未明确排除switch语句（非循环语句）。",
+                  "error_type": "漏选",
+                  "evidence_excerpt": "A、B",
+                  "confidence": 100
+                },
+                {
+                  "answer_id": 3,
+                  "score": 5,
+                  "max_score": 15,
+                  "rubric": [
+                    "函数签名正确（5分）",
+                    "比较两个参数的逻辑正确（5分）",
+                    "所有输入路径均返回较大值（5分）"
+                  ],
+                  "comment": "得分点：函数签名正确。待改进点：函数逻辑不完整，当a不大于b时，没有返回语句，这将导致未定义行为。需要补充处理b为较大值或相等情况的逻辑。",
+                  "error_type": "逻辑不完整",
+                  "evidence_excerpt": "int max2(int a,int b){if(a>b)return a;}",
+                  "confidence": 100
+                }
+              ],
+              "total_score": 14,
+              "overall_comment": "第一题回答正确。第二题漏选了部分正确选项。第三题函数签名正确，但核心逻辑不完整，缺少对另一种情况的处理。请检查循环语句的完整定义，并确保函数对所有可能的输入都有明确的返回值。",
+              "confidence": 100,
+              "needs_review": false,
+              "review_reason": null
+            },
+            "validation": {
+              "valid": true,
+              "issues": [],
+              "evidence_sufficient": true,
+              "requires_human_review": true
+            }
+          },
+          "validate": {
+            "result": {
+              "items": [
+                {
+                  "answer_id": 1,
+                  "score": 5,
+                  "max_score": 5,
+                  "rubric": [
+                    "选择 B（5分）"
+                  ],
+                  "comment": "答案正确，选择了C程序的执行入口函数main。",
+                  "error_type": null,
+                  "evidence_excerpt": "B",
+                  "confidence": 100
+                },
+                {
+                  "answer_id": 2,
+                  "score": 4,
+                  "max_score": 10,
+                  "rubric": [
+                    "选择 A（2分）",
+                    "选择 B（2分）",
+                    "选择 C（2分）",
+                    "不选择 D（4分）"
+                  ],
+                  "comment": "得分点：正确选择了for和while循环语句。待改进点：漏选了do-while循环语句，且未明确排除switch语句（非循环语句）。",
+                  "error_type": "漏选",
+                  "evidence_excerpt": "A、B",
+                  "confidence": 100
+                },
+                {
+                  "answer_id": 3,
+                  "score": 5,
+                  "max_score": 15,
+                  "rubric": [
+                    "函数签名正确（5分）",
+                    "比较两个参数的逻辑正确（5分）",
+                    "所有输入路径均返回较大值（5分）"
+                  ],
+                  "comment": "得分点：函数签名正确。待改进点：函数逻辑不完整，当a不大于b时，没有返回语句，这将导致未定义行为。需要补充处理b为较大值或相等情况的逻辑。",
+                  "error_type": "逻辑不完整",
+                  "evidence_excerpt": "int max2(int a,int b){if(a>b)return a;}",
+                  "confidence": 100
+                }
+              ],
+              "total_score": 14,
+              "overall_comment": "第一题回答正确。第二题漏选了部分正确选项。第三题函数签名正确，但核心逻辑不完整，缺少对另一种情况的处理。请检查循环语句的完整定义，并确保函数对所有可能的输入都有明确的返回值。",
+              "confidence": 100,
+              "needs_review": false,
+              "review_reason": null
+            },
+            "validation": {
+              "valid": true,
+              "issues": [],
+              "evidence_sufficient": true,
+              "requires_human_review": true
+            }
+          },
+          "reflect": {
+            "result": {
+              "items": [
+                {
+                  "answer_id": 1,
+                  "score": 5,
+                  "max_score": 5,
+                  "rubric": [
+                    "选择 B（5分）"
+                  ],
+                  "comment": "答案正确，选择了C程序的执行入口函数main。",
+                  "error_type": null,
+                  "evidence_excerpt": "B",
+                  "confidence": 100
+                },
+                {
+                  "answer_id": 2,
+                  "score": 4,
+                  "max_score": 10,
+                  "rubric": [
+                    "选择 A（2分）",
+                    "选择 B（2分）",
+                    "选择 C（2分）",
+                    "不选择 D（4分）"
+                  ],
+                  "comment": "得分点：正确选择了for和while循环语句。待改进点：漏选了do-while循环语句，且未明确排除switch语句（非循环语句）。",
+                  "error_type": "漏选",
+                  "evidence_excerpt": "A、B",
+                  "confidence": 100
+                },
+                {
+                  "answer_id": 3,
+                  "score": 5,
+                  "max_score": 15,
+                  "rubric": [
+                    "函数签名正确（5分）",
+                    "比较两个参数的逻辑正确（5分）",
+                    "所有输入路径均返回较大值（5分）"
+                  ],
+                  "comment": "得分点：函数签名正确。待改进点：函数逻辑不完整，当a不大于b时，没有返回语句，这将导致未定义行为。需要补充处理b为较大值或相等情况的逻辑。",
+                  "error_type": "逻辑不完整",
+                  "evidence_excerpt": "int max2(int a,int b){if(a>b)return a;}",
+                  "confidence": 100
+                }
+              ],
+              "total_score": 14,
+              "overall_comment": "第一题回答正确。第二题漏选了部分正确选项。第三题函数签名正确，但核心逻辑不完整，缺少对另一种情况的处理。请检查循环语句的完整定义，并确保函数对所有可能的输入都有明确的返回值。",
+              "confidence": 100,
+              "needs_review": false,
+              "review_reason": null
+            },
+            "validation": {
+              "valid": true,
+              "issues": [],
+              "evidence_sufficient": true,
+              "requires_human_review": true
+            }
+          },
+          "raw_latency_ms": 11126.64,
+          "reflection_latency_ms": 0.085,
+          "total_latency_ms": 11126.852,
+          "token_usage": {
+            "prompt": 1529,
+            "completion": 467,
+            "total": 1996
+          },
+          "reflection_triggered": false,
+          "reflection_repaired": false,
+          "reflection_regressed": false
+        },
+        {
+          "id": "grading-008",
+          "raw": {
+            "result": {
+              "items": [
+                {
+                  "answer_id": 1,
+                  "score": 0,
+                  "max_score": 5,
+                  "rubric": [
+                    "选择 B（5分）"
+                  ],
+                  "comment": "本题为单选题，正确答案是B（main）。学生选择了A（start），不符合C语言程序执行入口函数的定义，因此不得分。",
+                  "error_type": "incorrect_choice",
+                  "evidence_excerpt": "A",
+                  "confidence": 100
+                },
+                {
+                  "answer_id": 2,
+                  "score": 0,
+                  "max_score": 10,
+                  "rubric": [
+                    "选择 A（2分）",
+                    "选择 B（2分）",
+                    "选择 C（2分）",
+                    "不选择 D（4分）"
+                  ],
+                  "comment": "本题为多选题，正确答案是A（for）、B（while）、C（do-while）。学生只选择了D（switch），switch是选择语句而非循环语句，因此所有正确选项均未选，且错误地选择了D，根据评分要点不得分。",
+                  "error_type": "incorrect_choice",
+                  "evidence_excerpt": "D",
+                  "confidence": 100
+                },
+                {
+                  "answer_id": 3,
+                  "score": 5,
+                  "max_score": 15,
+                  "rubric": [
+                    "函数签名正确（5分）",
+                    "比较两个参数的逻辑正确（5分）",
+                    "所有输入路径均返回较大值（5分）"
+                  ],
+                  "comment": "函数签名正确，得5分。但函数体逻辑错误，返回的是a+b（两数之和）而非较大值，因此比较逻辑和返回值正确性部分不得分。",
+                  "error_type": "logic_error",
+                  "evidence_excerpt": "int max2(int a,int b){return a+b;}",
+                  "confidence": 100
+                }
+              ],
+              "total_score": 5,
+              "overall_comment": "第一题和第二题选择题答案错误，未得分。第三题编程题函数签名正确，但核心逻辑错误，仅获得签名分。请复习C语言程序入口、循环语句以及函数返回值逻辑。",
+              "confidence": 100,
+              "needs_review": false,
+              "review_reason": null
+            },
+            "validation": {
+              "valid": true,
+              "issues": [],
+              "evidence_sufficient": true,
+              "requires_human_review": true
+            }
+          },
+          "validate": {
+            "result": {
+              "items": [
+                {
+                  "answer_id": 1,
+                  "score": 0,
+                  "max_score": 5,
+                  "rubric": [
+                    "选择 B（5分）"
+                  ],
+                  "comment": "本题为单选题，正确答案是B（main）。学生选择了A（start），不符合C语言程序执行入口函数的定义，因此不得分。",
+                  "error_type": "incorrect_choice",
+                  "evidence_excerpt": "A",
+                  "confidence": 100
+                },
+                {
+                  "answer_id": 2,
+                  "score": 0,
+                  "max_score": 10,
+                  "rubric": [
+                    "选择 A（2分）",
+                    "选择 B（2分）",
+                    "选择 C（2分）",
+                    "不选择 D（4分）"
+                  ],
+                  "comment": "本题为多选题，正确答案是A（for）、B（while）、C（do-while）。学生只选择了D（switch），switch是选择语句而非循环语句，因此所有正确选项均未选，且错误地选择了D，根据评分要点不得分。",
+                  "error_type": "incorrect_choice",
+                  "evidence_excerpt": "D",
+                  "confidence": 100
+                },
+                {
+                  "answer_id": 3,
+                  "score": 5,
+                  "max_score": 15,
+                  "rubric": [
+                    "函数签名正确（5分）",
+                    "比较两个参数的逻辑正确（5分）",
+                    "所有输入路径均返回较大值（5分）"
+                  ],
+                  "comment": "函数签名正确，得5分。但函数体逻辑错误，返回的是a+b（两数之和）而非较大值，因此比较逻辑和返回值正确性部分不得分。",
+                  "error_type": "logic_error",
+                  "evidence_excerpt": "int max2(int a,int b){return a+b;}",
+                  "confidence": 100
+                }
+              ],
+              "total_score": 5,
+              "overall_comment": "第一题和第二题选择题答案错误，未得分。第三题编程题函数签名正确，但核心逻辑错误，仅获得签名分。请复习C语言程序入口、循环语句以及函数返回值逻辑。",
+              "confidence": 100,
+              "needs_review": false,
+              "review_reason": null
+            },
+            "validation": {
+              "valid": true,
+              "issues": [],
+              "evidence_sufficient": true,
+              "requires_human_review": true
+            }
+          },
+          "reflect": {
+            "result": {
+              "items": [
+                {
+                  "answer_id": 1,
+                  "score": 0,
+                  "max_score": 5,
+                  "rubric": [
+                    "选择 B（5分）"
+                  ],
+                  "comment": "本题为单选题，正确答案是B（main）。学生选择了A（start），不符合C语言程序执行入口函数的定义，因此不得分。",
+                  "error_type": "incorrect_choice",
+                  "evidence_excerpt": "A",
+                  "confidence": 100
+                },
+                {
+                  "answer_id": 2,
+                  "score": 0,
+                  "max_score": 10,
+                  "rubric": [
+                    "选择 A（2分）",
+                    "选择 B（2分）",
+                    "选择 C（2分）",
+                    "不选择 D（4分）"
+                  ],
+                  "comment": "本题为多选题，正确答案是A（for）、B（while）、C（do-while）。学生只选择了D（switch），switch是选择语句而非循环语句，因此所有正确选项均未选，且错误地选择了D，根据评分要点不得分。",
+                  "error_type": "incorrect_choice",
+                  "evidence_excerpt": "D",
+                  "confidence": 100
+                },
+                {
+                  "answer_id": 3,
+                  "score": 5,
+                  "max_score": 15,
+                  "rubric": [
+                    "函数签名正确（5分）",
+                    "比较两个参数的逻辑正确（5分）",
+                    "所有输入路径均返回较大值（5分）"
+                  ],
+                  "comment": "函数签名正确，得5分。但函数体逻辑错误，返回的是a+b（两数之和）而非较大值，因此比较逻辑和返回值正确性部分不得分。",
+                  "error_type": "logic_error",
+                  "evidence_excerpt": "int max2(int a,int b){return a+b;}",
+                  "confidence": 100
+                }
+              ],
+              "total_score": 5,
+              "overall_comment": "第一题和第二题选择题答案错误，未得分。第三题编程题函数签名正确，但核心逻辑错误，仅获得签名分。请复习C语言程序入口、循环语句以及函数返回值逻辑。",
+              "confidence": 100,
+              "needs_review": false,
+              "review_reason": null
+            },
+            "validation": {
+              "valid": true,
+              "issues": [],
+              "evidence_sufficient": true,
+              "requires_human_review": true
+            }
+          },
+          "raw_latency_ms": 12863.363,
+          "reflection_latency_ms": 0.085,
+          "total_latency_ms": 12863.622,
+          "token_usage": {
+            "prompt": 1524,
+            "completion": 494,
+            "total": 2018
+          },
+          "reflection_triggered": false,
+          "reflection_repaired": false,
+          "reflection_regressed": false
+        },
+        {
+          "id": "grading-009",
+          "raw": {
+            "result": {
+              "items": [
+                {
+                  "answer_id": 1,
+                  "score": 0,
+                  "max_score": 5,
+                  "rubric": [
+                    "选择 B（5分）"
+                  ],
+                  "comment": "答案未作答，不得分。",
+                  "error_type": "未作答",
+                  "evidence_excerpt": "未作答",
+                  "confidence": 100
+                },
+                {
+                  "answer_id": 2,
+                  "score": 0,
+                  "max_score": 10,
+                  "rubric": [
+                    "选择 A（2分）",
+                    "选择 B（2分）",
+                    "选择 C（2分）",
+                    "不选择 D（4分）"
+                  ],
+                  "comment": "答案未作答，不得分。",
+                  "error_type": "未作答",
+                  "evidence_excerpt": "未作答",
+                  "confidence": 100
+                },
+                {
+                  "answer_id": 3,
+                  "score": 0,
+                  "max_score": 15,
+                  "rubric": [
+                    "函数签名正确（5分）",
+                    "比较两个参数的逻辑正确（5分）",
+                    "所有输入路径均返回较大值（5分）"
+                  ],
+                  "comment": "答案未作答，不得分。",
+                  "error_type": "未作答",
+                  "evidence_excerpt": "未作答",
+                  "confidence": 100
+                }
+              ],
+              "total_score": 0,
+              "overall_comment": "所有题目均未作答，总分为0分。请认真完成作业。",
+              "confidence": 100,
+              "needs_review": false,
+              "review_reason": null
+            },
+            "validation": {
+              "valid": true,
+              "issues": [],
+              "evidence_sufficient": true,
+              "requires_human_review": true
+            }
+          },
+          "validate": {
+            "result": {
+              "items": [
+                {
+                  "answer_id": 1,
+                  "score": 0,
+                  "max_score": 5,
+                  "rubric": [
+                    "选择 B（5分）"
+                  ],
+                  "comment": "答案未作答，不得分。",
+                  "error_type": "未作答",
+                  "evidence_excerpt": "未作答",
+                  "confidence": 100
+                },
+                {
+                  "answer_id": 2,
+                  "score": 0,
+                  "max_score": 10,
+                  "rubric": [
+                    "选择 A（2分）",
+                    "选择 B（2分）",
+                    "选择 C（2分）",
+                    "不选择 D（4分）"
+                  ],
+                  "comment": "答案未作答，不得分。",
+                  "error_type": "未作答",
+                  "evidence_excerpt": "未作答",
+                  "confidence": 100
+                },
+                {
+                  "answer_id": 3,
+                  "score": 0,
+                  "max_score": 15,
+                  "rubric": [
+                    "函数签名正确（5分）",
+                    "比较两个参数的逻辑正确（5分）",
+                    "所有输入路径均返回较大值（5分）"
+                  ],
+                  "comment": "答案未作答，不得分。",
+                  "error_type": "未作答",
+                  "evidence_excerpt": "未作答",
+                  "confidence": 100
+                }
+              ],
+              "total_score": 0,
+              "overall_comment": "所有题目均未作答，总分为0分。请认真完成作业。",
+              "confidence": 100,
+              "needs_review": false,
+              "review_reason": null
+            },
+            "validation": {
+              "valid": true,
+              "issues": [],
+              "evidence_sufficient": true,
+              "requires_human_review": true
+            }
+          },
+          "reflect": {
+            "result": {
+              "items": [
+                {
+                  "answer_id": 1,
+                  "score": 0,
+                  "max_score": 5,
+                  "rubric": [
+                    "选择 B（5分）"
+                  ],
+                  "comment": "答案未作答，不得分。",
+                  "error_type": "未作答",
+                  "evidence_excerpt": "未作答",
+                  "confidence": 100
+                },
+                {
+                  "answer_id": 2,
+                  "score": 0,
+                  "max_score": 10,
+                  "rubric": [
+                    "选择 A（2分）",
+                    "选择 B（2分）",
+                    "选择 C（2分）",
+                    "不选择 D（4分）"
+                  ],
+                  "comment": "答案未作答，不得分。",
+                  "error_type": "未作答",
+                  "evidence_excerpt": "未作答",
+                  "confidence": 100
+                },
+                {
+                  "answer_id": 3,
+                  "score": 0,
+                  "max_score": 15,
+                  "rubric": [
+                    "函数签名正确（5分）",
+                    "比较两个参数的逻辑正确（5分）",
+                    "所有输入路径均返回较大值（5分）"
+                  ],
+                  "comment": "答案未作答，不得分。",
+                  "error_type": "未作答",
+                  "evidence_excerpt": "未作答",
+                  "confidence": 100
+                }
+              ],
+              "total_score": 0,
+              "overall_comment": "所有题目均未作答，总分为0分。请认真完成作业。",
+              "confidence": 100,
+              "needs_review": false,
+              "review_reason": null
+            },
+            "validation": {
+              "valid": true,
+              "issues": [],
+              "evidence_sufficient": true,
+              "requires_human_review": true
+            }
+          },
+          "raw_latency_ms": 9447.166,
+          "reflection_latency_ms": 0.059,
+          "total_latency_ms": 9447.318,
+          "token_usage": {
+            "prompt": 1509,
+            "completion": 354,
+            "total": 1863
+          },
+          "reflection_triggered": false,
+          "reflection_repaired": false,
+          "reflection_regressed": false
+        },
+        {
+          "id": "grading-010",
+          "raw": {
+            "result": {
+              "items": [
+                {
+                  "answer_id": 1,
+                  "score": 5,
+                  "max_score": 5,
+                  "rubric": [
+                    "选择 B（5分）"
+                  ],
+                  "comment": "学生明确选择了B，符合参考答案。虽然学生附加了评论，但核心答案正确，因此得满分。",
+                  "error_type": null,
+                  "evidence_excerpt": "我认为是B",
+                  "confidence": 100
+                },
+                {
+                  "answer_id": 2,
+                  "score": 10,
+                  "max_score": 10,
+                  "rubric": [
+                    "选择 A（2分）",
+                    "选择 B（2分）",
+                    "选择 C（2分）",
+                    "不选择 D（4分）"
+                  ],
+                  "comment": "学生正确选择了A、B、C，并排除了D，与参考答案完全一致，得满分。",
+                  "error_type": null,
+                  "evidence_excerpt": "A、B、C，D是选择结构。",
+                  "confidence": 100
+                },
+                {
+                  "answer_id": 3,
+                  "score": 15,
+                  "max_score": 15,
+                  "rubric": [
+                    "函数签名正确（5分）",
+                    "比较两个参数的逻辑正确（5分）",
+                    "所有输入路径均返回较大值（5分）"
+                  ],
+                  "comment": "函数签名正确。比较逻辑使用了 a>=b ? a : b，当a等于b时返回a，这符合“返回较大值”的要求（因为相等时返回任意一个即可）。逻辑正确，覆盖所有输入路径。",
+                  "error_type": null,
+                  "evidence_excerpt": "int max2(int a,int b){ return a>=b ? a : b; }",
+                  "confidence": 100
+                }
+              ],
+              "total_score": 30,
+              "overall_comment": "所有题目均回答正确。第一题答案明确；第二题选项选择完整准确；第三题函数实现逻辑正确，虽然使用了>=而非>，但在两数相等时返回任一值均满足题目要求。",
+              "confidence": 100,
+              "needs_review": false,
+              "review_reason": null
+            },
+            "validation": {
+              "valid": true,
+              "issues": [],
+              "evidence_sufficient": true,
+              "requires_human_review": true
+            }
+          },
+          "validate": {
+            "result": {
+              "items": [
+                {
+                  "answer_id": 1,
+                  "score": 5,
+                  "max_score": 5,
+                  "rubric": [
+                    "选择 B（5分）"
+                  ],
+                  "comment": "学生明确选择了B，符合参考答案。虽然学生附加了评论，但核心答案正确，因此得满分。",
+                  "error_type": null,
+                  "evidence_excerpt": "我认为是B",
+                  "confidence": 100
+                },
+                {
+                  "answer_id": 2,
+                  "score": 10,
+                  "max_score": 10,
+                  "rubric": [
+                    "选择 A（2分）",
+                    "选择 B（2分）",
+                    "选择 C（2分）",
+                    "不选择 D（4分）"
+                  ],
+                  "comment": "学生正确选择了A、B、C，并排除了D，与参考答案完全一致，得满分。",
+                  "error_type": null,
+                  "evidence_excerpt": "A、B、C，D是选择结构。",
+                  "confidence": 100
+                },
+                {
+                  "answer_id": 3,
+                  "score": 15,
+                  "max_score": 15,
+                  "rubric": [
+                    "函数签名正确（5分）",
+                    "比较两个参数的逻辑正确（5分）",
+                    "所有输入路径均返回较大值（5分）"
+                  ],
+                  "comment": "函数签名正确。比较逻辑使用了 a>=b ? a : b，当a等于b时返回a，这符合“返回较大值”的要求（因为相等时返回任意一个即可）。逻辑正确，覆盖所有输入路径。",
+                  "error_type": null,
+                  "evidence_excerpt": "int max2(int a,int b){ return a>=b ? a : b; }",
+                  "confidence": 100
+                }
+              ],
+              "total_score": 30,
+              "overall_comment": "所有题目均回答正确。第一题答案明确；第二题选项选择完整准确；第三题函数实现逻辑正确，虽然使用了>=而非>，但在两数相等时返回任一值均满足题目要求。",
+              "confidence": 100,
+              "needs_review": false,
+              "review_reason": null
+            },
+            "validation": {
+              "valid": true,
+              "issues": [],
+              "evidence_sufficient": true,
+              "requires_human_review": true
+            }
+          },
+          "reflect": {
+            "result": {
+              "items": [
+                {
+                  "answer_id": 1,
+                  "score": 5,
+                  "max_score": 5,
+                  "rubric": [
+                    "选择 B（5分）"
+                  ],
+                  "comment": "学生明确选择了B，符合参考答案。虽然学生附加了评论，但核心答案正确，因此得满分。",
+                  "error_type": null,
+                  "evidence_excerpt": "我认为是B",
+                  "confidence": 100
+                },
+                {
+                  "answer_id": 2,
+                  "score": 10,
+                  "max_score": 10,
+                  "rubric": [
+                    "选择 A（2分）",
+                    "选择 B（2分）",
+                    "选择 C（2分）",
+                    "不选择 D（4分）"
+                  ],
+                  "comment": "学生正确选择了A、B、C，并排除了D，与参考答案完全一致，得满分。",
+                  "error_type": null,
+                  "evidence_excerpt": "A、B、C，D是选择结构。",
+                  "confidence": 100
+                },
+                {
+                  "answer_id": 3,
+                  "score": 15,
+                  "max_score": 15,
+                  "rubric": [
+                    "函数签名正确（5分）",
+                    "比较两个参数的逻辑正确（5分）",
+                    "所有输入路径均返回较大值（5分）"
+                  ],
+                  "comment": "函数签名正确。比较逻辑使用了 a>=b ? a : b，当a等于b时返回a，这符合“返回较大值”的要求（因为相等时返回任意一个即可）。逻辑正确，覆盖所有输入路径。",
+                  "error_type": null,
+                  "evidence_excerpt": "int max2(int a,int b){ return a>=b ? a : b; }",
+                  "confidence": 100
+                }
+              ],
+              "total_score": 30,
+              "overall_comment": "所有题目均回答正确。第一题答案明确；第二题选项选择完整准确；第三题函数实现逻辑正确，虽然使用了>=而非>，但在两数相等时返回任一值均满足题目要求。",
+              "confidence": 100,
+              "needs_review": false,
+              "review_reason": null
+            },
+            "validation": {
+              "valid": true,
+              "issues": [],
+              "evidence_sufficient": true,
+              "requires_human_review": true
+            }
+          },
+          "raw_latency_ms": 11978.918,
+          "reflection_latency_ms": 0.082,
+          "total_latency_ms": 11979.145,
+          "token_usage": {
+            "prompt": 1552,
+            "completion": 474,
+            "total": 2026
+          },
+          "reflection_triggered": false,
+          "reflection_repaired": false,
+          "reflection_regressed": false
+        }
+      ]
+    }
+  ]
+}
