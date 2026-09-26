@@ -16,7 +16,7 @@
         "identity_request": false
       },
       "repeat": true,
-      "approved": false
+      "approved": true
     },
     {
       "id": "routing-002",
@@ -31,8 +31,8 @@
         "search_web": false,
         "identity_request": false
       },
-      "repeat": true,
-      "approved": false
+      "repeat": false,
+      "approved": true
     },
     {
       "id": "routing-003",
@@ -47,8 +47,8 @@
         "search_web": false,
         "identity_request": false
       },
-      "repeat": true,
-      "approved": false
+      "repeat": false,
+      "approved": true
     },
     {
       "id": "routing-004",
@@ -63,8 +63,8 @@
         "search_web": false,
         "identity_request": false
       },
-      "repeat": true,
-      "approved": false
+      "repeat": false,
+      "approved": true
     },
     {
       "id": "routing-005",
@@ -79,8 +79,8 @@
         "search_web": false,
         "identity_request": false
       },
-      "repeat": true,
-      "approved": false
+      "repeat": false,
+      "approved": true
     },
     {
       "id": "routing-006",
@@ -95,8 +95,8 @@
         "search_web": false,
         "identity_request": false
       },
-      "repeat": true,
-      "approved": false
+      "repeat": false,
+      "approved": true
     },
     {
       "id": "routing-007",
@@ -111,8 +111,8 @@
         "search_web": false,
         "identity_request": false
       },
-      "repeat": true,
-      "approved": false
+      "repeat": false,
+      "approved": true
     },
     {
       "id": "routing-008",
@@ -127,8 +127,8 @@
         "search_web": false,
         "identity_request": false
       },
-      "repeat": true,
-      "approved": false
+      "repeat": false,
+      "approved": true
     },
     {
       "id": "routing-009",
@@ -144,7 +144,7 @@
         "identity_request": false
       },
       "repeat": true,
-      "approved": false
+      "approved": true
     },
     {
       "id": "routing-010",
@@ -159,8 +159,8 @@
         "search_web": false,
         "identity_request": false
       },
-      "repeat": true,
-      "approved": false
+      "repeat": false,
+      "approved": true
     },
     {
       "id": "routing-011",
@@ -176,14 +176,19 @@
         "identity_request": false
       },
       "repeat": false,
-      "approved": false
+      "approved": true
     },
     {
       "id": "routing-012",
       "category": "resource_lookup",
       "question": "这个结论在教材中的出处是什么？",
       "conversation_summary": null,
-      "recent_messages": [],
+      "recent_messages": [
+        {
+          "role": "assistant",
+          "content": "数组名在多数表达式中会转换为指向首元素的指针。"
+        }
+      ],
       "expected": {
         "intent": "resource_lookup",
         "delegate_student_learning_assistant": false,
@@ -192,7 +197,7 @@
         "identity_request": false
       },
       "repeat": false,
-      "approved": false
+      "approved": true
     },
     {
       "id": "routing-013",
@@ -208,7 +213,7 @@
         "identity_request": false
       },
       "repeat": false,
-      "approved": false
+      "approved": true
     },
     {
       "id": "routing-014",
@@ -224,7 +229,7 @@
         "identity_request": false
       },
       "repeat": false,
-      "approved": false
+      "approved": true
     },
     {
       "id": "routing-015",
@@ -235,12 +240,12 @@
       "expected": {
         "intent": "personalized_learning",
         "delegate_student_learning_assistant": true,
-        "search_course_materials": true,
+        "search_course_materials": false,
         "search_web": false,
         "identity_request": false
       },
-      "repeat": false,
-      "approved": false
+      "repeat": true,
+      "approved": true
     },
     {
       "id": "routing-016",
@@ -256,7 +261,7 @@
         "identity_request": false
       },
       "repeat": false,
-      "approved": false
+      "approved": true
     },
     {
       "id": "routing-017",
@@ -267,12 +272,12 @@
       "expected": {
         "intent": "personalized_learning",
         "delegate_student_learning_assistant": true,
-        "search_course_materials": true,
+        "search_course_materials": false,
         "search_web": false,
         "identity_request": false
       },
       "repeat": false,
-      "approved": false
+      "approved": true
     },
     {
       "id": "routing-018",
@@ -288,7 +293,7 @@
         "identity_request": false
       },
       "repeat": false,
-      "approved": false
+      "approved": true
     },
     {
       "id": "routing-019",
@@ -303,8 +308,8 @@
         "search_web": false,
         "identity_request": false
       },
-      "repeat": false,
-      "approved": false
+      "repeat": true,
+      "approved": true
     },
     {
       "id": "routing-020",
@@ -315,12 +320,12 @@
       "expected": {
         "intent": "personalized_learning",
         "delegate_student_learning_assistant": true,
-        "search_course_materials": true,
+        "search_course_materials": false,
         "search_web": false,
         "identity_request": false
       },
       "repeat": false,
-      "approved": false
+      "approved": true
     },
     {
       "id": "routing-021",
@@ -336,7 +341,7 @@
         "identity_request": false
       },
       "repeat": false,
-      "approved": false
+      "approved": true
     },
     {
       "id": "routing-022",
@@ -352,7 +357,7 @@
         "identity_request": false
       },
       "repeat": false,
-      "approved": false
+      "approved": true
     },
     {
       "id": "routing-023",
@@ -367,8 +372,8 @@
         "search_web": false,
         "identity_request": true
       },
-      "repeat": false,
-      "approved": false
+      "repeat": true,
+      "approved": true
     },
     {
       "id": "routing-024",
@@ -384,7 +389,7 @@
         "identity_request": true
       },
       "repeat": false,
-      "approved": false
+      "approved": true
     },
     {
       "id": "routing-025",
@@ -395,12 +400,12 @@
       "expected": {
         "intent": "current_web",
         "delegate_student_learning_assistant": false,
-        "search_course_materials": true,
+        "search_course_materials": false,
         "search_web": true,
         "identity_request": false
       },
-      "repeat": false,
-      "approved": false
+      "repeat": true,
+      "approved": true
     },
     {
       "id": "routing-026",
@@ -411,12 +416,12 @@
       "expected": {
         "intent": "current_web",
         "delegate_student_learning_assistant": false,
-        "search_course_materials": true,
+        "search_course_materials": false,
         "search_web": true,
         "identity_request": false
       },
       "repeat": false,
-      "approved": false
+      "approved": true
     },
     {
       "id": "routing-027",
@@ -427,12 +432,12 @@
       "expected": {
         "intent": "current_web",
         "delegate_student_learning_assistant": false,
-        "search_course_materials": true,
+        "search_course_materials": false,
         "search_web": true,
         "identity_request": false
       },
       "repeat": false,
-      "approved": false
+      "approved": true
     },
     {
       "id": "routing-028",
@@ -443,12 +448,12 @@
       "expected": {
         "intent": "current_web",
         "delegate_student_learning_assistant": false,
-        "search_course_materials": true,
+        "search_course_materials": false,
         "search_web": true,
         "identity_request": false
       },
       "repeat": false,
-      "approved": false
+      "approved": true
     },
     {
       "id": "routing-029",
@@ -463,8 +468,8 @@
         "search_web": false,
         "identity_request": false
       },
-      "repeat": false,
-      "approved": false
+      "repeat": true,
+      "approved": true
     },
     {
       "id": "routing-030",
@@ -480,7 +485,7 @@
         "identity_request": false
       },
       "repeat": false,
-      "approved": false
+      "approved": true
     },
     {
       "id": "routing-031",
@@ -496,7 +501,7 @@
         "identity_request": false
       },
       "repeat": false,
-      "approved": false
+      "approved": true
     },
     {
       "id": "routing-032",
@@ -512,7 +517,7 @@
         "identity_request": false
       },
       "repeat": false,
-      "approved": false
+      "approved": true
     },
     {
       "id": "routing-033",
@@ -532,12 +537,12 @@
       "expected": {
         "intent": "personalized_learning",
         "delegate_student_learning_assistant": true,
-        "search_course_materials": true,
+        "search_course_materials": false,
         "search_web": false,
         "identity_request": false
       },
-      "repeat": false,
-      "approved": false
+      "repeat": true,
+      "approved": true
     },
     {
       "id": "routing-034",
@@ -553,7 +558,7 @@
         "identity_request": false
       },
       "repeat": false,
-      "approved": false
+      "approved": true
     },
     {
       "id": "routing-035",
@@ -573,8 +578,8 @@
         "search_web": false,
         "identity_request": false
       },
-      "repeat": false,
-      "approved": false
+      "repeat": true,
+      "approved": true
     },
     {
       "id": "routing-036",
@@ -599,7 +604,7 @@
         "identity_request": false
       },
       "repeat": false,
-      "approved": false
+      "approved": true
     },
     {
       "id": "routing-037",
@@ -620,7 +625,7 @@
         "identity_request": false
       },
       "repeat": false,
-      "approved": false
+      "approved": true
     },
     {
       "id": "routing-038",
@@ -641,7 +646,7 @@
         "identity_request": false
       },
       "repeat": false,
-      "approved": false
+      "approved": true
     },
     {
       "id": "routing-039",
@@ -657,12 +662,12 @@
       "expected": {
         "intent": "current_web",
         "delegate_student_learning_assistant": false,
-        "search_course_materials": true,
+        "search_course_materials": false,
         "search_web": true,
         "identity_request": false
       },
-      "repeat": false,
-      "approved": false
+      "repeat": true,
+      "approved": true
     },
     {
       "id": "routing-040",
@@ -683,7 +688,7 @@
         "identity_request": false
       },
       "repeat": false,
-      "approved": false
+      "approved": true
     }
   ]
 }

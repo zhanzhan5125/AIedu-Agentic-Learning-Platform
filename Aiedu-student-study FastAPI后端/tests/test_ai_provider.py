@@ -153,6 +153,63 @@ def test_student_qa_model_router_can_autonomously_delegate_learning_agent(monkey
     assert metadata["token_usage"]["total"] == 15
 
 
+def test_student_qa_identity_postcondition_overrides_unstable_chitchat_route(monkeypatch):
+    monkeypatch.setattr(tutor, "get_settings", lambda: SimpleNamespace(
+        enable_llm=True, ai_api_key="test",
+    ))
+    monkeypatch.setattr(tutor, "structured_completion", lambda schema, **_kwargs: (
+        TutorRoutingDecision(
+            intent="chitchat",
+            delegate_student_learning_assistant=False,
+            search_course_materials=False,
+            search_web=False,
+            identity_request=False,
+            rationale="误判为闲聊。",
+        ),
+        {"token_usage": {"prompt": 10, "completion": 5, "total": 15}},
+    ) if schema is TutorRoutingDecision else (_ for _ in ()).throw(AssertionError(schema)))
+
+    decision, _, mode = tutor._route_with_model("你知道我是谁吗？", None)
+
+    assert mode == "model"
+    assert decision.intent == "personalized_learning"
+    assert decision.identity_request is True
+    assert decision.delegate_student_learning_assistant is True
+    assert decision.search_course_materials is False
+    assert decision.search_web is False
+
+
+def test_student_qa_identity_flag_is_not_inferred_from_any_first_person_question(monkeypatch):
+    monkeypatch.setattr(tutor, "get_settings", lambda: SimpleNamespace(
+        enable_llm=True, ai_api_key="test",
+    ))
+    monkeypatch.setattr(tutor, "structured_completion", lambda schema, **_kwargs: (
+        TutorRoutingDecision(
+            intent="personalized_learning",
+            delegate_student_learning_assistant=True,
+            search_course_materials=False,
+            search_web=False,
+            identity_request=True,
+            rationale="需要读取个人画像。",
+        ),
+        {"token_usage": {}},
+    ) if schema is TutorRoutingDecision else (_ for _ in ()).throw(AssertionError(schema)))
+
+    decision, _, _ = tutor._route_with_model("我第一章哪些知识点最薄弱？", None)
+
+    assert decision.intent == "personalized_learning"
+    assert decision.delegate_student_learning_assistant is True
+    assert decision.identity_request is False
+
+
+def test_student_qa_current_web_fallback_does_not_duplicate_course_search():
+    decision = tutor._fallback_routing("目前最新的 Clang 稳定版本是什么？", None)
+
+    assert decision.intent == "current_web"
+    assert decision.search_web is True
+    assert decision.search_course_materials is False
+
+
 def test_assignment_model_router_can_skip_course_agent_for_explicit_scope(monkeypatch):
     monkeypatch.setattr(workflows, "get_settings", lambda: SimpleNamespace(
         enable_llm=True, ai_api_key="test",
@@ -370,6 +427,50 @@ def test_grading_validation_rejects_an_excerpt_not_found_in_student_answer():
 
     assert validation.valid is False
     assert any("无法在学生原答案中定位" in issue for issue in validation.issues)
+
+
+def test_grading_reflection_does_not_turn_normal_confirmation_into_priority_review():
+    state = {
+        "kind": "grading.single",
+        "prompt": "按评分点给分",
+        "tool_results": {
+            "answers": [{
+                "answer_id": 1,
+                "question_id": 1,
+                "question_kind": "short_answer",
+                "student_answer": "运行中的程序",
+                "reference_answer": "进程是程序的一次执行过程",
+                "max_score": 10,
+            }],
+            "missing_question_ids": [],
+        },
+        "draft": {
+            "items": [{
+                "answer_id": 1,
+                "score": 8,
+                "max_score": 10,
+                "rubric": ["说明动态执行特征"],
+                "comment": "基本正确",
+                "evidence_excerpt": "运行中的程序",
+                "confidence": 85,
+            }],
+            "total_score": 8,
+            "overall_comment": "基本掌握",
+            "confidence": 85,
+            "needs_review": False,
+            "review_reason": None,
+        },
+        "validation": {"issues": []},
+        "reflection_count": 0,
+        "token_usage": {"prompt": 0, "completion": 0, "total": 0},
+        "steps": [],
+    }
+
+    reflected = workflows.reflect_once(state)
+
+    assert reflected["validation"]["issues"] == []
+    assert reflected["draft"]["needs_review"] is False
+    assert reflected["draft"]["review_reason"] is None
 
 
 def test_assignment_analysis_fallback_covers_every_question_without_recalculating_scores():

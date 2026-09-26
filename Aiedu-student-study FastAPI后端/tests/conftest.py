@@ -7,6 +7,9 @@ os.environ["AIEDU_ENV"] = "test"
 os.environ["AIEDU_DATABASE_URL"] = "sqlite:///./test-aiedu.db"
 os.environ["AIEDU_REDIS_URL"] = "redis://127.0.0.1:6399/15"
 os.environ["AIEDU_JWT_SECRET"] = "test-secret-that-is-long-enough-for-tests"
+os.environ["AIEDU_ENABLE_LLM"] = "false"
+os.environ["AIEDU_AI_API_KEY"] = ""
+os.environ["AIEDU_ENABLE_LOCAL_RERANKER"] = "false"
 
 import pytest
 from fastapi.testclient import TestClient

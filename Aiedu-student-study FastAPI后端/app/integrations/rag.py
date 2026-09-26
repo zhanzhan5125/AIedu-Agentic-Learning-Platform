@@ -503,9 +503,24 @@ def _load_reranker():
     if not get_settings().enable_local_reranker:
         return None
     try:
+        from huggingface_hub import snapshot_download
         from sentence_transformers import CrossEncoder
 
-        return CrossEncoder(get_settings().reranker_model, max_length=512)
+        model_name = get_settings().reranker_model
+        try:
+            # Prefer an already downloaded model. Hugging Face otherwise performs
+            # remote HEAD requests even when all artifacts exist in the cache,
+            # which makes an offline evaluation wait through several retries.
+            local_snapshot = snapshot_download(model_name, local_files_only=True)
+            return CrossEncoder(
+                local_snapshot,
+                max_length=512,
+                local_files_only=True,
+            )
+        except Exception:
+            # Production may legitimately need the first download. Evaluation
+            # still uses ``required=True`` and fails if this attempt cannot load.
+            return CrossEncoder(model_name, max_length=512)
     except Exception:
         return None
 

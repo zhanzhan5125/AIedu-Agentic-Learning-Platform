@@ -76,7 +76,7 @@ def _fallback_routing(question: str, conversation_memory: dict | None) -> TutorR
         )
     if any(marker in question for marker in CURRENT_MARKERS):
         return TutorRoutingDecision(
-            intent="current_web", search_course_materials=True, search_web=True,
+            intent="current_web", search_course_materials=False, search_web=True,
             rationale="模型路由不可用，问题包含明显的时效信息请求。",
         )
     if any(marker in question for marker in RESOURCE_MARKERS):
@@ -116,14 +116,21 @@ def _route_with_model(question: str, conversation_memory: dict | None) -> tuple[
             max_retries=0,
         )
         updates = {}
-        if decision.intent == "personalized_learning" or decision.identity_request:
+        identity_signal = _is_personal_identity(question)
+        if decision.intent == "personalized_learning" or identity_signal:
             updates["delegate_student_learning_assistant"] = True
-        if decision.identity_request:
+        # Identity lookups are access-sensitive and must not become chitchat
+        # because of model variance. The model still performs the primary
+        # routing; this postcondition only enforces the authenticated-context path.
+        updates["identity_request"] = identity_signal
+        if identity_signal:
             updates.update({"intent": "personalized_learning", "search_course_materials": False,
-                            "search_web": False})
+                            "search_web": False, "identity_request": True,
+                            "delegate_student_learning_assistant": True,
+                            "rationale": "身份问题使用受控委派读取当前登录学生信息。"})
         if decision.intent == "current_web":
             updates["search_web"] = True
-        if decision.intent == "chitchat":
+        if decision.intent == "chitchat" and not identity_signal:
             updates.update({"delegate_student_learning_assistant": False,
                             "search_course_materials": False, "search_web": False})
         return decision.model_copy(update=updates), metadata, "model"

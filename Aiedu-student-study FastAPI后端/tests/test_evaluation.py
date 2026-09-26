@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
@@ -10,7 +11,9 @@ from app.evaluation.metrics import (
     retrieval_case_metrics,
 )
 from app.evaluation import runner
-from app.evaluation.schemas import GradingEvalDataset, RAGEvalDataset, assert_official_dataset
+from app.evaluation.schemas import (
+    GradingEvalDataset, RAGEvalDataset, RoutingEvalDataset, assert_official_dataset,
+)
 from app.integrations import rag
 
 
@@ -145,6 +148,7 @@ def test_grading_ablation_reuses_one_raw_model_output(monkeypatch):
     result = runner.run_grading_suite(dataset)
     assert calls == {"model": 1, "reflect": 1}
     assert result["summary"]["raw"]["normalized_mae"] == 0
+    assert result["cases"][0]["reflect"]["result"]["needs_review"] is False
 
 
 def test_unapproved_or_privacy_shaped_dataset_is_rejected():
@@ -161,3 +165,31 @@ def test_unapproved_or_privacy_shaped_dataset_is_rejected():
     payload["student_name"] = "不应出现"
     with pytest.raises(ValidationError):
         RAGEvalDataset.model_validate(payload)
+
+
+def test_shipped_v1_datasets_are_approved_and_balanced():
+    root = Path(__file__).parents[1] / "evals" / "v1"
+    rag_dataset = runner.load_dataset(
+        root / "rag.json", RAGEvalDataset, official=True, suite="rag",
+    )
+    grading_dataset = runner.load_dataset(
+        root / "grading.json", GradingEvalDataset, official=True, suite="grading",
+    )
+    routing_dataset = runner.load_dataset(
+        root / "routing.json", RoutingEvalDataset, official=True, suite="routing",
+    )
+
+    assert len(rag_dataset.cases) == 40
+    assert all(len(case.relevant_chunks) >= 2 for case in rag_dataset.cases
+               if case.category == "multi_evidence")
+    assert sum(case.end_to_end for case in rag_dataset.cases) == 12
+    assert sum(case.end_to_end and not case.answerable for case in rag_dataset.cases) == 4
+    assert sum(len(case.answers) for case in grading_dataset.submissions) == 30
+    assert sum(answer.should_review for case in grading_dataset.submissions
+               for answer in case.answers) == 3
+    repeated_categories = {case.category for case in routing_dataset.cases if case.repeat}
+    assert sum(case.repeat for case in routing_dataset.cases) == 10
+    assert repeated_categories >= {
+        "course_qa", "resource_lookup", "personalized", "identity", "current_web",
+        "chitchat", "followup",
+    }

@@ -33,8 +33,9 @@ def main() -> None:
         "## RAG（40 条）", "",
     ]
     for case in rag.cases:
+        mark = "x" if case.approved else " "
         lines.extend([
-            f"### [ ] {case.id} · {case.category}", "",
+            f"### [{mark}] {case.id} · {case.category}", "",
             f"- 问题：{case.query}",
             f"- 可回答：{case.answerable}；端到端抽样：{case.end_to_end}",
         ])
@@ -51,7 +52,8 @@ def main() -> None:
 
     lines.extend(["## 智能批阅（10 份提交 / 30 条答案）", ""])
     for submission in grading.submissions:
-        lines.extend([f"### [ ] {submission.id}", ""])
+        mark = "x" if submission.approved else " "
+        lines.extend([f"### [{mark}] {submission.id}", ""])
         for answer in submission.answers:
             lines.extend([
                 f"- `{answer.id}` / {answer.kind} / 满分 {answer.max_score}",
@@ -65,24 +67,29 @@ def main() -> None:
 
     lines.extend(["## 结构化意图路由（40 条）", ""])
     for case in routing.cases:
+        mark = "x" if case.approved else " "
         expected = case.expected
         context = case.conversation_summary or "；".join(
             f"{item.get('role')}:{_safe(item.get('content', ''))}" for item in case.recent_messages
         )
         lines.extend([
-            f"- [ ] `{case.id}` {case.question}",
+            f"- [{mark}] `{case.id}` {case.question}",
             f"  - 类别：{case.category}；上下文：{context or '[无]'}",
             f"  - intent={expected.intent}；delegate={expected.delegate_student_learning_assistant}；"
             f"course={expected.search_course_materials}；web={expected.search_web}；identity={expected.identity_request}",
         ])
 
+    all_rag_approved = all(case.approved for case in rag.cases)
+    all_grading_approved = all(case.approved for case in grading.submissions)
+    all_routing_approved = all(case.approved for case in routing.cases)
+    complete_mark = "x" if all_rag_approved and all_grading_approved and all_routing_approved else " "
     lines.extend([
         "", "## 完成条件", "",
-        "- [ ] 40 条 RAG 均核对问题、可回答性、切片和相关性等级。",
-        "- [ ] 30 条批阅答案均核对 Rubric、分数区间和复核标签。",
-        "- [ ] 40 条路由均核对意图与工具组合。",
-        "- [ ] 源 JSON 中对应样本逐条设置 approved=true。",
-        "- [ ] 正式命令不再报告未审核样本。",
+        f"- [{'x' if all_rag_approved else ' '}] 40 条 RAG 均核对问题、可回答性、切片和相关性等级。",
+        f"- [{'x' if all_grading_approved else ' '}] 30 条批阅答案均核对 Rubric、分数区间和复核标签。",
+        f"- [{'x' if all_routing_approved else ' '}] 40 条路由均核对意图与工具组合。",
+        f"- [{complete_mark}] 源 JSON 中对应样本逐条设置 approved=true。",
+        f"- [{complete_mark}] 正式命令不再报告未审核样本。",
     ])
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text("\n".join(lines) + "\n", encoding="utf-8")

@@ -11,12 +11,12 @@
       "relevant_chunks": [
         {
           "resource_title": "The C Programming Language 中文版",
-          "content_hash": "4908cdc1a3dfe67105c107823f9a5e780434de52589cdc0992607337507a89a5",
+          "content_hash": "eed6caca9128912abc4de9e56e7aec0072d1c1b29a3e451cb5a6f7ab3710d12c",
           "relevance": 3
         }
       ],
       "end_to_end": true,
-      "approved": false
+      "approved": true
     },
     {
       "id": "rag-002",
@@ -26,12 +26,12 @@
       "relevant_chunks": [
         {
           "resource_title": "The C Programming Language 中文版",
-          "content_hash": "4908cdc1a3dfe67105c107823f9a5e780434de52589cdc0992607337507a89a5",
+          "content_hash": "6d6044957dbc4e68e4ab0a9bf39a1cee12c0c704caabf035fb0dcc44176b3080",
           "relevance": 3
         }
       ],
       "end_to_end": false,
-      "approved": false
+      "approved": true
     },
     {
       "id": "rag-003",
@@ -46,12 +46,12 @@
         }
       ],
       "end_to_end": false,
-      "approved": false
+      "approved": true
     },
     {
       "id": "rag-004",
       "category": "exact",
-      "query": "变量与常量在定义和使用上有什么区别？",
+      "query": "变量和常量在表达式中起什么作用，const 声明表示什么？",
       "answerable": true,
       "relevant_chunks": [
         {
@@ -61,7 +61,7 @@
         }
       ],
       "end_to_end": true,
-      "approved": false
+      "approved": true
     },
     {
       "id": "rag-005",
@@ -76,7 +76,7 @@
         }
       ],
       "end_to_end": false,
-      "approved": false
+      "approved": true
     },
     {
       "id": "rag-006",
@@ -91,7 +91,7 @@
         }
       ],
       "end_to_end": false,
-      "approved": false
+      "approved": true
     },
     {
       "id": "rag-007",
@@ -101,12 +101,12 @@
       "relevant_chunks": [
         {
           "resource_title": "The C Programming Language 中文版",
-          "content_hash": "9b9112a9ccb5c2f20457c54efd2b1a15a8334bbcc39959b59579c3d061babcba",
+          "content_hash": "347b43801119b625ca7dff27221e216078fb1a1b9bd77f0d32e2a50dae260fb0",
           "relevance": 3
         }
       ],
       "end_to_end": false,
-      "approved": false
+      "approved": true
     },
     {
       "id": "rag-008",
@@ -121,7 +121,7 @@
         }
       ],
       "end_to_end": true,
-      "approved": false
+      "approved": true
     },
     {
       "id": "rag-009",
@@ -136,7 +136,7 @@
         }
       ],
       "end_to_end": false,
-      "approved": false
+      "approved": true
     },
     {
       "id": "rag-010",
@@ -146,12 +146,12 @@
       "relevant_chunks": [
         {
           "resource_title": "The C Programming Language 中文版",
-          "content_hash": "994071cea729cc80889c8251ced7ed1429bf3af47e59daa21b910f8e3f7ab74c",
+          "content_hash": "dad2d28525daafb42dfbba94ebe3657f26f482eb35a54d04cd6dc974ff18d2bd",
           "relevance": 3
         }
       ],
       "end_to_end": true,
-      "approved": false
+      "approved": true
     },
     {
       "id": "rag-011",
@@ -161,12 +161,12 @@
       "relevant_chunks": [
         {
           "resource_title": "The C Programming Language 中文版",
-          "content_hash": "d2030106aac1d83831f559e10ac74dd62c2c5d3d2b66fae0210f38d473860d08",
+          "content_hash": "c5f77378f233e93bc312cfc9c4576f3786fadc7e36ce763d8347bd59d9731f4e",
           "relevance": 3
         }
       ],
       "end_to_end": false,
-      "approved": false
+      "approved": true
     },
     {
       "id": "rag-012",
@@ -181,7 +181,7 @@
         }
       ],
       "end_to_end": false,
-      "approved": false
+      "approved": true
     },
     {
       "id": "rag-013",
@@ -196,7 +196,7 @@
         }
       ],
       "end_to_end": true,
-      "approved": false
+      "approved": true
     },
     {
       "id": "rag-014",
@@ -211,7 +211,7 @@
         }
       ],
       "end_to_end": false,
-      "approved": false
+      "approved": true
     },
     {
       "id": "rag-015",
@@ -226,7 +226,7 @@
         }
       ],
       "end_to_end": false,
-      "approved": false
+      "approved": true
     },
     {
       "id": "rag-016",
@@ -241,7 +241,7 @@
         }
       ],
       "end_to_end": true,
-      "approved": false
+      "approved": true
     },
     {
       "id": "rag-017",
@@ -256,7 +256,7 @@
         }
       ],
       "end_to_end": false,
-      "approved": false
+      "approved": true
     },
     {
       "id": "rag-018",
@@ -271,7 +271,7 @@
         }
       ],
       "end_to_end": false,
-      "approved": false
+      "approved": true
     },
     {
       "id": "rag-019",
@@ -286,7 +286,7 @@
         }
       ],
       "end_to_end": false,
-      "approved": false
+      "approved": true
     },
     {
       "id": "rag-020",
@@ -301,22 +301,22 @@
         }
       ],
       "end_to_end": true,
-      "approved": false
+      "approved": true
     },
     {
       "id": "rag-021",
       "category": "chapter",
-      "query": "第五章指针与数组涉及哪些主题？",
+      "query": "教材第五章“指针与数组”涉及哪些主题？",
       "answerable": true,
       "relevant_chunks": [
         {
           "resource_title": "The C Programming Language 中文版",
-          "content_hash": "994071cea729cc80889c8251ced7ed1429bf3af47e59daa21b910f8e3f7ab74c",
+          "content_hash": "add7175b93e8fe759dc80768c1d6aa223902577a4cddea563ff12d0db539f75a",
           "relevance": 3
         }
       ],
       "end_to_end": false,
-      "approved": false
+      "approved": true
     },
     {
       "id": "rag-022",
@@ -331,7 +331,7 @@
         }
       ],
       "end_to_end": false,
-      "approved": false
+      "approved": true
     },
     {
       "id": "rag-023",
@@ -346,7 +346,7 @@
         }
       ],
       "end_to_end": false,
-      "approved": false
+      "approved": true
     },
     {
       "id": "rag-024",
@@ -361,104 +361,139 @@
         }
       ],
       "end_to_end": false,
-      "approved": false
+      "approved": true
     },
     {
       "id": "rag-025",
       "category": "multi_evidence",
-      "query": "break 与 continue 对循环控制有什么不同？",
+      "query": "结合教材和课程大纲，说明 break 与 continue 的区别及其所属学习内容。",
       "answerable": true,
       "relevant_chunks": [
         {
           "resource_title": "The C Programming Language 中文版",
-          "content_hash": "6b3194009d52a6530863c9cdfebc4be8da252017ff19ffdb8b7ba28a067682f3",
+          "content_hash": "3665e192b0daa24f6494d86d62f3660b20f00547601c42bf2c2429d59a0c1380",
+          "relevance": 3
+        },
+        {
+          "resource_title": "程序设计课程大纲",
+          "content_hash": "22bdd00df0e80ca43a2c7bca876b55ab4d06300599e895f04f3fba190fc95af1",
           "relevance": 3
         }
       ],
       "end_to_end": false,
-      "approved": false
+      "approved": true
     },
     {
       "id": "rag-026",
       "category": "multi_evidence",
-      "query": "宏替换与 const 常量分别适用于什么场景？",
+      "query": "教材如何区分 #define 符号常量的文本替换与 const 对象的只读约束？",
       "answerable": true,
       "relevant_chunks": [
         {
           "resource_title": "The C Programming Language 中文版",
-          "content_hash": "511653eab4c0f878c31232ef2f6af4f1015276009b99b553561de4d01469b19e",
+          "content_hash": "5baf7c45f85b335007c0fba1081a302a2c074c7fc9ab3bbe2c1606c5b5e2194d",
+          "relevance": 3
+        },
+        {
+          "resource_title": "The C Programming Language 中文版",
+          "content_hash": "039bf8847e62f2bc11316c80d36da0f311f246d93b672adb382aee91f2b0210b",
           "relevance": 3
         }
       ],
       "end_to_end": false,
-      "approved": false
+      "approved": true
     },
     {
       "id": "rag-027",
       "category": "multi_evidence",
-      "query": "指针数组和数组指针在声明上如何区分？",
+      "query": "char *lineptr[MAXLINES] 与 int (*)[] 分别声明了什么类型？",
       "answerable": true,
       "relevant_chunks": [
         {
           "resource_title": "The C Programming Language 中文版",
-          "content_hash": "994071cea729cc80889c8251ced7ed1429bf3af47e59daa21b910f8e3f7ab74c",
+          "content_hash": "ba085a165c813954c8bd5dea618f242b30f2f6a864192a3128ccaf353185c0be",
+          "relevance": 3
+        },
+        {
+          "resource_title": "The C Programming Language 中文版",
+          "content_hash": "46a68fee27702d2d6463fc6e3a474d6276976b301a649c18480ca6ed5928c65b",
           "relevance": 3
         }
       ],
       "end_to_end": false,
-      "approved": false
+      "approved": true
     },
     {
       "id": "rag-028",
       "category": "multi_evidence",
-      "query": "自动变量、静态变量与外部变量的生命周期有何区别？",
+      "query": "课程为何要求掌握变量存储属性，教材如何说明自动、静态与外部变量的初始化和生存期？",
       "answerable": true,
       "relevant_chunks": [
         {
           "resource_title": "The C Programming Language 中文版",
           "content_hash": "24bd1d1a75136e3a9424f075f41e91307b8132ba1a355e8e5fe5016e83972013",
           "relevance": 3
+        },
+        {
+          "resource_title": "程序设计课程大纲",
+          "content_hash": "4ef79a74aac1889cb044e801e8e34cdd3933e340bf45cb45631cbe52cdca7197",
+          "relevance": 3
         }
       ],
       "end_to_end": true,
-      "approved": false
+      "approved": true
     },
     {
       "id": "rag-029",
       "category": "multi_evidence",
-      "query": "C 源程序从预处理到链接经历哪些阶段？",
+      "query": "课程第一章对 C 程序编译运行有什么要求，教材如何演示 hello.c 的编译与运行？",
       "answerable": true,
       "relevant_chunks": [
         {
           "resource_title": "程序设计课程大纲",
-          "content_hash": "ac49282cbd5cd5a1d838c9b762dd35b3e6c1029c42511e976f7f70e224789485",
+          "content_hash": "1a4a4f1c4f2398777f139a9fc52df8389adcbf2e246986089f359e3aa010ae6b",
+          "relevance": 3
+        },
+        {
+          "resource_title": "The C Programming Language 中文版",
+          "content_hash": "eed6caca9128912abc4de9e56e7aec0072d1c1b29a3e451cb5a6f7ab3710d12c",
           "relevance": 3
         }
       ],
       "end_to_end": false,
-      "approved": false
+      "approved": true
     },
     {
       "id": "rag-030",
       "category": "multi_evidence",
-      "query": "折半查找如何通过循环和多路判定缩小范围？",
+      "query": "教材如何用多路判定和循环实现折半查找，课程大纲把它归入哪些结构与算法内容？",
       "answerable": true,
       "relevant_chunks": [
         {
           "resource_title": "The C Programming Language 中文版",
           "content_hash": "71c1cd43b9690a751e8888bf4397c6fee263b838056c2275fda406ddbca83988",
           "relevance": 3
+        },
+        {
+          "resource_title": "程序设计课程大纲",
+          "content_hash": "22bdd00df0e80ca43a2c7bca876b55ab4d06300599e895f04f3fba190fc95af1",
+          "relevance": 3
         }
       ],
       "end_to_end": false,
-      "approved": false
+      "approved": true
     },
     {
       "id": "rag-031",
       "category": "multi_evidence",
-      "query": "顺序、选择和循环三种结构为什么足以组合复杂算法？",
+      "query": "课程大纲要求掌握哪三种基本结构，教材第三章如何介绍控制流与条件分支？",
       "answerable": true,
       "relevant_chunks": [
+        {
+          "resource_title": "程序设计课程大纲",
+          "content_hash": "a03da9a9bc1252b3bf82d0f89fe919c5279ce7641d7ddaa8b17a9381361c8fad",
+          "relevance": 3
+        },
         {
           "resource_title": "The C Programming Language 中文版",
           "content_hash": "347b43801119b625ca7dff27221e216078fb1a1b9bd77f0d32e2a50dae260fb0",
@@ -466,22 +501,27 @@
         }
       ],
       "end_to_end": false,
-      "approved": false
+      "approved": true
     },
     {
       "id": "rag-032",
       "category": "multi_evidence",
-      "query": "为什么 C 语言程序具有较好的可移植性？",
+      "query": "课程第一章要求掌握哪些 C 语言特点，教材如何解释 C 程序的可移植性？",
       "answerable": true,
       "relevant_chunks": [
         {
           "resource_title": "The C Programming Language 中文版",
           "content_hash": "86c3693d78c12c2bf227262de5d63adcbcf6f23d7d6ffa931cb978ebf6878c7b",
           "relevance": 3
+        },
+        {
+          "resource_title": "程序设计课程大纲",
+          "content_hash": "1a4a4f1c4f2398777f139a9fc52df8389adcbf2e246986089f359e3aa010ae6b",
+          "relevance": 3
         }
       ],
       "end_to_end": false,
-      "approved": false
+      "approved": true
     },
     {
       "id": "rag-033",
@@ -490,7 +530,7 @@
       "answerable": false,
       "relevant_chunks": [],
       "end_to_end": true,
-      "approved": false
+      "approved": true
     },
     {
       "id": "rag-034",
@@ -499,7 +539,7 @@
       "answerable": false,
       "relevant_chunks": [],
       "end_to_end": true,
-      "approved": false
+      "approved": true
     },
     {
       "id": "rag-035",
@@ -508,7 +548,7 @@
       "answerable": false,
       "relevant_chunks": [],
       "end_to_end": true,
-      "approved": false
+      "approved": true
     },
     {
       "id": "rag-036",
@@ -517,7 +557,7 @@
       "answerable": false,
       "relevant_chunks": [],
       "end_to_end": true,
-      "approved": false
+      "approved": true
     },
     {
       "id": "rag-037",
@@ -526,7 +566,7 @@
       "answerable": false,
       "relevant_chunks": [],
       "end_to_end": false,
-      "approved": false
+      "approved": true
     },
     {
       "id": "rag-038",
@@ -535,7 +575,7 @@
       "answerable": false,
       "relevant_chunks": [],
       "end_to_end": false,
-      "approved": false
+      "approved": true
     },
     {
       "id": "rag-039",
@@ -544,7 +584,7 @@
       "answerable": false,
       "relevant_chunks": [],
       "end_to_end": false,
-      "approved": false
+      "approved": true
     },
     {
       "id": "rag-040",
@@ -553,7 +593,7 @@
       "answerable": false,
       "relevant_chunks": [],
       "end_to_end": false,
-      "approved": false
+      "approved": true
     }
   ]
 }

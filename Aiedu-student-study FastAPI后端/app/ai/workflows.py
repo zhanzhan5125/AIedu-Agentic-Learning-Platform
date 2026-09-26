@@ -1568,8 +1568,12 @@ def reflect_once(state: WorkflowState) -> WorkflowState:
             item["max_score"] = maximum
             item["score"] = min(maximum, max(0, int(item.get("score", 0))))
         draft["total_score"] = sum(int(item.get("score", 0)) for item in draft.get("items", []))
-        draft["needs_review"] = True
-        draft["review_reason"] = "批阅建议已经过证据复核，仍需教师最终确认"
+        # `needs_review` is the priority-review signal, not the normal teacher
+        # confirmation gate. Preserve the model's low-confidence decision here;
+        # deterministic validation below escalates only unresolved defects.
+        draft["needs_review"] = bool(draft.get("needs_review"))
+        if not draft["needs_review"]:
+            draft["review_reason"] = None
         if revision_metadata:
             previous_usage = state.get("token_usage", {})
             revision_usage = revision_metadata.get("token_usage") or {}
@@ -1630,6 +1634,7 @@ def reflect_once(state: WorkflowState) -> WorkflowState:
     reflected = {**state, "draft": draft, "reflection_count": 1}
     reflected["validation"] = _validate(reflected).model_dump()
     if state["kind"] == "grading.single" and reflected["validation"]["issues"]:
+        draft["needs_review"] = True
         draft["review_reason"] = (
             "复核后仍存在以下问题：" + "；".join(reflected["validation"]["issues"])[:400]
         )
