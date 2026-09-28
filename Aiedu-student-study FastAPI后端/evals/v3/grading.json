@@ -1,0 +1,1067 @@
+{
+  "version": "v3",
+  "contains_personal_data": false,
+  "submissions": [
+    {
+      "id": "grading-001",
+      "source": "synthetic",
+      "teacher_rules": "按评分要点给分，语义等价不得扣分",
+      "answers": [
+        {
+          "id": "q-source-1",
+          "kind": "short_answer",
+          "prompt": "简述 C 语言源程序的主要组成部分。",
+          "reference_answer": "通常包括预处理指令、全局声明、main 函数、其他函数定义和注释。",
+          "rubric": [
+            "指出预处理指令（3分）",
+            "指出 main 函数（3分）",
+            "指出其他函数或全局声明（4分）"
+          ],
+          "max_score": 10,
+          "student_answer": "预处理指令、全局声明、main函数、其他函数和注释共同组成程序。",
+          "gold_score": 10,
+          "accepted_min": 9,
+          "accepted_max": 10,
+          "should_review": false
+        },
+        {
+          "id": "q-variable-1",
+          "kind": "short_answer",
+          "prompt": "变量与常量有什么区别？",
+          "reference_answer": "变量值可在运行期间改变并占用存储；常量用于表示固定值，宏常量进行文本替换，const 对象具有只读约束。",
+          "rubric": [
+            "说明值是否可变（4分）",
+            "说明存储或定义方式（3分）",
+            "说明典型用途（3分）"
+          ],
+          "max_score": 10,
+          "student_answer": "变量的值可以改变，常量的值固定；宏常量会文本替换，const对象通常有存储。",
+          "gold_score": 8,
+          "accepted_min": 7,
+          "accepted_max": 9,
+          "should_review": true
+        },
+        {
+          "id": "q-compile-1",
+          "kind": "short_answer",
+          "prompt": "C 源程序到可执行文件通常经历哪些阶段？",
+          "reference_answer": "依次经历预处理、编译、汇编和链接。",
+          "rubric": [
+            "预处理",
+            "编译",
+            "汇编",
+            "链接"
+          ],
+          "max_score": 10,
+          "student_answer": "预处理、编译、汇编、链接。",
+          "gold_score": 10,
+          "accepted_min": 9,
+          "accepted_max": 10,
+          "should_review": false
+        }
+      ],
+      "approved": true
+    },
+    {
+      "id": "grading-002",
+      "source": "synthetic",
+      "teacher_rules": "按评分要点给分，语义等价不得扣分",
+      "answers": [
+        {
+          "id": "q-source-2",
+          "kind": "short_answer",
+          "prompt": "简述 C 语言源程序的主要组成部分。",
+          "reference_answer": "通常包括预处理指令、全局声明、main 函数、其他函数定义和注释。",
+          "rubric": [
+            "指出预处理指令（3分）",
+            "指出 main 函数（3分）",
+            "指出其他函数或全局声明（4分）"
+          ],
+          "max_score": 10,
+          "student_answer": "主要有main函数和其他函数。",
+          "gold_score": 7,
+          "accepted_min": 6,
+          "accepted_max": 7,
+          "should_review": false
+        },
+        {
+          "id": "q-variable-2",
+          "kind": "short_answer",
+          "prompt": "变量与常量有什么区别？",
+          "reference_answer": "变量值可在运行期间改变并占用存储；常量用于表示固定值，宏常量进行文本替换，const 对象具有只读约束。",
+          "rubric": [
+            "说明值是否可变（4分）",
+            "说明存储或定义方式（3分）",
+            "说明典型用途（3分）"
+          ],
+          "max_score": 10,
+          "student_answer": "变量能改，常量不能改。",
+          "gold_score": 4,
+          "accepted_min": 3,
+          "accepted_max": 5,
+          "should_review": false
+        },
+        {
+          "id": "q-compile-2",
+          "kind": "short_answer",
+          "prompt": "C 源程序到可执行文件通常经历哪些阶段？",
+          "reference_answer": "依次经历预处理、编译、汇编和链接。",
+          "rubric": [
+            "预处理",
+            "编译",
+            "汇编",
+            "链接"
+          ],
+          "max_score": 10,
+          "student_answer": "先编译，再链接。",
+          "gold_score": 5,
+          "accepted_min": 4,
+          "accepted_max": 6,
+          "should_review": false
+        }
+      ],
+      "approved": true
+    },
+    {
+      "id": "grading-003",
+      "source": "synthetic",
+      "teacher_rules": "按评分要点给分，语义等价不得扣分",
+      "answers": [
+        {
+          "id": "q-source-3",
+          "kind": "short_answer",
+          "prompt": "简述 C 语言源程序的主要组成部分。",
+          "reference_answer": "通常包括预处理指令、全局声明、main 函数、其他函数定义和注释。",
+          "rubric": [
+            "指出预处理指令（3分）",
+            "指出 main 函数（3分）",
+            "指出其他函数或全局声明（4分）"
+          ],
+          "max_score": 10,
+          "student_answer": "C程序只有main函数。",
+          "gold_score": 3,
+          "accepted_min": 2,
+          "accepted_max": 3,
+          "should_review": false
+        },
+        {
+          "id": "q-variable-3",
+          "kind": "short_answer",
+          "prompt": "变量与常量有什么区别？",
+          "reference_answer": "变量值可在运行期间改变并占用存储；常量用于表示固定值，宏常量进行文本替换，const 对象具有只读约束。",
+          "rubric": [
+            "说明值是否可变（4分）",
+            "说明存储或定义方式（3分）",
+            "说明典型用途（3分）"
+          ],
+          "max_score": 10,
+          "student_answer": "变量和常量完全一样。",
+          "gold_score": 0,
+          "accepted_min": 0,
+          "accepted_max": 0,
+          "should_review": false
+        },
+        {
+          "id": "q-compile-3",
+          "kind": "short_answer",
+          "prompt": "C 源程序到可执行文件通常经历哪些阶段？",
+          "reference_answer": "依次经历预处理、编译、汇编和链接。",
+          "rubric": [
+            "预处理",
+            "编译",
+            "汇编",
+            "链接"
+          ],
+          "max_score": 10,
+          "student_answer": "程序直接由源代码运行。",
+          "gold_score": 0,
+          "accepted_min": 0,
+          "accepted_max": 0,
+          "should_review": false
+        }
+      ],
+      "approved": true
+    },
+    {
+      "id": "grading-004",
+      "source": "synthetic",
+      "teacher_rules": "按评分要点给分，语义等价不得扣分",
+      "answers": [
+        {
+          "id": "q-source-4",
+          "kind": "short_answer",
+          "prompt": "简述 C 语言源程序的主要组成部分。",
+          "reference_answer": "通常包括预处理指令、全局声明、main 函数、其他函数定义和注释。",
+          "rubric": [
+            "指出预处理指令（3分）",
+            "指出 main 函数（3分）",
+            "指出其他函数或全局声明（4分）"
+          ],
+          "max_score": 10,
+          "student_answer": "",
+          "gold_score": 0,
+          "accepted_min": 0,
+          "accepted_max": 0,
+          "should_review": false
+        },
+        {
+          "id": "q-variable-4",
+          "kind": "short_answer",
+          "prompt": "变量与常量有什么区别？",
+          "reference_answer": "变量值可在运行期间改变并占用存储；常量用于表示固定值，宏常量进行文本替换，const 对象具有只读约束。",
+          "rubric": [
+            "说明值是否可变（4分）",
+            "说明存储或定义方式（3分）",
+            "说明典型用途（3分）"
+          ],
+          "max_score": 10,
+          "student_answer": "",
+          "gold_score": 0,
+          "accepted_min": 0,
+          "accepted_max": 0,
+          "should_review": false
+        },
+        {
+          "id": "q-compile-4",
+          "kind": "short_answer",
+          "prompt": "C 源程序到可执行文件通常经历哪些阶段？",
+          "reference_answer": "依次经历预处理、编译、汇编和链接。",
+          "rubric": [
+            "预处理",
+            "编译",
+            "汇编",
+            "链接"
+          ],
+          "max_score": 10,
+          "student_answer": "",
+          "gold_score": 0,
+          "accepted_min": 0,
+          "accepted_max": 0,
+          "should_review": false
+        }
+      ],
+      "approved": true
+    },
+    {
+      "id": "grading-005",
+      "source": "synthetic",
+      "teacher_rules": "按评分要点给分，语义等价不得扣分",
+      "answers": [
+        {
+          "id": "q-source-5",
+          "kind": "short_answer",
+          "prompt": "简述 C 语言源程序的主要组成部分。",
+          "reference_answer": "通常包括预处理指令、全局声明、main 函数、其他函数定义和注释。",
+          "rubric": [
+            "指出预处理指令（3分）",
+            "指出 main 函数（3分）",
+            "指出其他函数或全局声明（4分）"
+          ],
+          "max_score": 10,
+          "student_answer": "程序会先处理include等指令，再由main作为入口调用其他函数；还可有全局声明和注释。",
+          "gold_score": 10,
+          "accepted_min": 9,
+          "accepted_max": 10,
+          "should_review": true
+        },
+        {
+          "id": "q-variable-5",
+          "kind": "short_answer",
+          "prompt": "变量与常量有什么区别？",
+          "reference_answer": "变量值可在运行期间改变并占用存储；常量用于表示固定值，宏常量进行文本替换，const 对象具有只读约束。",
+          "rubric": [
+            "说明值是否可变（4分）",
+            "说明存储或定义方式（3分）",
+            "说明典型用途（3分）"
+          ],
+          "max_score": 10,
+          "student_answer": "前者承载运行时可变数据，后者表达固定含义；define是替换，const是受只读约束的对象。",
+          "gold_score": 10,
+          "accepted_min": 9,
+          "accepted_max": 10,
+          "should_review": false
+        },
+        {
+          "id": "q-compile-5",
+          "kind": "short_answer",
+          "prompt": "C 源程序到可执行文件通常经历哪些阶段？",
+          "reference_answer": "依次经历预处理、编译、汇编和链接。",
+          "rubric": [
+            "预处理",
+            "编译",
+            "汇编",
+            "链接"
+          ],
+          "max_score": 10,
+          "student_answer": "源文件先展开预处理内容，翻译成汇编，再形成目标代码，最后与库链接。",
+          "gold_score": 10,
+          "accepted_min": 9,
+          "accepted_max": 10,
+          "should_review": false
+        }
+      ],
+      "approved": true
+    },
+    {
+      "id": "grading-006",
+      "source": "synthetic",
+      "teacher_rules": "按评分要点给分，保留学生答案中的直接证据",
+      "answers": [
+        {
+          "id": "q-single-1",
+          "kind": "single_choice",
+          "prompt": "C 程序执行入口是哪个函数？A. start B. main C. init D. run",
+          "reference_answer": "B",
+          "rubric": [
+            "选择 B（5分）"
+          ],
+          "max_score": 5,
+          "student_answer": "B",
+          "gold_score": 5,
+          "accepted_min": 5,
+          "accepted_max": 5,
+          "should_review": false
+        },
+        {
+          "id": "q-multiple-1",
+          "kind": "multiple_choice",
+          "prompt": "以下哪些属于 C 的循环语句？A. for B. while C. do-while D. switch",
+          "reference_answer": "A、B、C",
+          "rubric": [
+            "选择 A（2分）",
+            "选择 B（2分）",
+            "选择 C（2分）",
+            "不选择 D（4分）"
+          ],
+          "max_score": 10,
+          "student_answer": "A、B、C",
+          "gold_score": 10,
+          "accepted_min": 10,
+          "accepted_max": 10,
+          "should_review": false
+        },
+        {
+          "id": "q-program-1",
+          "kind": "programming",
+          "prompt": "编写函数 int max2(int a,int b)，返回较大值。",
+          "reference_answer": "int max2(int a,int b){ return a>b?a:b; }",
+          "rubric": [
+            "函数签名正确（5分）",
+            "比较两个参数的逻辑正确（5分）",
+            "所有输入路径均返回较大值（5分）"
+          ],
+          "max_score": 15,
+          "student_answer": "int max2(int a,int b){return a>b?a:b;}",
+          "gold_score": 15,
+          "accepted_min": 15,
+          "accepted_max": 15,
+          "should_review": false
+        }
+      ],
+      "approved": true
+    },
+    {
+      "id": "grading-007",
+      "source": "synthetic",
+      "teacher_rules": "按评分要点给分，保留学生答案中的直接证据",
+      "answers": [
+        {
+          "id": "q-single-2",
+          "kind": "single_choice",
+          "prompt": "C 程序执行入口是哪个函数？A. start B. main C. init D. run",
+          "reference_answer": "B",
+          "rubric": [
+            "选择 B（5分）"
+          ],
+          "max_score": 5,
+          "student_answer": "B",
+          "gold_score": 5,
+          "accepted_min": 5,
+          "accepted_max": 5,
+          "should_review": false
+        },
+        {
+          "id": "q-multiple-2",
+          "kind": "multiple_choice",
+          "prompt": "以下哪些属于 C 的循环语句？A. for B. while C. do-while D. switch",
+          "reference_answer": "A、B、C",
+          "rubric": [
+            "选择 A（2分）",
+            "选择 B（2分）",
+            "选择 C（2分）",
+            "不选择 D（4分）"
+          ],
+          "max_score": 10,
+          "student_answer": "A、B",
+          "gold_score": 8,
+          "accepted_min": 7,
+          "accepted_max": 8,
+          "should_review": false
+        },
+        {
+          "id": "q-program-2",
+          "kind": "programming",
+          "prompt": "编写函数 int max2(int a,int b)，返回较大值。",
+          "reference_answer": "int max2(int a,int b){ return a>b?a:b; }",
+          "rubric": [
+            "函数签名正确（5分）",
+            "比较两个参数的逻辑正确（5分）",
+            "所有输入路径均返回较大值（5分）"
+          ],
+          "max_score": 15,
+          "student_answer": "int max2(int a,int b){if(a>b)return a;}",
+          "gold_score": 9,
+          "accepted_min": 8,
+          "accepted_max": 10,
+          "should_review": false
+        }
+      ],
+      "approved": true
+    },
+    {
+      "id": "grading-008",
+      "source": "synthetic",
+      "teacher_rules": "按评分要点给分，保留学生答案中的直接证据",
+      "answers": [
+        {
+          "id": "q-single-3",
+          "kind": "single_choice",
+          "prompt": "C 程序执行入口是哪个函数？A. start B. main C. init D. run",
+          "reference_answer": "B",
+          "rubric": [
+            "选择 B（5分）"
+          ],
+          "max_score": 5,
+          "student_answer": "A",
+          "gold_score": 0,
+          "accepted_min": 0,
+          "accepted_max": 0,
+          "should_review": false
+        },
+        {
+          "id": "q-multiple-3",
+          "kind": "multiple_choice",
+          "prompt": "以下哪些属于 C 的循环语句？A. for B. while C. do-while D. switch",
+          "reference_answer": "A、B、C",
+          "rubric": [
+            "选择 A（2分）",
+            "选择 B（2分）",
+            "选择 C（2分）",
+            "不选择 D（4分）"
+          ],
+          "max_score": 10,
+          "student_answer": "D",
+          "gold_score": 0,
+          "accepted_min": 0,
+          "accepted_max": 0,
+          "should_review": false
+        },
+        {
+          "id": "q-program-3",
+          "kind": "programming",
+          "prompt": "编写函数 int max2(int a,int b)，返回较大值。",
+          "reference_answer": "int max2(int a,int b){ return a>b?a:b; }",
+          "rubric": [
+            "函数签名正确（5分）",
+            "比较两个参数的逻辑正确（5分）",
+            "所有输入路径均返回较大值（5分）"
+          ],
+          "max_score": 15,
+          "student_answer": "int max2(int a,int b){return a+b;}",
+          "gold_score": 5,
+          "accepted_min": 4,
+          "accepted_max": 5,
+          "should_review": false
+        }
+      ],
+      "approved": true
+    },
+    {
+      "id": "grading-009",
+      "source": "synthetic",
+      "teacher_rules": "按评分要点给分，保留学生答案中的直接证据",
+      "answers": [
+        {
+          "id": "q-single-4",
+          "kind": "single_choice",
+          "prompt": "C 程序执行入口是哪个函数？A. start B. main C. init D. run",
+          "reference_answer": "B",
+          "rubric": [
+            "选择 B（5分）"
+          ],
+          "max_score": 5,
+          "student_answer": "",
+          "gold_score": 0,
+          "accepted_min": 0,
+          "accepted_max": 0,
+          "should_review": false
+        },
+        {
+          "id": "q-multiple-4",
+          "kind": "multiple_choice",
+          "prompt": "以下哪些属于 C 的循环语句？A. for B. while C. do-while D. switch",
+          "reference_answer": "A、B、C",
+          "rubric": [
+            "选择 A（2分）",
+            "选择 B（2分）",
+            "选择 C（2分）",
+            "不选择 D（4分）"
+          ],
+          "max_score": 10,
+          "student_answer": "",
+          "gold_score": 0,
+          "accepted_min": 0,
+          "accepted_max": 0,
+          "should_review": false
+        },
+        {
+          "id": "q-program-4",
+          "kind": "programming",
+          "prompt": "编写函数 int max2(int a,int b)，返回较大值。",
+          "reference_answer": "int max2(int a,int b){ return a>b?a:b; }",
+          "rubric": [
+            "函数签名正确（5分）",
+            "比较两个参数的逻辑正确（5分）",
+            "所有输入路径均返回较大值（5分）"
+          ],
+          "max_score": 15,
+          "student_answer": "",
+          "gold_score": 0,
+          "accepted_min": 0,
+          "accepted_max": 0,
+          "should_review": false
+        }
+      ],
+      "approved": true
+    },
+    {
+      "id": "grading-010",
+      "source": "synthetic",
+      "teacher_rules": "按评分要点给分，保留学生答案中的直接证据",
+      "answers": [
+        {
+          "id": "q-single-5",
+          "kind": "single_choice",
+          "prompt": "C 程序执行入口是哪个函数？A. start B. main C. init D. run",
+          "reference_answer": "B",
+          "rubric": [
+            "选择 B（5分）"
+          ],
+          "max_score": 5,
+          "student_answer": "我认为是B，但题目若讨论嵌入式启动代码可能不同。",
+          "gold_score": 5,
+          "accepted_min": 5,
+          "accepted_max": 5,
+          "should_review": true
+        },
+        {
+          "id": "q-multiple-5",
+          "kind": "multiple_choice",
+          "prompt": "以下哪些属于 C 的循环语句？A. for B. while C. do-while D. switch",
+          "reference_answer": "A、B、C",
+          "rubric": [
+            "选择 A（2分）",
+            "选择 B（2分）",
+            "选择 C（2分）",
+            "不选择 D（4分）"
+          ],
+          "max_score": 10,
+          "student_answer": "A、B、C，D是选择结构。",
+          "gold_score": 10,
+          "accepted_min": 10,
+          "accepted_max": 10,
+          "should_review": false
+        },
+        {
+          "id": "q-program-5",
+          "kind": "programming",
+          "prompt": "编写函数 int max2(int a,int b)，返回较大值。",
+          "reference_answer": "int max2(int a,int b){ return a>b?a:b; }",
+          "rubric": [
+            "函数签名正确（5分）",
+            "比较两个参数的逻辑正确（5分）",
+            "所有输入路径均返回较大值（5分）"
+          ],
+          "max_score": 15,
+          "student_answer": "int max2(int a,int b){ return a>=b ? a : b; }",
+          "gold_score": 15,
+          "accepted_min": 15,
+          "accepted_max": 15,
+          "should_review": false
+        }
+      ],
+      "approved": true
+    },
+    {
+      "id": "grading-011",
+      "source": "synthetic",
+      "teacher_rules": "按评分点给分；程序题必须检查边界和终止性，不强求与参考代码一致",
+      "answers": [
+        {
+          "id": "q-macro-side-effect",
+          "kind": "short_answer",
+          "prompt": "比较宏 #define SQR(x) ((x)*(x)) 与 inline 函数的差异，并分析 SQR(i++) 的风险。",
+          "reference_answer": "宏在预处理阶段文本替换，缺少类型检查且实参可被多次求值；inline 函数遵守函数语义。SQR(i++) 展开后多次修改 i，产生未定义行为，不能安全使用。",
+          "rubric": ["说明文本替换与类型检查（5分）", "说明宏参数可多次求值（5分）", "正确分析 i++ 的未定义行为（6分）", "说明 inline 仍是函数语义（4分）"],
+          "max_score": 20,
+          "student_answer": "宏是编译前的字符串替换，inline 函数会做类型检查。SQR(i++) 会展开成 ((i++)*(i++))，所以 i 增加两次，结果等于两次增加前数值的乘积。",
+          "gold_score": 13,
+          "accepted_min": 12,
+          "accepted_max": 14,
+          "should_review": false
+        },
+        {
+          "id": "q-binary-search-boundary",
+          "kind": "programming",
+          "prompt": "对升序整型数组实现二分查找，找到返回下标，否则返回 -1。",
+          "reference_answer": "int search(const int *a,int n,int x){int l=0,r=n-1;while(l<=r){int m=l+(r-l)/2;if(a[m]==x)return m;if(a[m]<x)l=m+1;else r=m-1;}return -1;}",
+          "rubric": ["函数接口与返回值正确（4分）", "中点和比较逻辑正确（6分）", "左右边界更新且能终止（6分）", "空数组和未找到情况正确（4分）"],
+          "max_score": 20,
+          "student_answer": "int search(const int *a,int n,int x){\n    int left=0,right=n;\n    while(left<right){\n        int mid=(left+right)/2;\n        if(a[mid]==x) return mid;\n        if(a[mid]<x) left=mid;\n        else right=mid;\n    }\n    return -1;\n}",
+          "gold_score": 10,
+          "accepted_min": 9,
+          "accepted_max": 11,
+          "should_review": false
+        },
+        {
+          "id": "q-pointer-array-multi",
+          "kind": "multiple_choice",
+          "prompt": "已知 int a[5]; int *p=a;，哪些表达式可以表示第 3 个元素？A. a[2] B. *(a+2) C. p[2] D. *p+2",
+          "reference_answer": "A、B、C",
+          "rubric": ["选中 A（6分）", "选中 B（6分）", "选中 C（6分）", "不选 D（2分）"],
+          "max_score": 20,
+          "student_answer": "A、B、C、D，因为指针都可以用加法访问数组。",
+          "gold_score": 18,
+          "accepted_min": 17,
+          "accepted_max": 18,
+          "should_review": false
+        }
+      ],
+      "approved": true
+    },
+    {
+      "id": "grading-012",
+      "source": "synthetic",
+      "teacher_rules": "允许语义等价表述；涉及 C 标准未定义行为时优先判断是否需人工复核",
+      "answers": [
+        {
+          "id": "q-scope-storage",
+          "kind": "short_answer",
+          "prompt": "说明作用域、链接属性和存储期的区别，并以函数内 static int count 为例。",
+          "reference_answer": "作用域决定名字在源码中可见的区域；链接属性决定不同声明是否指向同一实体；存储期决定对象生存时间。块内 static 对象为块作用域、无链接、静态存储期。",
+          "rubric": ["正确定义作用域（5分）", "正确定义链接属性（5分）", "正确定义存储期（5分）", "正确分析局部 static（5分）"],
+          "max_score": 20,
+          "student_answer": "作用域表示变量在哪里能用，存储期表示变量保存多久。static int count 只在函数内可见，但会在函数返回后保留值。它具有外部链接，所以其他文件也能 extern 它。",
+          "gold_score": 14,
+          "accepted_min": 13,
+          "accepted_max": 15,
+          "should_review": false
+        },
+        {
+          "id": "q-safe-copy",
+          "kind": "programming",
+          "prompt": "实现 int copy_text(char *dst,size_t cap,const char *src)，成功返回 1，容量不足返回 0，不得写越界。",
+          "reference_answer": "int copy_text(char *d,size_t c,const char *s){size_t n=strlen(s);if(!d||!s||c==0||n>=c)return 0;memmove(d,s,n+1);return 1;}",
+          "rubric": ["处理空指针和 cap=0（4分）", "容量检查包含终止符（6分）", "复制内容并正确终止（6分）", "返回语义正确（4分）"],
+          "max_score": 20,
+          "student_answer": "int copy_text(char *dst,size_t cap,const char *src){\n    if(dst==NULL || src==NULL) return 0;\n    if(strlen(src)>cap) return 0;\n    strcpy(dst,src);\n    return 1;\n}",
+          "gold_score": 14,
+          "accepted_min": 13,
+          "accepted_max": 15,
+          "should_review": false
+        },
+        {
+          "id": "q-eval-order",
+          "kind": "single_choice",
+          "prompt": "设 i=1，执行 printf(\"%d %d\", i++, i++); 的输出是？A. 1 2 B. 2 1 C. 与编译器有关 D. 行为未定义",
+          "reference_answer": "D",
+          "rubric": ["选择 D 并识别两次修改之间缺少序列约束（20分）"],
+          "max_score": 20,
+          "student_answer": "C。C 语言没有规定函数参数的求值顺序，所以可能是 1 2 也可能是 2 1。",
+          "gold_score": 8,
+          "accepted_min": 6,
+          "accepted_max": 10,
+          "should_review": true
+        }
+      ],
+      "approved": true
+    },
+    {
+      "id": "grading-013",
+      "source": "synthetic",
+      "teacher_rules": "分项给分，不得将看似专业但技术上错误的表述判为满分",
+      "answers": [
+        {
+          "id": "q-volatile-atomic",
+          "kind": "short_answer",
+          "prompt": "volatile 能否保证多线程中 count++ 的原子性和线程安全？请说明原因。",
+          "reference_answer": "不能。volatile 主要限制对象访问的编译优化，不提供原子性、互斥或跨线程 happens-before 关系；count++ 是读-改-写复合操作，应使用原子类型或锁。",
+          "rubric": ["明确结论不能（4分）", "说明 volatile 不等于原子性（6分）", "识别 count++ 为复合操作（5分）", "给出原子类型或锁的替代方案（5分）"],
+          "max_score": 20,
+          "student_answer": "能。volatile 会强制每次都从内存读写 count，不会使用寄存器中的旧值，因此多个线程都能看到最新值，count++ 就不会丢失更新。",
+          "gold_score": 0,
+          "accepted_min": 0,
+          "accepted_max": 2,
+          "should_review": false
+        },
+        {
+          "id": "q-list-delete",
+          "kind": "programming",
+          "prompt": "在单链表中删除第一个值为 x 的节点，成功返回新头指针，未找到则原样返回。",
+          "reference_answer": "Node *del(Node *h,int x){Node **p=&h;while(*p&&(*p)->v!=x)p=&(*p)->next;if(*p){Node *q=*p;*p=q->next;free(q);}return h;}",
+          "rubric": ["空链表处理正确（4分）", "能删除头节点（5分）", "能查找并删除中间或尾节点（6分）", "正确 free 且返回头指针（5分）"],
+          "max_score": 20,
+          "student_answer": "Node *del(Node *head,int x){\n    Node *p=head;\n    while(p->next && p->next->v!=x) p=p->next;\n    if(p->next){\n        Node *q=p->next;\n        p->next=q->next;\n        free(q);\n    }\n    return head;\n}",
+          "gold_score": 12,
+          "accepted_min": 11,
+          "accepted_max": 13,
+          "should_review": false
+        },
+        {
+          "id": "q-memory-multi",
+          "kind": "multiple_choice",
+          "prompt": "以下哪些操作会导致未定义行为？A. free(NULL) B. 对同一指针连续 free 两次 C. 访问已 free 的对象 D. malloc(0)",
+          "reference_answer": "B、C；free(NULL) 合法，malloc(0) 的返回值由实现定义但调用本身不是未定义行为。",
+          "rubric": ["选中 B（8分）", "选中 C（8分）", "不选 A（2分）", "不选 D（2分）"],
+          "max_score": 20,
+          "student_answer": "B、C、D。malloc(0) 申请了 0 字节，后续无法使用，所以调用本身就是未定义行为。",
+          "gold_score": 18,
+          "accepted_min": 17,
+          "accepted_max": 18,
+          "should_review": true
+        }
+      ],
+      "approved": true
+    },
+    {
+      "id": "grading-014",
+      "source": "synthetic",
+      "teacher_rules": "算法题要分别评估思路、正确性、边界和复杂度",
+      "answers": [
+        {
+          "id": "q-quicksort-explain",
+          "kind": "short_answer",
+          "prompt": "说明快速排序的分治过程、递归终止条件以及平均和最坏时间复杂度。",
+          "reference_answer": "选择枢轴并划分，将小于和大于枢轴的子区间递归排序；区间长度小于等于 1 时终止。平均 O(n log n)，划分极不均衡时最坏 O(n^2)。",
+          "rubric": ["说明枢轴和划分（6分）", "说明递归子问题（4分）", "终止条件正确（4分）", "两种复杂度正确（6分）"],
+          "max_score": 20,
+          "student_answer": "快排每次选一个基准，把小的放左边、大的放右边，然后对两边继续快排。只剩一个元素时停止。因为每轮都将数组分成两半，所以无论什么输入时间复杂度都是 O(n log n)。",
+          "gold_score": 15,
+          "accepted_min": 14,
+          "accepted_max": 16,
+          "should_review": false
+        },
+        {
+          "id": "q-factorial-guard",
+          "kind": "programming",
+          "prompt": "实现 int factorial(int n, unsigned long long *out)，n<0 或结果溢出返回 0，成功返回 1 并写入 out。",
+          "reference_answer": "int factorial(int n,unsigned long long *o){if(n<0||!o)return 0;unsigned long long r=1;for(int i=2;i<=n;i++){if(r>ULLONG_MAX/(unsigned)i)return 0;r*=i;}*o=r;return 1;}",
+          "rubric": ["检查 n<0 和 out 指针（4分）", "循环计算逻辑正确（6分）", "乘法前正确检查溢出（6分）", "成功写回并返回 1（4分）"],
+          "max_score": 20,
+          "student_answer": "int factorial(int n,unsigned long long *out){\n    if(n<0) return 0;\n    unsigned long long r=1;\n    for(int i=1;i<=n;i++) r*=i;\n    if(r==0) return 0;\n    *out=r;\n    return 1;\n}",
+          "gold_score": 11,
+          "accepted_min": 10,
+          "accepted_max": 12,
+          "should_review": false
+        },
+        {
+          "id": "q-const-pointer",
+          "kind": "single_choice",
+          "prompt": "哪个声明表示‘指针本身不能改变，但可以修改所指向的 int’？A. const int *p B. int const *p C. int * const p D. const int * const p",
+          "reference_answer": "C",
+          "rubric": ["选择 C（20分）"],
+          "max_score": 20,
+          "student_answer": "A，const 放在 int 前面说明 p 是常量指针。",
+          "gold_score": 0,
+          "accepted_min": 0,
+          "accepted_max": 0,
+          "should_review": false
+        }
+      ],
+      "approved": true
+    },
+    {
+      "id": "grading-015",
+      "source": "synthetic",
+      "teacher_rules": "结论与理由分开评分，对受平台 ABI 影响的题目保留人工复核",
+      "answers": [
+        {
+          "id": "q-include-guard",
+          "kind": "short_answer",
+          "prompt": "比较 #include <x.h> 与 #include \"x.h\" 的搜索方式，并说明头文件保护宏的作用。",
+          "reference_answer": "尖括号通常搜索实现定义的系统头路径，引号形式通常先搜索当前源文件相关路径再搜索系统路径，具体细节由实现定义。保护宏防止同一头文件内容重复包含导致重定义。",
+          "rubric": ["说明尖括号搜索特点（5分）", "说明引号搜索特点（5分）", "识别实现定义的细节（4分）", "正确说明保护宏（6分）"],
+          "max_score": 20,
+          "student_answer": "尖括号只能包含 C 标准库的头文件，引号只能包含自己写的头文件。#ifndef/#define/#endif 可以让头文件只编译一次，避免重复定义。",
+          "gold_score": 9,
+          "accepted_min": 8,
+          "accepted_max": 11,
+          "should_review": false
+        },
+        {
+          "id": "q-matrix-sum",
+          "kind": "programming",
+          "prompt": "实现 long long matrix_sum(size_t rows,size_t cols,const int a[rows][cols])，返回所有元素之和。",
+          "reference_answer": "long long matrix_sum(size_t r,size_t c,const int a[r][c]){long long s=0;for(size_t i=0;i<r;i++)for(size_t j=0;j<c;j++)s+=a[i][j];return s;}",
+          "rubric": ["函数声明能接收二维数组（4分）", "行列循环边界正确（6分）", "使用 long long 累加（5分）", "正确返回结果（5分）"],
+          "max_score": 20,
+          "student_answer": "long long matrix_sum(size_t rows,size_t cols,const int a[rows][cols]){\n    long long total=0;\n    for(size_t i=0;i<rows;i++){\n        for(size_t j=0;j<cols;j++){\n            total += a[i][j];\n        }\n    }\n    return total;\n}",
+          "gold_score": 20,
+          "accepted_min": 19,
+          "accepted_max": 20,
+          "should_review": false
+        },
+        {
+          "id": "q-struct-size",
+          "kind": "multiple_choice",
+          "prompt": "对 struct S{char c; int i; short s;};，哪些说法一定成立？A. sizeof(S)=7 B. 成员按声明顺序存放 C. 成员之间可有填充 D. sizeof(S) 是所有成员 sizeof 之和",
+          "reference_answer": "B、C",
+          "rubric": ["选中 B（8分）", "选中 C（8分）", "不选 A（2分）", "不选 D（2分）"],
+          "max_score": 20,
+          "student_answer": "B、C，结构体会保持成员顺序，并且编译器可能为对齐加入填充字节。",
+          "gold_score": 20,
+          "accepted_min": 20,
+          "accepted_max": 20,
+          "should_review": true
+        }
+      ],
+      "approved": true
+    },
+    {
+      "id": "grading-016",
+      "source": "synthetic",
+      "teacher_rules": "重视 C 语言整数转换和溢出细节，只按学生明确写出的内容给分",
+      "answers": [
+        {
+          "id": "q-signed-unsigned",
+          "kind": "short_answer",
+          "prompt": "分析 int i=-1; unsigned int u=1; 时表达式 i<u 的结果和原因。",
+          "reference_answer": "在常见的相同等级 int/unsigned int 比较中，i 被转换为 unsigned int，-1 转换后是 UINT_MAX，因此 i<u 为假。",
+          "rubric": ["结论为假（5分）", "说明 usual arithmetic conversions（5分）", "说明 -1 转为 UINT_MAX（6分）", "正确完成比较推导（4分）"],
+          "max_score": 20,
+          "student_answer": "i<u 为真，因为 -1 小于 1。unsigned 只是表示 u 不能被赋为负数，和比较运算没有关系。",
+          "gold_score": 0,
+          "accepted_min": 0,
+          "accepted_max": 2,
+          "should_review": false
+        },
+        {
+          "id": "q-safe-average",
+          "kind": "programming",
+          "prompt": "不使用浮点数，实现 int average_int(int a,int b)，返回向零截断的算术平均值，且 a+b 不得发生有符号溢出。",
+          "reference_answer": "int average_int(int a,int b){return a/2+b/2+(a%2+b%2)/2;}",
+          "rubric": ["不直接计算可溢出的 a+b（6分）", "正确处理同号和异号输入（6分）", "结果符合向零截断（4分）", "函数对所有 int 输入有定义（4分）"],
+          "max_score": 20,
+          "student_answer": "int average_int(int a,int b){\n    long long sum=(long long)a+(long long)b;\n    return (int)(sum/2);\n}",
+          "gold_score": 20,
+          "accepted_min": 19,
+          "accepted_max": 20,
+          "should_review": false
+        },
+        {
+          "id": "q-static-local",
+          "kind": "single_choice",
+          "prompt": "函数内 static int n=0; 的 n 具有？A. 块作用域和自动存储期 B. 文件作用域和静态存储期 C. 块作用域和静态存储期 D. 函数作用域和动态存储期",
+          "reference_answer": "C",
+          "rubric": ["选择 C（20分）"],
+          "max_score": 20,
+          "student_answer": "C",
+          "gold_score": 20,
+          "accepted_min": 20,
+          "accepted_max": 20,
+          "should_review": false
+        }
+      ],
+      "approved": true
+    },
+    {
+      "id": "grading-017",
+      "source": "synthetic",
+      "teacher_rules": "程序代码如有潜在未定义行为应按严重程度扣分，参考实现不是唯一答案",
+      "answers": [
+        {
+          "id": "q-function-pointer",
+          "kind": "short_answer",
+          "prompt": "解释 int (*fp)(const void *, const void *) 的含义，并说明它为何可以作为 qsort 比较函数的形式。",
+          "reference_answer": "fp 是指向函数的指针，该函数接收两个 const void* 参数并返回 int。qsort 通过此回调形式比较任意元素，返回值的负/零/正表示顺序关系。",
+          "rubric": ["识别 fp 为函数指针（5分）", "正确说明参数类型（5分）", "正确说明返回类型（4分）", "说明 qsort 回调和返回值约定（6分）"],
+          "max_score": 20,
+          "student_answer": "fp 是一个函数，返回 int*，它有两个 void 指针参数。qsort 可以把数组的两个元素传给它，如果返回 true 就交换这两个元素。",
+          "gold_score": 7,
+          "accepted_min": 6,
+          "accepted_max": 9,
+          "should_review": false
+        },
+        {
+          "id": "q-qsort-comparator",
+          "kind": "programming",
+          "prompt": "为 qsort 编写升序比较两个 int 的函数，必须对所有 int 取值正确。",
+          "reference_answer": "int cmp(const void *x,const void *y){int a=*(const int*)x,b=*(const int*)y;return (a>b)-(a<b);}",
+          "rubric": ["函数签名匹配 qsort（4分）", "正确转换并解引用（5分）", "比较结果的符号正确（6分）", "不存在有符号溢出（5分）"],
+          "max_score": 20,
+          "student_answer": "int cmp(const void *x,const void *y){\n    const int *a=(const int*)x;\n    const int *b=(const int*)y;\n    return *a-*b;\n}",
+          "gold_score": 15,
+          "accepted_min": 14,
+          "accepted_max": 16,
+          "should_review": false
+        },
+        {
+          "id": "q-sequencing-multi",
+          "kind": "multiple_choice",
+          "prompt": "以下哪些表达式在标准 C 中行为未定义？A. i=i+1 B. i=++i+1 C. a[i]=i++ D. i+=1",
+          "reference_answer": "B、C",
+          "rubric": ["选中 B（8分）", "选中 C（8分）", "不选 A（2分）", "不选 D（2分）"],
+          "max_score": 20,
+          "student_answer": "B、C，因为同一个完整表达式内对 i 的修改和其他使用没有序列关系。",
+          "gold_score": 20,
+          "accepted_min": 19,
+          "accepted_max": 20,
+          "should_review": true
+        }
+      ],
+      "approved": true
+    },
+    {
+      "id": "grading-018",
+      "source": "synthetic",
+      "teacher_rules": "文件题要区分 EOF、I/O 错误和正常结束，结构正确但缺少错误检查可给部分分",
+      "answers": [
+        {
+          "id": "q-feof-ferror",
+          "kind": "short_answer",
+          "prompt": "为什么不应使用 while(!feof(fp)) 作为文件读取循环条件？应如何区分文件结束与读取错误？",
+          "reference_answer": "feof 只在一次读取尝试遇到文件尾后才置位，用 !feof 预判可能多处理一次旧数据。应以读函数的返回值控制循环，失败后用 feof 判断正常结束，ferror 判断 I/O 错误。",
+          "rubric": ["说明 EOF 标志是读取失败后设置（6分）", "说明旧数据重复处理风险（4分）", "用读函数返回值控制循环（5分）", "正确区分 feof 和 ferror（5分）"],
+          "max_score": 20,
+          "student_answer": "feof 只能告诉我们是否到文件末尾，所以 while(!feof(fp)) 在最后会多进入一次循环。可以改为 while(fscanf(fp,\"%d\",&x)!=EOF)。返回 EOF 就一定是正常结束。",
+          "gold_score": 12,
+          "accepted_min": 11,
+          "accepted_max": 14,
+          "should_review": false
+        },
+        {
+          "id": "q-file-copy",
+          "kind": "programming",
+          "prompt": "实现 int copy_file(FILE *in,FILE *out)，逐块复制文件，成功返回 1，任何读写错误返回 0。",
+          "reference_answer": "int copy_file(FILE *in,FILE *out){unsigned char b[4096];size_t n;while((n=fread(b,1,sizeof b,in))>0)if(fwrite(b,1,n,out)!=n)return 0;return !ferror(in)&&!ferror(out);}",
+          "rubric": ["按块读取并复制（6分）", "检查 fwrite 是否完整写入（5分）", "区分 EOF 和读错误（5分）", "入参和返回语义正确（4分）"],
+          "max_score": 20,
+          "student_answer": "int copy_file(FILE *in,FILE *out){\n    unsigned char buf[4096];\n    size_t n;\n    while((n=fread(buf,1,sizeof(buf),in))>0){\n        fwrite(buf,1,n,out);\n    }\n    return 1;\n}",
+          "gold_score": 11,
+          "accepted_min": 10,
+          "accepted_max": 13,
+          "should_review": false
+        },
+        {
+          "id": "q-fopen-mode",
+          "kind": "single_choice",
+          "prompt": "以二进制追加方式打开文件，应使用？A. \"r+b\" B. \"wb\" C. \"ab\" D. \"a+b\"",
+          "reference_answer": "C",
+          "rubric": ["选择 C（20分）"],
+          "max_score": 20,
+          "student_answer": "D，因为 + 表示可以在文件末尾增加内容。",
+          "gold_score": 0,
+          "accepted_min": 0,
+          "accepted_max": 0,
+          "should_review": false
+        }
+      ],
+      "approved": true
+    },
+    {
+      "id": "grading-019",
+      "source": "synthetic",
+      "teacher_rules": "内存管理题应评估所有权、失败路径和资源泄漏，结论与代码证据必须对应",
+      "answers": [
+        {
+          "id": "q-realloc-ownership",
+          "kind": "short_answer",
+          "prompt": "解释为什么直接写 p=realloc(p,new_size) 可能泄漏内存，并给出安全的更新模式。",
+          "reference_answer": "realloc 失败时返回 NULL 且原块仍然有效，直接赋给 p 会丢失原指针。应使用临时指针 tmp=realloc(p,n)，只有 tmp 非 NULL 时再 p=tmp，失败时保留并适当释放原块。",
+          "rubric": ["说明失败返回 NULL（5分）", "说明原块仍有效（5分）", "识别覆盖原指针造成泄漏（4分）", "给出临时指针的安全模式（6分）"],
+          "max_score": 20,
+          "student_answer": "realloc 可能把内存搬到新地址，所以应该写 void *tmp=realloc(p,new_size); 然后无论 tmp 是什么都先 free(p)，最后 p=tmp，这样可以避免保留旧内存。",
+          "gold_score": 6,
+          "accepted_min": 5,
+          "accepted_max": 8,
+          "should_review": false
+        },
+        {
+          "id": "q-grow-buffer",
+          "kind": "programming",
+          "prompt": "实现 int grow(int **data,size_t *cap)，容量翻倍；成功更新 *data 和 *cap 并返回 1，失败保持原值并返回 0，同时检查溢出。",
+          "reference_answer": "int grow(int **d,size_t *c){if(!d||!c||*c>SIZE_MAX/2/sizeof **d)return 0;size_t n=*c?*c*2:1;int *t=realloc(*d,n*sizeof *t);if(!t)return 0;*d=t;*c=n;return 1;}",
+          "rubric": ["检查参数和容量计算溢出（5分）", "用临时指针接收 realloc（5分）", "失败时保留原数据与容量（5分）", "成功时更新两个输出（5分）"],
+          "max_score": 20,
+          "student_answer": "int grow(int **data,size_t *cap){\n    *cap = *cap * 2;\n    *data = realloc(*data, *cap * sizeof(int));\n    if(*data==NULL){\n        *cap = *cap / 2;\n        return 0;\n    }\n    return 1;\n}",
+          "gold_score": 5,
+          "accepted_min": 4,
+          "accepted_max": 7,
+          "should_review": false
+        },
+        {
+          "id": "q-lifetime-multi",
+          "kind": "multiple_choice",
+          "prompt": "哪些指针在函数返回后仍可合法解引用？A. 指向局部自动数组 B. 指向函数内 static 数组 C. malloc 返回且尚未 free 的块 D. 指向复合字面量的指针（在函数块内创建）",
+          "reference_answer": "B、C",
+          "rubric": ["选中 B（8分）", "选中 C（8分）", "不选 A（2分）", "不选 D（2分）"],
+          "max_score": 20,
+          "student_answer": "B、C。static 对象具有整个程序的存储期，malloc 的对象在 free 之前也存在。",
+          "gold_score": 20,
+          "accepted_min": 19,
+          "accepted_max": 20,
+          "should_review": true
+        }
+      ],
+      "approved": true
+    },
+    {
+      "id": "grading-020",
+      "source": "synthetic",
+      "teacher_rules": "允许与参考答案不同的正确算法；如题目缺少必要约束应降低置信度并进入人工复核",
+      "answers": [
+        {
+          "id": "q-recursion-iteration",
+          "kind": "short_answer",
+          "prompt": "比较递归与迭代在可读性、额外空间、栈溢出风险和适用场景上的取舍。",
+          "reference_answer": "递归可自然表达树、分治等递归结构，但通常需要调用栈空间并有深度过大的栈溢出风险；迭代常有更可控的空间与性能，但复杂状态可能降低可读性。应依问题结构、输入深度和资源约束选择。",
+          "rubric": ["比较表达与可读性（5分）", "比较额外空间（5分）", "识别递归栈溢出风险（5分）", "给出基于场景的取舍（5分）"],
+          "max_score": 20,
+          "student_answer": "递归的代码一般更短，很适合树和分治，但每次调用都要保存栈帧，深度大时可能栈溢出。迭代不会占用任何额外空间，性能总是比递归好，所以工程中应当全部改成迭代。",
+          "gold_score": 15,
+          "accepted_min": 14,
+          "accepted_max": 16,
+          "should_review": false
+        },
+        {
+          "id": "q-three-way-quicksort",
+          "kind": "programming",
+          "prompt": "实现能高效处理大量重复元素的原地快速排序，并保证不访问越界。",
+          "reference_answer": "可使用三向划分，维护 <pivot、==pivot、>pivot 三个区间，并只递归处理两侧区间。",
+          "rubric": ["基准选择和三向区间不变式正确（6分）", "交换和索引更新正确（6分）", "递归边界与终止条件正确（4分）", "重复元素不导致无效递归（4分）"],
+          "max_score": 20,
+          "student_answer": "void qsort3(int *a,int l,int r){\n    if(l>=r) return;\n    int pivot=a[l],lt=l,i=l+1,gt=r;\n    while(i<=gt){\n        if(a[i]<pivot){int t=a[lt];a[lt]=a[i];a[i]=t;lt++;i++;}\n        else if(a[i]>pivot){int t=a[i];a[i]=a[gt];a[gt]=t;gt--;}\n        else i++;\n    }\n    qsort3(a,l,lt-1);\n    qsort3(a,gt+1,r);\n}",
+          "gold_score": 20,
+          "accepted_min": 18,
+          "accepted_max": 20,
+          "should_review": true
+        },
+        {
+          "id": "q-complexity-choice",
+          "kind": "single_choice",
+          "prompt": "对长度为 n 的链表执行归并排序，其时间复杂度通常为？A. O(1) B. O(log n) C. O(n log n) D. O(n^2)",
+          "reference_answer": "C",
+          "rubric": ["选择 C（20分）"],
+          "max_score": 20,
+          "student_answer": "C，每层合并访问 n 个节点，共有 log n 层。",
+          "gold_score": 20,
+          "accepted_min": 20,
+          "accepted_max": 20,
+          "should_review": false
+        }
+      ],
+      "approved": true
+    }
+  ]
+}
+

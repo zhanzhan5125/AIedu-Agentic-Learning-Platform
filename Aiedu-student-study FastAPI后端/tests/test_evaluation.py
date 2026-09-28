@@ -150,6 +150,35 @@ def test_grading_ablation_reuses_one_raw_model_output(monkeypatch):
     assert calls == {"model": 1, "reflect": 1}
     assert result["summary"]["raw"]["normalized_mae"] == 0
     assert result["cases"][0]["reflect"]["result"]["needs_review"] is False
+    assert result["reflection"]["trigger_rate"] == 0
+
+
+def test_grading_reflection_delta_counts_score_repairs_and_regressions():
+    dataset = GradingEvalDataset.model_validate({
+        "version": "test", "contains_personal_data": False,
+        "submissions": [{
+            "id": "grading-001", "source": "synthetic", "approved": True,
+            "answers": [
+                {"id": "a1", "kind": "short_answer", "prompt": "p1",
+                 "reference_answer": "r1", "rubric": ["x"], "max_score": 10,
+                 "student_answer": "s1", "gold_score": 8,
+                 "accepted_min": 7, "accepted_max": 9},
+                {"id": "a2", "kind": "short_answer", "prompt": "p2",
+                 "reference_answer": "r2", "rubric": ["x"], "max_score": 10,
+                 "student_answer": "s2", "gold_score": 5,
+                 "accepted_min": 4, "accepted_max": 6},
+            ],
+        }],
+    })
+    delta = runner._grading_reflection_delta(
+        dataset.submissions[0],
+        {"items": [{"answer_id": 1, "score": 4}, {"answer_id": 2, "score": 5}]},
+        {"items": [{"answer_id": 1, "score": 8}, {"answer_id": 2, "score": 9}]},
+    )
+    assert delta == {
+        "answer_count": 2, "score_changed": 2, "score_improved": 1,
+        "score_regressed": 1, "range_repaired": 1, "range_regressed": 1,
+    }
 
 
 def test_unapproved_or_privacy_shaped_dataset_is_rejected():
@@ -195,3 +224,25 @@ def test_shipped_datasets_are_approved_and_balanced(version):
         "course_qa", "resource_lookup", "personalized", "identity", "current_web",
         "chitchat", "followup",
     }
+
+
+def test_expanded_grading_v3_is_approved_and_complex():
+    path = Path(__file__).parents[1] / "evals" / "v3" / "grading.json"
+    dataset = runner.load_dataset(
+        path, GradingEvalDataset, official=True, suite="grading",
+    )
+    answers = [answer for case in dataset.submissions for answer in case.answers]
+    kinds = {kind: sum(answer.kind == kind for answer in answers) for kind in {
+        "short_answer", "programming", "single_choice", "multiple_choice",
+    }}
+
+    assert len(dataset.submissions) == 20
+    assert len(answers) == 60
+    assert kinds == {
+        "short_answer": 25, "programming": 15,
+        "single_choice": 10, "multiple_choice": 10,
+    }
+    assert sum(answer.should_review for answer in answers) == 9
+    assert sum(len(answer.rubric) >= 3 for answer in answers) >= 45
+    assert sum(len(answer.student_answer) >= 80 for answer in answers) >= 15
+    assert dataset.contains_personal_data is False

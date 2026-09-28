@@ -328,6 +328,44 @@ def _grading_metrics(dataset: GradingEvalDataset, rows: list[dict], mode: str) -
     }
 
 
+def _grading_reflection_delta(case, raw: dict, reflected: dict) -> dict[str, int]:
+    """Measure whether a second look helped scores, not just JSON validity."""
+    raw_items = {int(item["answer_id"]): item for item in raw.get("items", [])}
+    reflected_items = {
+        int(item["answer_id"]): item for item in reflected.get("items", [])
+    }
+    counts = {
+        "answer_count": len(case.answers),
+        "score_changed": 0,
+        "score_improved": 0,
+        "score_regressed": 0,
+        "range_repaired": 0,
+        "range_regressed": 0,
+    }
+    for index, gold in enumerate(case.answers, 1):
+        raw_item = raw_items.get(index)
+        reflected_item = reflected_items.get(index)
+        raw_score = int(raw_item.get("score", 0)) if raw_item else 0
+        reflected_score = int(reflected_item.get("score", 0)) if reflected_item else 0
+        if raw_score != reflected_score:
+            counts["score_changed"] += 1
+        raw_error = abs(raw_score - gold.gold_score) / gold.max_score
+        reflected_error = abs(reflected_score - gold.gold_score) / gold.max_score
+        if reflected_error < raw_error:
+            counts["score_improved"] += 1
+        elif reflected_error > raw_error:
+            counts["score_regressed"] += 1
+        raw_in_range = gold.accepted_min <= raw_score <= gold.accepted_max
+        reflected_in_range = (
+            gold.accepted_min <= reflected_score <= gold.accepted_max
+        )
+        if not raw_in_range and reflected_in_range:
+            counts["range_repaired"] += 1
+        elif raw_in_range and not reflected_in_range:
+            counts["range_regressed"] += 1
+    return counts
+
+
 def run_grading_suite(
     dataset: GradingEvalDataset, *, input_cost_per_million: float = 0,
     output_cost_per_million: float = 0,
@@ -341,6 +379,9 @@ def run_grading_suite(
         raw_latency = round((perf_counter() - started) * 1000, 3)
         raw_state = {**state, "draft": raw}
         raw_validation = workflows._validate(raw_state).model_dump()
+        reflection_reasons = workflows._grading_reflection_reasons(
+            state, raw, raw_validation.get("issues", []),
+        )
         validated_state = {**raw_state, "validation": raw_validation,
                            "token_usage": metadata.get("token_usage") or {}}
         reflection_started = perf_counter()
@@ -348,6 +389,7 @@ def run_grading_suite(
         reflection_latency = round((perf_counter() - reflection_started) * 1000, 3)
         reflected = reflected_state["draft"]
         reflected_validation = reflected_state["validation"]
+        reflection_delta = _grading_reflection_delta(case, raw, reflected)
         rows.append({
             "id": case.id,
             "raw": {"result": raw, "validation": raw_validation},
@@ -357,9 +399,11 @@ def run_grading_suite(
             "reflection_latency_ms": reflection_latency,
             "total_latency_ms": round((perf_counter() - total_started) * 1000, 3),
             "token_usage": reflected_state.get("token_usage") or metadata.get("token_usage") or {},
-            "reflection_triggered": bool(raw_validation.get("issues")),
+            "reflection_triggered": bool(reflection_reasons),
+            "reflection_reasons": reflection_reasons,
             "reflection_repaired": bool(raw_validation.get("issues")) and not reflected_validation.get("issues"),
             "reflection_regressed": not raw_validation.get("issues") and bool(reflected_validation.get("issues")),
+            "reflection_delta": reflection_delta,
         })
     summaries = {mode: _grading_metrics(dataset, rows, mode)
                  for mode in ("raw", "validate", "reflect")}
@@ -370,15 +414,50 @@ def run_grading_suite(
          float(item.get("completion") or 0) * output_cost_per_million) / 1_000_000
         for item in usage
     ) if input_cost_per_million or output_cost_per_million else None
+    triggered_answers = sum(
+        item["reflection_delta"]["answer_count"] for item in triggered
+    )
+    changed_answers = sum(
+        item["reflection_delta"]["score_changed"] for item in triggered
+    )
+    improved_answers = sum(
+        item["reflection_delta"]["score_improved"] for item in triggered
+    )
+    regressed_answers = sum(
+        item["reflection_delta"]["score_regressed"] for item in triggered
+    )
+    range_repairs = sum(
+        item["reflection_delta"]["range_repaired"] for item in triggered
+    )
+    range_regressions = sum(
+        item["reflection_delta"]["range_regressed"] for item in triggered
+    )
     reflection = {
         "trigger_rate": round(len(triggered) / max(1, len(rows)), 4),
-        "repair_success_rate": round(sum(item["reflection_repaired"] for item in triggered) /
-                                     max(1, len(triggered)), 4),
-        "regression_rate": round(sum(item["reflection_regressed"] for item in rows) /
-                                 max(1, len(rows)), 4),
+        "triggered_submissions": len(triggered),
+        "triggered_answers": triggered_answers,
+        "validation_repair_success_rate": round(
+            sum(item["reflection_repaired"] for item in triggered) /
+            max(1, sum(bool(item["raw"]["validation"].get("issues")) for item in triggered)), 4,
+        ),
+        "validation_regression_rate": round(
+            sum(item["reflection_regressed"] for item in rows) / max(1, len(rows)), 4,
+        ),
+        "score_change_rate": round(changed_answers / max(1, triggered_answers), 4),
+        "score_improvement_rate": round(improved_answers / max(1, triggered_answers), 4),
+        "score_regression_rate": round(regressed_answers / max(1, triggered_answers), 4),
+        "accepted_range_repairs": range_repairs,
+        "accepted_range_regressions": range_regressions,
+        "mae_delta": round(
+            summaries["reflect"]["normalized_mae"] - summaries["raw"]["normalized_mae"], 4,
+        ),
         "retain_conditional_reflection": (
-            (sum(item["reflection_repaired"] for item in triggered) / max(1, len(triggered))) >= 0.30 and
-            summaries["reflect"]["normalized_mae"] <= summaries["raw"]["normalized_mae"] + 0.01
+            range_repairs > range_regressions and
+            summaries["reflect"]["within_accepted_range"] >=
+            summaries["raw"]["within_accepted_range"] and
+            summaries["reflect"]["normalized_mae"] <=
+            summaries["raw"]["normalized_mae"] + 0.01 and
+            (regressed_answers / max(1, triggered_answers)) <= 0.05
         ),
     }
     raw_latencies = [item["raw_latency_ms"] for item in rows]

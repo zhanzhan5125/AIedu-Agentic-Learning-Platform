@@ -473,6 +473,59 @@ def test_grading_reflection_does_not_turn_normal_confirmation_into_priority_revi
     assert reflected["draft"]["review_reason"] is None
 
 
+def test_grading_semantic_risk_triggers_one_bounded_revision(monkeypatch):
+    student_code = """int search(const int *a,int n,int x){
+        int left=0,right=n;
+        while(left<right){
+            int mid=(left+right)/2;
+            if(a[mid]==x) return mid;
+            if(a[mid]<x) left=mid;
+            else right=mid;
+        }
+        return -1;
+    }"""
+    draft = {
+        "items": [{
+            "answer_id": 1, "score": 10, "max_score": 20,
+            "rubric": ["接口", "比较", "边界", "终止"],
+            "comment": "边界更新可能无法终止",
+            "evidence_excerpt": "if(a[mid]<x) left=mid;",
+            "confidence": 90,
+        }],
+        "total_score": 10, "overall_comment": "需检查边界",
+        "confidence": 90, "needs_review": False, "review_reason": None,
+    }
+    state = {
+        "kind": "grading.single", "prompt": "按评分点给分",
+        "tool_results": {"answers": [{
+            "answer_id": 1, "question_id": 1, "question_kind": "programming",
+            "student_answer": student_code, "reference_answer": "reference",
+            "rubric": ["接口", "比较", "边界", "终止"], "max_score": 20,
+        }], "missing_question_ids": []},
+        "draft": draft, "validation": {"valid": True, "issues": []},
+        "reflection_count": 0,
+        "token_usage": {"prompt": 0, "completion": 0, "total": 0}, "steps": [],
+    }
+    calls = {"revision": 0}
+
+    def revision(_state, current, reasons):
+        calls["revision"] += 1
+        assert any("程序题" in reason for reason in reasons)
+        return current, {"token_usage": {"prompt": 1, "completion": 1, "total": 2}}
+
+    monkeypatch.setattr(
+        workflows, "get_settings",
+        lambda: SimpleNamespace(enable_llm=True, ai_api_key="test"),
+    )
+    monkeypatch.setattr(workflows, "_model_grading_revision", revision)
+
+    reflected = workflows.reflect_once(state)
+
+    assert calls["revision"] == 1
+    assert reflected["reflection_count"] == 1
+    assert any("程序题" in reason for reason in reflected["reflection_reasons"])
+
+
 def test_assignment_analysis_fallback_covers_every_question_without_recalculating_scores():
     state = {
         "kind": "assignment.summary",

@@ -104,13 +104,18 @@ def assert_official_dataset(dataset: BaseModel, suite: str) -> None:
     unapproved = [item.id for item in values if not item.approved]
     if unapproved:
         raise ValueError(f"{suite} 评测集包含未人工确认样本：{', '.join(unapproved[:10])}")
-    expected = {"rag": 40, "grading": 10, "routing": 40}[suite]
+    grading_expanded = suite == "grading" and getattr(dataset, "version", "") == "v3"
+    expected = {"rag": 40, "grading": 20 if grading_expanded else 10, "routing": 40}[suite]
     if len(values) != expected:
         raise ValueError(f"{suite} 正式评测集应有 {expected} 组，当前为 {len(values)}")
     if suite == "grading":
         answer_count = sum(len(item.answers) for item in values)
-        if answer_count != 30:
-            raise ValueError(f"grading 正式评测集应有 30 条答案，当前为 {answer_count}")
+        expected_answers = 60 if grading_expanded else 30
+        if answer_count != expected_answers:
+            raise ValueError(
+                f"grading 正式评测集应有 {expected_answers} 条答案，"
+                f"当前为 {answer_count}"
+            )
     if suite == "rag":
         answerable = sum(item.answerable for item in values)
         e2e = sum(item.end_to_end for item in values)

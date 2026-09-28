@@ -757,11 +757,12 @@ def _model_grading(state: WorkflowState) -> tuple[dict, dict]:
 
 
 def _model_grading_revision(state: WorkflowState, draft: dict, issues: list[str]) -> tuple[dict, dict]:
-    """Run one bounded second look only when deterministic checks found a defect."""
+    """Run one bounded second look for a validation defect or semantic-risk case."""
     value, metadata = structured_completion(
         GradingSuggestion,
         system_prompt=(
-            "你正在复核一份 AI 批阅建议。只修正校验指出的问题，并重新核对每项评分是否由学生原文支持。"
+            "你正在独立复核一份 AI 批阅建议。根据复核原因重新核对评分要点、部分得分、程序边界与学生原文证据。"
+            "若第一次评分正确可以保持原分；只有学生答案和 Rubric 明确支持时才修改，不能为了体现复核而强行改分。"
             "必须覆盖所有 answer_id，保持真实 max_score，证据摘录必须来自对应学生答案，分项之和必须等于总分。"
             "若仍无法可靠判断，不要猜测，降低置信度并明确要求教师重点复核。"
         ),
@@ -769,11 +770,52 @@ def _model_grading_revision(state: WorkflowState, draft: dict, issues: list[str]
             "teacher_rules": (state.get("prompt") or "").strip(),
             "submission": state.get("tool_results", {}),
             "first_suggestion": draft,
-            "validation_issues": issues,
+            "reflection_reasons": issues,
         }, ensure_ascii=False, default=str),
         max_retries=0,
     )
     return value.model_dump(), metadata
+
+
+def _grading_reflection_reasons(
+    state: WorkflowState, draft: dict, validation_issues: list[str] | None = None,
+) -> list[str]:
+    """Select grading cases where a second model look has a plausible payoff.
+
+    Deterministic validation still owns hard invariants. This policy adds a
+    bounded semantic-risk gate for partial-credit and non-trivial programming
+    answers, which are the cases where a structurally valid first pass can
+    still be substantively wrong.
+    """
+    reasons = list(validation_issues or [])
+    try:
+        suggestion = GradingSuggestion.model_validate(draft)
+    except Exception:
+        return list(dict.fromkeys(reasons))
+    answers = {
+        int(item["answer_id"]): item
+        for item in state.get("tool_results", {}).get("answers", [])
+    }
+    if suggestion.needs_review or suggestion.confidence < 75 or any(
+        item.confidence < 70 for item in suggestion.items
+    ):
+        reasons.append("模型低置信或主动标记需要人工复核")
+    for item in suggestion.items:
+        answer = answers.get(int(item.answer_id), {})
+        maximum = int(answer.get("max_score") or item.max_score or 0)
+        partial_credit = 0 < int(item.score) < maximum
+        kind = answer.get("question_kind")
+        rubric_size = len(answer.get("rubric") or [])
+        answer_length = len((answer.get("student_answer") or "").strip())
+        if kind == "programming" and answer_length >= 80:
+            reasons.append("包含需要复核算法正确性和边界条件的程序题")
+        if partial_credit and rubric_size >= 3 and kind in {
+            "short_answer", "multiple_choice", "programming",
+        }:
+            reasons.append("包含多评分点的复杂部分得分答案")
+        if partial_credit and answer_length >= 180:
+            reasons.append("较长答案的部分得分需要检查遗漏与矛盾")
+    return list(dict.fromkeys(reasons))[:20]
 
 
 def _fallback_assignment_analysis(state: WorkflowState) -> AssignmentAnalysisResult:
@@ -1448,6 +1490,10 @@ def reflect_once(state: WorkflowState) -> WorkflowState:
     started = perf_counter()
     draft = dict(state.get("draft", {}))
     issues = state.get("validation", {}).get("issues", [])
+    reflection_reasons = (
+        _grading_reflection_reasons(state, draft, issues)
+        if state["kind"] == "grading.single" else list(issues)
+    )
     if state["kind"] in {"assignment.draft", "question.generate", "practice.generate"}:
         expected = int(state.get("input_data", {}).get("question_count", 5))
         questions = draft.get("questions", [])[:expected]
@@ -1555,9 +1601,11 @@ def reflect_once(state: WorkflowState) -> WorkflowState:
     elif state["kind"] == "grading.single":
         settings = get_settings()
         revision_metadata: dict[str, Any] = {}
-        if issues and settings.enable_llm and settings.ai_api_key:
+        if reflection_reasons and settings.enable_llm and settings.ai_api_key:
             try:
-                draft, revision_metadata = _model_grading_revision(state, draft, issues)
+                draft, revision_metadata = _model_grading_revision(
+                    state, draft, reflection_reasons,
+                )
             except Exception:
                 # The original suggestion remains available for teacher review
                 # if the single bounded revision call fails.
@@ -1632,7 +1680,10 @@ def reflect_once(state: WorkflowState) -> WorkflowState:
     elif state["kind"] == "course_map.generate" and issues:
         draft = _fallback_course_map(state).model_dump()
         draft["mode"] = "deterministic-reflection-fallback"
-    reflected = {**state, "draft": draft, "reflection_count": 1}
+    reflected = {
+        **state, "draft": draft, "reflection_count": 1,
+        "reflection_reasons": reflection_reasons,
+    }
     reflected["validation"] = _validate(reflected).model_dump()
     if state["kind"] == "grading.single" and reflected["validation"]["issues"]:
         draft["needs_review"] = True
@@ -1642,7 +1693,11 @@ def reflect_once(state: WorkflowState) -> WorkflowState:
         reflected["draft"] = draft
     reflected["steps"] = _step(
         reflected, "reflect_once", tool_name="bounded_revision",
-        summary={"revision_count": 1, "remaining_issues": reflected["validation"]["issues"]},
+        summary={
+            "revision_count": 1,
+            "reflection_reasons": reflection_reasons,
+            "remaining_issues": reflected["validation"]["issues"],
+        },
         started=started, step_type="reflection",
     )
     return reflected
