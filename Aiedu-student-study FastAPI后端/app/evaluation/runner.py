@@ -155,7 +155,9 @@ def run_rag_suite(
             require_reranker=True,
         )
 
-    modes: list[RetrievalMode] = ["bm25", "dense", "hybrid", "hybrid_rerank"]
+    modes: list[RetrievalMode] = [
+        "bm25", "dense", "dense_rerank", "hybrid", "hybrid_rerank",
+    ]
     mode_rows: dict[str, list[dict]] = defaultdict(list)
     case_rows: list[dict] = []
     for case in dataset.cases:
@@ -200,6 +202,22 @@ def run_rag_suite(
             [row["modes"]["hybrid_rerank"]["metrics"][metric] for row in answerable_rows],
             seed=seed,
         )
+    rerank_comparisons = {}
+    for label, baseline_mode, candidate_mode in (
+        ("dense_to_dense_rerank", "dense", "dense_rerank"),
+        ("hybrid_to_hybrid_rerank", "hybrid", "hybrid_rerank"),
+        ("dense_rerank_to_hybrid_rerank", "dense_rerank", "hybrid_rerank"),
+    ):
+        rerank_comparisons[label] = {
+            metric: paired_bootstrap_ci(
+                [row["modes"][baseline_mode]["metrics"][metric]
+                 for row in answerable_rows],
+                [row["modes"][candidate_mode]["metrics"][metric]
+                 for row in answerable_rows],
+                seed=seed,
+            )
+            for metric in ("recall_at_5", "ndcg_at_5", "hit_at_1")
+        }
     hybrid_rerank_latency = [row["modes"]["hybrid_rerank"]["timings_ms"]["rerank"]
                              for row in case_rows]
     decision = {
@@ -254,6 +272,7 @@ def run_rag_suite(
             for mode in ("hybrid", "hybrid_rerank", "tie")}
     return {
         "suite": "rag", "summary": summaries, "rerank_comparison": comparison,
+        "rerank_comparisons": rerank_comparisons,
         "reranker_decision": decision, "cases": case_rows,
         "end_to_end": {"summary": wins, "cases": end_to_end,
                        "status": "pending_human_audit" if end_to_end else "not_run"},

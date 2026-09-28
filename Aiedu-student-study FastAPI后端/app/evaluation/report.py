@@ -19,6 +19,11 @@ def _rag_report(result: dict) -> str:
     regressions = [case["id"] for case in result["cases"] if case["answerable"] and
                    case["modes"]["hybrid_rerank"]["metrics"]["ndcg_at_5"] <
                    case["modes"]["hybrid"]["metrics"]["ndcg_at_5"]]
+    dense_regressions = [
+        case["id"] for case in result["cases"] if case["answerable"] and
+        case["modes"]["dense_rerank"]["metrics"]["ndcg_at_5"] <
+        case["modes"]["dense"]["metrics"]["ndcg_at_5"]
+    ]
     decision = result["reranker_decision"]
     reranker_device = (
         result["cases"][0]["modes"]["hybrid_rerank"]["diagnostics"].get("reranker_device")
@@ -34,10 +39,13 @@ def _rag_report(result: dict) -> str:
         "",
         f"- Rerank nDCG@5 差值：`{result['rerank_comparison']['ndcg_at_5']}`",
         f"- Rerank Recall@5 差值：`{result['rerank_comparison']['recall_at_5']}`",
+        f"- Dense 加 Rerank：`{result.get('rerank_comparisons', {}).get('dense_to_dense_rerank')}`",
+        f"- Dense+Rerank 对 Hybrid+Rerank：`{result.get('rerank_comparisons', {}).get('dense_rerank_to_hybrid_rerank')}`",
         f"- Rerank warm p95：{decision['rerank_p95_ms']} ms",
         f"- Reranker 实际设备：`{reranker_device}`",
         f"- 是否推荐默认启用：{'是' if decision['recommend_reranker'] else '否'}",
         f"- 重排退化案例：{', '.join(regressions) if regressions else '无'}",
+        f"- Dense 重排退化案例：{', '.join(dense_regressions) if dense_regressions else '无'}",
         f"- 端到端盲评：`{result['end_to_end']['summary']}`；状态：{result['end_to_end']['status']}",
     ])
 

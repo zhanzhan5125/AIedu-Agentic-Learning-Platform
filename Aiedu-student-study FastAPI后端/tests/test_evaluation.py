@@ -67,6 +67,10 @@ def test_explicit_retrieval_modes_use_distinct_paths(monkeypatch):
 
     assert rag.retrieve_course(2, "q", mode="bm25", db=db).results[0]["chunk_id"] == 2
     assert rag.retrieve_course(2, "q", mode="dense", db=db).results[0]["chunk_id"] == 1
+    dense_reranked = rag.retrieve_course(
+        2, "q", mode="dense_rerank", db=db, require_reranker=True,
+    )
+    assert dense_reranked.diagnostics["reranker_applied"] is True
     hybrid = rag.retrieve_course(2, "q", mode="hybrid", db=db)
     assert {item["chunk_id"] for item in hybrid.results} == {1, 2}
     reranked = rag.retrieve_course(
@@ -85,6 +89,7 @@ def test_required_reranker_never_silently_falls_back(monkeypatch):
 
 def test_retrieval_variants_share_dense_and_bm25_work(monkeypatch):
     calls = {"dense": 0, "bm25": 0, "rerank": 0}
+    rerank_candidate_ids = []
 
     def dense(*_):
         calls["dense"] += 1
@@ -98,14 +103,19 @@ def test_retrieval_variants_share_dense_and_bm25_work(monkeypatch):
 
     def rerank(query, values, required=False):
         calls["rerank"] += 1
+        rerank_candidate_ids.append([item["chunk_id"] for item in values])
         return values, {"reranker_applied": True, "reranker_device": "cpu"}
 
     monkeypatch.setattr(rag, "_dense_search", dense)
     monkeypatch.setattr(rag, "_bm25_search", bm25)
     monkeypatch.setattr(rag, "_rerank_with_diagnostics", rerank)
     variants = rag.retrieve_course_variants(2, "q", db=SimpleNamespace())
-    assert set(variants) == {"bm25", "dense", "hybrid", "hybrid_rerank"}
-    assert calls == {"dense": 1, "bm25": 1, "rerank": 1}
+    assert set(variants) == {
+        "bm25", "dense", "dense_rerank", "hybrid", "hybrid_rerank",
+    }
+    assert calls == {"dense": 1, "bm25": 1, "rerank": 2}
+    assert rerank_candidate_ids[0] == [1]
+    assert set(rerank_candidate_ids[1]) == {1, 2}
 
 
 def test_grading_ablation_reuses_one_raw_model_output(monkeypatch):

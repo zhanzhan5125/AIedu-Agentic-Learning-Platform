@@ -30,7 +30,9 @@ class DocumentBlock:
     slide_number: int | None = None
 
 
-RetrievalMode = Literal["bm25", "dense", "hybrid", "hybrid_rerank"]
+RetrievalMode = Literal[
+    "bm25", "dense", "dense_rerank", "hybrid", "hybrid_rerank",
+]
 
 
 @dataclass(frozen=True)
@@ -1004,12 +1006,12 @@ def retrieve_course(
     """Retrieve course chunks through an explicit, measurable ablation path."""
     from app.db import SessionLocal
 
-    if mode not in {"bm25", "dense", "hybrid", "hybrid_rerank"}:
+    if mode not in {"bm25", "dense", "dense_rerank", "hybrid", "hybrid_rerank"}:
         raise ValueError(f"不支持的检索模式：{mode}")
     if limit < 1:
         raise ValueError("limit 必须大于 0")
-    if require_reranker and mode != "hybrid_rerank":
-        raise ValueError("require_reranker 只能用于 hybrid_rerank 模式")
+    if require_reranker and mode not in {"dense_rerank", "hybrid_rerank"}:
+        raise ValueError("require_reranker 只能用于 rerank 模式")
 
     owns_session = db is None
     session = db or SessionLocal()
@@ -1019,7 +1021,7 @@ def retrieve_course(
         "dense_candidates": 0,
         "bm25_candidates": 0,
         "fused_candidates": 0,
-        "reranker_requested": mode == "hybrid_rerank",
+        "reranker_requested": mode in {"dense_rerank", "hybrid_rerank"},
         "reranker_applied": False,
         "reranker_model": get_settings().reranker_model,
         "reranker_device": None,
@@ -1028,7 +1030,7 @@ def retrieve_course(
     try:
         dense: list[dict] = []
         lexical: list[dict] = []
-        if mode in {"dense", "hybrid", "hybrid_rerank"}:
+        if mode in {"dense", "dense_rerank", "hybrid", "hybrid_rerank"}:
             phase = perf_counter()
             dense = _dense_search(offering_id, query, 20)
             timings["dense"] = round((perf_counter() - phase) * 1000, 3)
@@ -1041,8 +1043,16 @@ def retrieve_course(
 
         if mode == "bm25":
             results = _apply_source_preferences(query, lexical)
-        elif mode == "dense":
+        elif mode in {"dense", "dense_rerank"}:
             results = _apply_source_preferences(query, dense)
+            if mode == "dense_rerank":
+                phase = perf_counter()
+                results, rerank_diagnostics = _rerank_with_diagnostics(
+                    query, results, required=require_reranker,
+                )
+                results = _apply_source_preferences(query, results)
+                timings["rerank"] = round((perf_counter() - phase) * 1000, 3)
+                diagnostics.update(rerank_diagnostics)
         else:
             phase = perf_counter()
             results = _apply_source_preferences(query, _rrf(dense, lexical))
@@ -1070,7 +1080,7 @@ def retrieve_course_variants(
     offering_id: int, query: str, *, limit: int = 10, db: Session | None = None,
     require_reranker: bool = False,
 ) -> dict[RetrievalMode, RetrievalResult]:
-    """Run shared retrieval stages once and expose all four ablation variants."""
+    """Run shared retrieval stages once and expose all five ablation variants."""
     from app.db import SessionLocal
 
     owns_session = db is None
@@ -1087,6 +1097,12 @@ def retrieve_course_variants(
         lexical = _apply_source_preferences(query, lexical)
         fused = _apply_source_preferences(query, _rrf(dense, lexical))
         fusion_ms = round((perf_counter() - phase) * 1000, 3)
+        phase = perf_counter()
+        dense_reranked, dense_rerank_diagnostics = _rerank_with_diagnostics(
+            query, [dict(item) for item in dense], required=require_reranker,
+        )
+        dense_reranked = _apply_source_preferences(query, dense_reranked)
+        dense_rerank_ms = round((perf_counter() - phase) * 1000, 3)
         phase = perf_counter()
         reranked, rerank_diagnostics = _rerank_with_diagnostics(
             query, [dict(item) for item in fused], required=require_reranker,
@@ -1111,6 +1127,13 @@ def retrieve_course_variants(
                 timings_ms={"dense": dense_ms, "bm25": 0.0, "fusion": 0.0,
                             "rerank": 0.0, "total": dense_ms},
                 diagnostics=dict(base_diagnostics),
+            ),
+            "dense_rerank": RetrievalResult(
+                mode="dense_rerank", results=dense_reranked[:limit],
+                timings_ms={"dense": dense_ms, "bm25": 0.0, "fusion": 0.0,
+                            "rerank": dense_rerank_ms,
+                            "total": round(dense_ms + dense_rerank_ms, 3)},
+                diagnostics={**base_diagnostics, **dense_rerank_diagnostics},
             ),
             "hybrid": RetrievalResult(
                 mode="hybrid", results=fused[:limit],
