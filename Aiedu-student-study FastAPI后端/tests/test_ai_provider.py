@@ -6,7 +6,10 @@ import openai
 import pytest
 from pydantic import BaseModel
 
-from app.ai.contracts import AssignmentRoutingDecision, CourseMapDraft, TutorRoutingDecision
+from app.ai.contracts import (
+    AssignmentRoutingDecision, CourseMapDraft, GradingReflectionResult,
+    TutorRoutingDecision,
+)
 from app.ai import tutor, workflows
 from app.integrations import ai_provider
 from app.integrations.ai_provider import _json_payload
@@ -525,6 +528,28 @@ def test_grading_semantic_risk_triggers_one_bounded_revision(monkeypatch):
     assert calls["revision"] == 1
     assert reflected["reflection_count"] == 1
     assert any("程序题" in reason for reason in reflected["reflection_reasons"])
+
+
+def test_grading_reflection_schema_requires_audit_score_to_match_final_score():
+    payload = {
+        "audits": [{
+            "answer_id": 1, "first_score": 8, "recalculated_score": 7,
+            "score_changed": True, "rubric_checks": ["部分满足：缺少边界处理"],
+            "identified_issues": ["边界条件错误"],
+        }],
+        "suggestion": {
+            "items": [{
+                "answer_id": 1, "score": 8, "max_score": 10,
+                "rubric": ["边界处理"], "comment": "部分正确",
+                "evidence_excerpt": "student text", "confidence": 80,
+            }],
+            "total_score": 8, "overall_comment": "部分正确",
+            "confidence": 80, "needs_review": False,
+        },
+    }
+
+    with pytest.raises(ValueError, match="audit score must match"):
+        GradingReflectionResult.model_validate(payload)
 
 
 def test_assignment_analysis_fallback_covers_every_question_without_recalculating_scores():

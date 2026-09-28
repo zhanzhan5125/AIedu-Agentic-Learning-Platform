@@ -154,6 +154,34 @@ class GradingSuggestion(BaseModel):
     review_reason: str | None = None
 
 
+class GradingAuditItem(BaseModel):
+    answer_id: int
+    first_score: int = Field(ge=0)
+    recalculated_score: int = Field(ge=0)
+    score_changed: bool = False
+    rubric_checks: list[str] = Field(min_length=1, max_length=8)
+    identified_issues: list[str] = Field(default_factory=list, max_length=5)
+
+
+class GradingReflectionResult(BaseModel):
+    audits: list[GradingAuditItem] = Field(min_length=1, max_length=50)
+    suggestion: GradingSuggestion
+
+    @model_validator(mode="after")
+    def audit_matches_suggestion(self):
+        audit_by_id = {item.answer_id: item for item in self.audits}
+        suggestion_by_id = {item.answer_id: item for item in self.suggestion.items}
+        if set(audit_by_id) != set(suggestion_by_id):
+            raise ValueError("audit answer ids must match suggestion answer ids")
+        for answer_id, audit in audit_by_id.items():
+            suggestion = suggestion_by_id[answer_id]
+            if audit.recalculated_score != suggestion.score:
+                raise ValueError("audit score must match final suggestion score")
+            if audit.score_changed != (audit.first_score != audit.recalculated_score):
+                raise ValueError("score_changed must reflect the audited scores")
+        return self
+
+
 class AssignmentQuestionSummary(BaseModel):
     question_id: int
     summary: str = Field(min_length=1, max_length=2000)

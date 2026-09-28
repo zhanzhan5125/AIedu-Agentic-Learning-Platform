@@ -12,7 +12,8 @@ from app.ai.contracts import (
     AgentPlan, AssignmentAnalysisResult, AssignmentDraftResult, AssignmentQuestionDraft,
     AssignmentQuestionSummary, AssignmentRoutingDecision, Citation,
     ChapterKnowledgeBatch, CourseChapterPlan, CourseContextBrief, CourseMapDraft,
-    CourseMapEdgeDraft, CourseMapNodeDraft, GradingSuggestion, GradeSuggestionItem, PlanStep,
+    CourseMapEdgeDraft, CourseMapNodeDraft, GradingReflectionResult, GradingSuggestion,
+    GradeSuggestionItem, PlanStep,
     PracticeFeedbackItem, PracticeFeedbackResult, StudentLearningBrief, ValidationResult,
 )
 from app.core.config import get_settings
@@ -61,6 +62,9 @@ class WorkflowState(TypedDict, total=False):
     steps: list[dict[str, Any]]
     token_usage: dict[str, int]
     routing: dict[str, Any]
+    reflection_audit: list[dict[str, Any]]
+    reflection_reasons: list[str]
+    evaluation_semantic_reflection: bool
 
 
 def agent_identity(kind: str) -> tuple[str, str]:
@@ -759,11 +763,14 @@ def _model_grading(state: WorkflowState) -> tuple[dict, dict]:
 def _model_grading_revision(state: WorkflowState, draft: dict, issues: list[str]) -> tuple[dict, dict]:
     """Run one bounded second look for a validation defect or semantic-risk case."""
     value, metadata = structured_completion(
-        GradingSuggestion,
+        GradingReflectionResult,
         system_prompt=(
-            "你正在独立复核一份 AI 批阅建议。根据复核原因重新核对评分要点、部分得分、程序边界与学生原文证据。"
-            "若第一次评分正确可以保持原分；只有学生答案和 Rubric 明确支持时才修改，不能为了体现复核而强行改分。"
-            "必须覆盖所有 answer_id，保持真实 max_score，证据摘录必须来自对应学生答案，分项之和必须等于总分。"
+            "你正在对一份 AI 批阅做结构化独立审计。对每个 answer_id，必须先忽略第一版总分，"
+            "依次按 Rubric 的每个评分点重新计算得分，并在 rubric_checks 中用简短的‘满足/部分满足/未满足 + 依据’记录。"
+            "再把独立计算结果与 first_suggestion 对比，填写 first_score、recalculated_score、score_changed 和 identified_issues。"
+            "程序题必须检查接口、主要逻辑、边界、终止性、溢出和资源管理；选择题要区分选项结论与理由得分。"
+            "若第一次评分正确可以保持原分，但不得因为第一版已有分数就省略独立计算。"
+            "suggestion 必须覆盖所有 answer_id，保持真实 max_score，证据摘录必须来自学生原答案，分项之和必须等于总分。"
             "若仍无法可靠判断，不要猜测，降低置信度并明确要求教师重点复核。"
         ),
         user_prompt=json.dumps({
@@ -774,7 +781,11 @@ def _model_grading_revision(state: WorkflowState, draft: dict, issues: list[str]
         }, ensure_ascii=False, default=str),
         max_retries=0,
     )
-    return value.model_dump(), metadata
+    metadata = {
+        **metadata,
+        "reflection_audit": [item.model_dump() for item in value.audits],
+    }
+    return value.suggestion.model_dump(), metadata
 
 
 def _grading_reflection_reasons(
@@ -1636,6 +1647,7 @@ def reflect_once(state: WorkflowState) -> WorkflowState:
                 key: int(previous_usage.get(key) or 0) + int(revision_usage.get(key) or 0)
                 for key in ("prompt", "completion", "total")
             }}
+            state["reflection_audit"] = revision_metadata.get("reflection_audit", [])
     elif state["kind"] == "assignment.summary":
         settings = get_settings()
         fallback = _fallback_assignment_analysis(state).model_dump()
@@ -1702,6 +1714,7 @@ def reflect_once(state: WorkflowState) -> WorkflowState:
         summary={
             "revision_count": 1,
             "reflection_reasons": reflection_reasons,
+            "audit": reflected.get("reflection_audit", []),
             "remaining_issues": reflected["validation"]["issues"],
         },
         started=started, step_type="reflection",

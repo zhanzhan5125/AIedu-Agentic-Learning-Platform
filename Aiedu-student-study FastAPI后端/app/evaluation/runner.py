@@ -416,6 +416,7 @@ def run_grading_suite(
             "token_usage": reflected_state.get("token_usage") or metadata.get("token_usage") or {},
             "reflection_triggered": bool(reflection_reasons),
             "reflection_reasons": reflection_reasons,
+            "reflection_audit": reflected_state.get("reflection_audit", []),
             "reflection_repaired": bool(raw_validation.get("issues")) and not reflected_validation.get("issues"),
             "reflection_regressed": not raw_validation.get("issues") and bool(reflected_validation.get("issues")),
             "reflection_delta": reflection_delta,
@@ -490,11 +491,40 @@ def run_grading_suite(
             (regressed_answers / max(1, triggered_answers)) <= 0.05
         ),
     }
+    cohorts = {}
+    if dataset.version == "v3" and len(dataset.submissions) == 20:
+        for name, start, end in (
+            ("original_30_answers", 0, 10),
+            ("complex_30_answers", 10, 20),
+        ):
+            cohort_dataset = dataset.model_copy(update={
+                "submissions": dataset.submissions[start:end],
+            })
+            cohort_rows = rows[start:end]
+            cohort_raw = _grading_metrics(cohort_dataset, cohort_rows, "raw")
+            cohort_reflect = _grading_metrics(cohort_dataset, cohort_rows, "reflect")
+            cohort_deltas = [item["reflection_delta"] for item in cohort_rows]
+            cohorts[name] = {
+                "raw": cohort_raw,
+                "reflect": cohort_reflect,
+                "mae_delta": round(
+                    cohort_reflect["normalized_mae"] - cohort_raw["normalized_mae"], 4,
+                ),
+                "accepted_range_delta": round(
+                    cohort_reflect["within_accepted_range"] -
+                    cohort_raw["within_accepted_range"], 4,
+                ),
+                "score_improvements": sum(item["score_improved"] for item in cohort_deltas),
+                "score_regressions": sum(item["score_regressed"] for item in cohort_deltas),
+                "review_improvements": sum(item["review_improved"] for item in cohort_deltas),
+                "review_regressions": sum(item["review_regressed"] for item in cohort_deltas),
+            }
     raw_latencies = [item["raw_latency_ms"] for item in rows]
     reflection_latencies = [item["reflection_latency_ms"] for item in rows]
     total_latencies = [item["total_latency_ms"] for item in rows]
     return {
         "suite": "grading", "summary": summaries, "reflection": reflection,
+        "cohorts": cohorts,
         "performance": {
             "raw_latency_p50_ms": percentile(raw_latencies, 0.5),
             "raw_latency_p95_ms": percentile(raw_latencies, 0.95),
