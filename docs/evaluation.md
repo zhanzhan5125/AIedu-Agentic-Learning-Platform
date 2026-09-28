@@ -58,7 +58,7 @@ uv run python -m scripts.evaluate_agents --suite grading `
 
 ## 指标与决策规则
 
-RAG 对比 BM25、Dense、RRF、RRF+Rerank，报告 Recall@5/6、MRR@10、nDCG@5、Hit@1 和 p50/p95。只有当 Rerank 的 nDCG@5 至少提升 0.03、Recall@5 不下降超过 0.01、增量 p95 不超过 500ms 时，报告才推荐默认启用。
+RAG 对比 BM25、Dense、Dense+Rerank、RRF、RRF+Rerank，报告 Recall@5/6、MRR@10、nDCG@5、Hit@1 和 p50/p95。Dense+Rerank 用于隔离 Cross-Encoder 自身收益，避免把 BM25 候选增益与重排增益混为一谈。只有当 Rerank 的 nDCG@5 至少提升 0.03、Recall@5 不下降超过 0.01、增量 p95 不超过 500ms 时，报告才推荐默认启用。
 
 批阅复用同一份 Raw 输出，对比 Raw、确定性 Validate 和固定一次结构化 Reflect。Reflect 必须逐题重新核对 Rubric，记录首次分数、重算分数、受影响评分点和简短审计摘要。报告归一化 MAE、人工允许区间命中率、证据支持率、结构合法率、人工复核 F1、修复率、回归率、95% 配对 bootstrap 置信区间与成本。
 
@@ -66,4 +66,4 @@ RAG 对比 BM25、Dense、RRF、RRF+Rerank，报告 Recall@5/6、MRR@10、nDCG@5
 
 ## 简历结论规则
 
-commit `7d67258` 的完整 v1 正式评测见 [v1 正式评测结果](evaluation-results-v1.md)；commit `aea1060` 的结构化切片 RAG 复测见 [RAG v2 正式评测结果](evaluation-results-v2.md)；commit `67da8ae` 的 60 条批阅与结构化审计见 [批阅 Reflection v3 正式评测](evaluation-results-grading-v3.md)。正式报告只能引用基线 JSON 中能够重新计算的指标。Rerank 虽改善 v2 排序指标，但仍未达到延迟门槛；Reflection v3 观测到净改善，但置信区间仍跨 0 且存在回归，因此只作为教师确认前的异步批阅建议。
+commit `7d67258` 的完整 v1 正式评测见 [v1 正式评测结果](evaluation-results-v1.md)；commit `aea1060` 的结构化切片 RAG 复测见 [RAG v2 正式评测结果](evaluation-results-v2.md)；commit `61241a5` 的 Dense+Rerank 补充消融见 [Dense+Rerank v2 结果](evaluation-results-dense-rerank-v2.md)；commit `67da8ae` 的 60 条批阅与结构化审计见 [批阅 Reflection v3 正式评测](evaluation-results-grading-v3.md)。正式报告只能引用基线 JSON 中能够重新计算的指标。Dense+Rerank 的排序收益明确，但 Recall 略降且 CPU 延迟远超门槛，因此仍不默认启用；Reflection v3 观测到净改善，但置信区间仍跨 0 且存在回归，因此只作为教师确认前的异步批阅建议。
