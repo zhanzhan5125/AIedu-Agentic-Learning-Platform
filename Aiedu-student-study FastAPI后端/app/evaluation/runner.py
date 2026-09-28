@@ -372,6 +372,36 @@ def _grading_reflection_delta(case, raw: dict, reflected: dict) -> dict[str, int
     return counts
 
 
+def _grading_paired_ci(dataset: GradingEvalDataset, rows: list[dict]) -> dict[str, dict]:
+    raw_errors = []
+    reflected_errors = []
+    raw_ranges = []
+    reflected_ranges = []
+    for case, row in zip(dataset.submissions, rows, strict=True):
+        raw_items = {
+            int(item["answer_id"]): item for item in row["raw"]["result"].get("items", [])
+        }
+        reflected_items = {
+            int(item["answer_id"]): item
+            for item in row["reflect"]["result"].get("items", [])
+        }
+        for index, gold in enumerate(case.answers, 1):
+            raw_score = int(raw_items.get(index, {}).get("score", 0))
+            reflected_score = int(reflected_items.get(index, {}).get("score", 0))
+            raw_errors.append(abs(raw_score - gold.gold_score) / gold.max_score)
+            reflected_errors.append(
+                abs(reflected_score - gold.gold_score) / gold.max_score
+            )
+            raw_ranges.append(float(gold.accepted_min <= raw_score <= gold.accepted_max))
+            reflected_ranges.append(float(
+                gold.accepted_min <= reflected_score <= gold.accepted_max
+            ))
+    return {
+        "normalized_mae": paired_bootstrap_ci(raw_errors, reflected_errors),
+        "accepted_range": paired_bootstrap_ci(raw_ranges, reflected_ranges),
+    }
+
+
 def run_grading_suite(
     dataset: GradingEvalDataset, *, input_cost_per_million: float = 0,
     output_cost_per_million: float = 0,
@@ -490,6 +520,7 @@ def run_grading_suite(
             summaries["raw"]["normalized_mae"] + 0.01 and
             (regressed_answers / max(1, triggered_answers)) <= 0.05
         ),
+        "paired_ci95": _grading_paired_ci(dataset, rows),
     }
     cohorts = {}
     if dataset.version == "v3" and len(dataset.submissions) == 20:
@@ -518,6 +549,7 @@ def run_grading_suite(
                 "score_regressions": sum(item["score_regressed"] for item in cohort_deltas),
                 "review_improvements": sum(item["review_improved"] for item in cohort_deltas),
                 "review_regressions": sum(item["review_regressed"] for item in cohort_deltas),
+                "paired_ci95": _grading_paired_ci(cohort_dataset, cohort_rows),
             }
     raw_latencies = [item["raw_latency_ms"] for item in rows]
     reflection_latencies = [item["reflection_latency_ms"] for item in rows]

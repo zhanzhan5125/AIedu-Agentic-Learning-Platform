@@ -75,9 +75,10 @@ npm run build
 ```powershell
 cd "Aiedu-student-study FastAPI后端"
 uv run python -m scripts.evaluate_agents --suite all --dataset-version v2 --offering-id 2
+uv run python -m scripts.evaluate_agents --suite grading --dataset-version v3 --seed 42
 ```
 
-评测会保存逐样本 JSON、Markdown 汇总、失败案例、Token 和延迟。正式运行要求全部样本经过审核，且指定 Rerank 时必须真正加载模型，禁止静默降级后伪报重排结果。结构化切片后的 v2 中，章节类 Hybrid nDCG@5 从 v1 的 0.5419 提升到 0.7827；reranker 将 v2 整体 nDCG@5 从 0.7033 提升到 0.7814，但 CPU warm p95 增加 5.85 秒、端到端 12 组对比没有获胜，因此生产仍默认使用 RRF。路由与批阅沿用 v1 正式结论。详见 [评测说明](docs/evaluation.md)、[v2 审核记录](docs/evaluation-dataset-audit-v2.md)与 [RAG v2 正式结果](docs/evaluation-results-v2.md)。
+评测会保存逐样本 JSON、Markdown 汇总、失败案例、Token 和延迟。正式运行要求全部样本经过审核，且指定 Rerank 时必须真正加载模型，禁止静默降级后伪报重排结果。结构化切片后的 v2 中，章节类 Hybrid nDCG@5 从 v1 的 0.5419 提升到 0.7827；reranker 将 v2 整体 nDCG@5 从 0.7033 提升到 0.7814，但 CPU warm p95 增加 5.85 秒、端到端 12 组对比没有获胜，因此生产仍默认使用 RRF。批阅 v3 在 60 条答案上将结构化 Reflection 与同一份 Raw 输出配对比较，归一化 MAE 从 0.0636 降到 0.0503，允许区间命中率从 73.33% 提升到 80%；但 95% CI 仍跨 0，且存在 3 条评分回归，所以仍保留教师确认。详见 [评测说明](docs/evaluation.md)、[RAG v2 正式结果](docs/evaluation-results-v2.md)与 [批阅 Reflection v3 正式结果](docs/evaluation-results-grading-v3.md)。
 
 ## 已知边界
 
