@@ -779,15 +779,18 @@ def _model_grading_revision(state: WorkflowState, draft: dict, issues: list[str]
 
 def _grading_reflection_reasons(
     state: WorkflowState, draft: dict, validation_issues: list[str] | None = None,
+    *, include_semantic_risk: bool = False,
 ) -> list[str]:
-    """Select grading cases where a second model look has a plausible payoff.
+    """Describe what the mandatory, single grading review must check.
 
-    Deterministic validation still owns hard invariants. This policy adds a
-    bounded semantic-risk gate for partial-credit and non-trivial programming
-    answers, which are the cases where a structurally valid first pass can
-    still be substantively wrong.
+    Every grading suggestion receives exactly one independent second look.
+    Deterministic validation still owns hard invariants, while optional risk
+    labels focus the reviewer on partial-credit and programming logic.
     """
-    reasons = list(validation_issues or [])
+    reasons = ["所有批阅必须执行一次独立逻辑复核"]
+    reasons.extend(validation_issues or [])
+    if not include_semantic_risk:
+        return list(dict.fromkeys(reasons))[:20]
     try:
         suggestion = GradingSuggestion.model_validate(draft)
     except Exception:
@@ -1491,7 +1494,10 @@ def reflect_once(state: WorkflowState) -> WorkflowState:
     draft = dict(state.get("draft", {}))
     issues = state.get("validation", {}).get("issues", [])
     reflection_reasons = (
-        _grading_reflection_reasons(state, draft, issues)
+        _grading_reflection_reasons(
+            state, draft, issues,
+            include_semantic_risk=bool(state.get("evaluation_semantic_reflection")),
+        )
         if state["kind"] == "grading.single" else list(issues)
     )
     if state["kind"] in {"assignment.draft", "question.generate", "practice.generate"}:

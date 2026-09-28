@@ -150,7 +150,7 @@ def test_grading_ablation_reuses_one_raw_model_output(monkeypatch):
     assert calls == {"model": 1, "reflect": 1}
     assert result["summary"]["raw"]["normalized_mae"] == 0
     assert result["cases"][0]["reflect"]["result"]["needs_review"] is False
-    assert result["reflection"]["trigger_rate"] == 0
+    assert result["reflection"]["trigger_rate"] == 1
 
 
 def test_grading_reflection_delta_counts_score_repairs_and_regressions():
@@ -176,7 +176,8 @@ def test_grading_reflection_delta_counts_score_repairs_and_regressions():
         {"items": [{"answer_id": 1, "score": 8}, {"answer_id": 2, "score": 9}]},
     )
     assert delta == {
-        "answer_count": 2, "score_changed": 2, "score_improved": 1,
+        "answer_count": 2, "raw_out_of_range": 1,
+        "score_changed": 2, "score_improved": 1,
         "score_regressed": 1, "range_repaired": 1, "range_regressed": 1,
     }
 

@@ -17,6 +17,8 @@ Run the formal suite with:
 uv run python -m scripts.evaluate_agents --suite grading --dataset-version v3 --output evals/results --seed 42
 ```
 
-Reflection is not considered useful merely because it ran. The report compares
+Every submission receives exactly one Reflection call; the complex-risk labels
+only tell that reviewer what to focus on. Reflection is not considered useful
+merely because it ran. The report compares
 raw and reflected normalized MAE, accepted-range accuracy, score repairs,
 regressions, validation defects, latency, and token usage.

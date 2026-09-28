@@ -503,6 +503,7 @@ def test_grading_semantic_risk_triggers_one_bounded_revision(monkeypatch):
             "rubric": ["接口", "比较", "边界", "终止"], "max_score": 20,
         }], "missing_question_ids": []},
         "draft": draft, "validation": {"valid": True, "issues": []},
+        "evaluation_semantic_reflection": True,
         "reflection_count": 0,
         "token_usage": {"prompt": 0, "completion": 0, "total": 0}, "steps": [],
     }

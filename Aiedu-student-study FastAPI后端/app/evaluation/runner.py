@@ -272,6 +272,9 @@ def _grading_state(case) -> dict[str, Any]:
     return {
         "kind": "grading.single", "prompt": case.teacher_rules,
         "tool_results": {"answers": answers, "missing_question_ids": []},
+        # The ablation deliberately tests whether complexity-triggered Reflection
+        # helps. Production runs omit this flag until the measured gate passes.
+        "evaluation_semantic_reflection": True,
         "steps": [], "reflection_count": 0,
         "token_usage": {"prompt": 0, "completion": 0, "total": 0},
     }
@@ -336,6 +339,7 @@ def _grading_reflection_delta(case, raw: dict, reflected: dict) -> dict[str, int
     }
     counts = {
         "answer_count": len(case.answers),
+        "raw_out_of_range": 0,
         "score_changed": 0,
         "score_improved": 0,
         "score_regressed": 0,
@@ -359,6 +363,8 @@ def _grading_reflection_delta(case, raw: dict, reflected: dict) -> dict[str, int
         reflected_in_range = (
             gold.accepted_min <= reflected_score <= gold.accepted_max
         )
+        if not raw_in_range:
+            counts["raw_out_of_range"] += 1
         if not raw_in_range and reflected_in_range:
             counts["range_repaired"] += 1
         elif raw_in_range and not reflected_in_range:
@@ -380,7 +386,7 @@ def run_grading_suite(
         raw_state = {**state, "draft": raw}
         raw_validation = workflows._validate(raw_state).model_dump()
         reflection_reasons = workflows._grading_reflection_reasons(
-            state, raw, raw_validation.get("issues", []),
+            state, raw, raw_validation.get("issues", []), include_semantic_risk=True,
         )
         validated_state = {**raw_state, "validation": raw_validation,
                            "token_usage": metadata.get("token_usage") or {}}
@@ -390,6 +396,15 @@ def run_grading_suite(
         reflected = reflected_state["draft"]
         reflected_validation = reflected_state["validation"]
         reflection_delta = _grading_reflection_delta(case, raw, reflected)
+        expected_review = any(item.should_review for item in case.answers)
+        raw_review = bool(raw.get("needs_review"))
+        reflected_review = bool(reflected.get("needs_review"))
+        reflection_delta["review_improved"] = int(
+            raw_review != expected_review and reflected_review == expected_review
+        )
+        reflection_delta["review_regressed"] = int(
+            raw_review == expected_review and reflected_review != expected_review
+        )
         rows.append({
             "id": case.id,
             "raw": {"result": raw, "validation": raw_validation},
@@ -432,6 +447,16 @@ def run_grading_suite(
     range_regressions = sum(
         item["reflection_delta"]["range_regressed"] for item in triggered
     )
+    raw_out_of_range = sum(
+        item["reflection_delta"]["raw_out_of_range"] for item in triggered
+    )
+    review_improvements = sum(
+        item["reflection_delta"]["review_improved"] for item in triggered
+    )
+    review_regressions = sum(
+        item["reflection_delta"]["review_regressed"] for item in triggered
+    )
+    semantic_repair_rate = range_repairs / max(1, raw_out_of_range)
     reflection = {
         "trigger_rate": round(len(triggered) / max(1, len(rows)), 4),
         "triggered_submissions": len(triggered),
@@ -448,11 +473,16 @@ def run_grading_suite(
         "score_regression_rate": round(regressed_answers / max(1, triggered_answers), 4),
         "accepted_range_repairs": range_repairs,
         "accepted_range_regressions": range_regressions,
+        "semantic_repair_rate": round(semantic_repair_rate, 4),
+        "review_improvements": review_improvements,
+        "review_regressions": review_regressions,
         "mae_delta": round(
             summaries["reflect"]["normalized_mae"] - summaries["raw"]["normalized_mae"], 4,
         ),
         "retain_conditional_reflection": (
+            semantic_repair_rate >= 0.30 and
             range_repairs > range_regressions and
+            review_improvements >= review_regressions and
             summaries["reflect"]["within_accepted_range"] >=
             summaries["raw"]["within_accepted_range"] and
             summaries["reflect"]["normalized_mae"] <=
