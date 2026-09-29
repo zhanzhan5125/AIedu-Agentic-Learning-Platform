@@ -20,6 +20,21 @@ def _columns(inspector, table: str) -> set[str]:
 def upgrade() -> None:
     bind = op.get_bind()
     inspector = sa.inspect(bind)
+    # The baseline revision creates ``Base.metadata`` from the current model.
+    # On a brand-new database these tables and columns therefore already exist;
+    # only an older database upgraded from 0009 needs the DDL below.
+    current_tables = set(inspector.get_table_names())
+    platform_tables = {
+        "resource_chunks", "course_map_versions", "course_map_nodes",
+        "course_map_edges", "course_map_evidence", "agent_feedback",
+    }
+    required_agent_columns = {
+        "agent_name", "task_type", "parent_run_id", "plan", "reflection_count",
+    }
+    if platform_tables.issubset(current_tables) and required_agent_columns.issubset(
+        _columns(inspector, "agent_runs")
+    ):
+        return
     agent_columns = _columns(inspector, "agent_runs")
     with op.batch_alter_table("agent_runs") as batch:
         if "agent_name" not in agent_columns:

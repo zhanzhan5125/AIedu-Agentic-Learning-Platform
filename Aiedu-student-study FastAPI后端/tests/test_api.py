@@ -11,8 +11,7 @@ from app.models import (AIJob, AgentRun, AgentRunStep, Answer, Assignment, Assig
                         ScheduledNotification, Submission, SubmissionStatus, User)
 from app.services.insights import class_insights
 from app.services.learning import profile_view, refresh_student_mastery, upsert_evidence
-from app.services.submissions import auto_submit_expired_drafts
-from app.worker import deliver_scheduled_notifications, run_local_once
+from app.worker import deliver_scheduled_notifications, maintain_deadlines, run_local_once
 
 
 def headers(token: str) -> dict[str, str]:
@@ -157,6 +156,9 @@ def test_publish_submit_and_ai_job_are_idempotent(client, auth):
         assert db.query(ScheduledNotification).filter_by(
             assignment_id=assignment_id, kind="assignment_deadline"
         ).count() >= 1
+        assert db.query(ScheduledNotification).filter_by(
+            assignment_id=assignment_id, kind="assignment_auto_submit"
+        ).count() == 1
 
     job_payload = {"resource_id": assignment_id, "idempotency_key": "summary-key-001"}
     first_job = client.post("/api/v1/ai/summary-jobs", headers=headers(teacher_token), json=job_payload).json()
@@ -392,17 +394,24 @@ def test_saved_snapshot_can_be_edited_and_submit_uses_current_answers(client, au
                                headers=headers(student_token)).json()["data"]
     assert rich_reloaded["questions"][0]["answer"] == rich_answer
 
+    first_submit_payload = {
+        "answers": [{"question_id": question_id, "content": "页面当前版本"}],
+        "idempotency_key": "submission-snapshot-first",
+    }
     submitted = client.post(f"/api/v1/student/assignments/{assignment_id}/submit",
-                            headers=headers(student_token), json={
-        "answers": [{"question_id": question_id, "content": "页面当前版本"}]
-    })
-    assert submitted.status_code == 200
+                            headers=headers(student_token), json=first_submit_payload)
+    repeated = client.post(f"/api/v1/student/assignments/{assignment_id}/submit",
+                           headers=headers(student_token), json=first_submit_payload)
+    assert submitted.status_code == repeated.status_code == 200
     with SessionLocal() as db:
         submission = db.query(Submission).filter_by(assignment_id=assignment_id).one()
         answer = db.query(Answer).filter_by(submission_id=submission.id).one()
         assert submission.status == SubmissionStatus.submitted
         assert answer.content == "页面当前版本"
         first_submitted_at = submission.submitted_at
+        assert db.query(OutboxEvent).filter_by(
+            dedup_key=f"submission:{submission.id}:submit:submission-snapshot-first"
+        ).count() == 1
 
     # 截止前提交后仍可保存新快照；再次提交时覆盖答案并记录最后一次提交时间。
     reopened = client.put(save_url, headers=headers(student_token), json={
@@ -412,7 +421,8 @@ def test_saved_snapshot_can_be_edited_and_submit_uses_current_answers(client, au
     assert reopened.json()["data"]["status"] == "draft"
     resubmitted = client.post(f"/api/v1/student/assignments/{assignment_id}/submit",
                               headers=headers(student_token), json={
-        "answers": [{"question_id": question_id, "content": "最后提交版本"}]
+        "answers": [{"question_id": question_id, "content": "最后提交版本"}],
+        "idempotency_key": "submission-snapshot-second",
     })
     assert resubmitted.status_code == 200
     with SessionLocal() as db:
@@ -476,7 +486,7 @@ def test_student_assignment_detail_hides_answers_until_grade_confirmed(client, a
     assert after["questions"][0]["teacher_comment"] == "很好"
 
 
-def test_expired_saved_snapshot_is_auto_submitted(client, auth):
+def test_expired_saved_snapshot_is_auto_submitted_through_outbox(client, auth):
     with SessionLocal.begin() as db:
         teacher = db.query(User).filter_by(role=Role.teacher).one()
         student = db.query(User).filter_by(role=Role.student).one()
@@ -497,15 +507,73 @@ def test_expired_saved_snapshot_is_auto_submitted(client, auth):
         db.flush()
         submission = Submission(assignment_id=assignment.id, student_id=student.id,
                                 status=SubmissionStatus.draft)
-        db.add(submission)
+        untouched = Submission(assignment_id=assignment.id, student_id=teacher.id,
+                               status=SubmissionStatus.not_started)
+        db.add_all([submission, untouched])
         db.flush()
-        submission_id = submission.id
+        db.add(ScheduledNotification(
+            offering_id=offering.id,
+            assignment_id=assignment.id,
+            kind="assignment_auto_submit",
+            scheduled_at=assignment.end_at,
+            dedup_key=f"assignment:{assignment.id}:auto-submit",
+            payload={"title": assignment.title},
+        ))
+        assignment_id = assignment.id
+        submission_id, untouched_id = submission.id, untouched.id
 
+    assert maintain_deadlines() == 1
+    assert maintain_deadlines() == 0
     with SessionLocal() as db:
-        assert auto_submit_expired_drafts(db) == 1
+        # The scheduler only persists an outbox event; the MQ consumer owns mutation.
+        assert db.get(Submission, submission_id).status == SubmissionStatus.draft
+        deadline_event = db.query(OutboxEvent).filter_by(
+            dedup_key=f"assignment:{assignment_id}:deadline-reached"
+        ).one()
+        assert deadline_event.published_at is None
+
+    assert run_local_once() == 0
+    with SessionLocal() as db:
         submission = db.get(Submission, submission_id)
         assert submission.status == SubmissionStatus.submitted
         assert submission.submitted_at is not None
+        assert submission.version == 1
+        assert db.get(Submission, untouched_id).status == SubmissionStatus.not_started
+        batch_event = db.query(OutboxEvent).filter_by(
+            dedup_key=f"assignment:{assignment_id}:auto-submitted"
+        ).one()
+        assert batch_event.payload["submitted_count"] == 1
+
+
+def test_legacy_due_assignment_without_schedule_is_recovered(client):
+    with SessionLocal.begin() as db:
+        teacher = db.query(User).filter_by(role=Role.teacher).one()
+        student = db.query(User).filter_by(role=Role.student).one()
+        course = Course(number="CS104-R", name="截止恢复测试")
+        db.add(course)
+        db.flush()
+        offering = CourseOffering(course_id=course.id, teacher_id=teacher.id, year=2026,
+                                  term=1, status=OfferingStatus.active)
+        db.add(offering)
+        db.flush()
+        assignment = Assignment(
+            offering_id=offering.id, title="历史作业", status=AssignmentStatus.open,
+            start_at=datetime.now() - timedelta(days=1),
+            end_at=datetime.now() - timedelta(seconds=1),
+        )
+        db.add(assignment)
+        db.flush()
+        submission = Submission(assignment_id=assignment.id, student_id=student.id,
+                                status=SubmissionStatus.draft)
+        db.add(submission)
+        db.flush()
+        assignment_id, submission_id = assignment.id, submission.id
+
+    assert maintain_deadlines() == 1
+    assert run_local_once() == 0
+    with SessionLocal() as db:
+        assert db.get(Submission, submission_id).status == SubmissionStatus.submitted
+        assert db.get(Assignment, assignment_id).status == AssignmentStatus.closed
 
 
 def test_teacher_submission_counts_and_manual_grading_time(client, auth):

@@ -33,6 +33,7 @@ flowchart LR
 - Pydantic 结构化输出；OpenAI-compatible 网关不支持严格 schema 时，JSON 提示 + 校验 + 一次修复。
 - PDF、DOCX、PPTX 保留页码/幻灯片/标题层级的结构化切片。
 - Qdrant Dense Top-20 + MySQL BM25 Top-20 + RRF + 可降级本地 `bge-reranker-base`。
+- 作业手动提交同步写 MySQL 并在同一事务写 Outbox；截止时间按作业派发单条 MQ 事件，Worker 只批量提交已保存草稿，未作答学生保持未提交。
 - 课程路线先生成草稿、校验证据、教师发布，再同步为业务知识点。
 - 工作记忆、会话摘要、确定性学情语义记忆、反馈记忆和提示词版本分层。
 - AI 不能直接发布作业或确认成绩；低置信批阅进入人工复核。

@@ -156,6 +156,7 @@ class Enrollment(TimestampMixin, Base):
 
 class Assignment(TimestampMixin, Base):
     __tablename__ = "assignments"
+    __table_args__ = (Index("ix_assignments_status_end_at", "status", "end_at"),)
 
     id: Mapped[int] = mapped_column(primary_key=True)
     offering_id: Mapped[int] = mapped_column(ForeignKey("course_offerings.id", ondelete="CASCADE"))
@@ -200,6 +201,7 @@ class Submission(TimestampMixin, Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     assignment_id: Mapped[int] = mapped_column(ForeignKey("assignments.id", ondelete="CASCADE"))
     student_id: Mapped[int] = mapped_column(ForeignKey("app_users.id", ondelete="RESTRICT"))
+    version: Mapped[int] = mapped_column(default=0)
     status: Mapped[SubmissionStatus] = mapped_column(Enum(SubmissionStatus), default=SubmissionStatus.not_started)
     submitted_at: Mapped[datetime | None]
     ai_graded_at: Mapped[datetime | None]
@@ -325,6 +327,7 @@ class OutboxEvent(TimestampMixin, Base):
     topic: Mapped[str] = mapped_column(String(100))
     tag: Mapped[str] = mapped_column(String(100))
     aggregate_id: Mapped[str] = mapped_column(String(100))
+    dedup_key: Mapped[str | None] = mapped_column(String(160), unique=True)
     payload: Mapped[dict] = mapped_column(JSON)
     published_at: Mapped[datetime | None]
     attempts: Mapped[int] = mapped_column(default=0)

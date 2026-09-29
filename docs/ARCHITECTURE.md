@@ -45,6 +45,15 @@ sequenceDiagram
 5. 查询同时执行 Dense 与 BM25；RRF 合并前 40 个候选，本地 reranker 可用时重排前 12 个，最终返回 5–6 个证据块。
 6. 每个引用带资料名、页码或幻灯片号、标题路径和摘录。
 
+## 作业提交数据流
+
+1. 学生主动保存或提交时，答案同步写入 MySQL；系统不做定时自动保存。
+2. 手动提交在同一事务内更新 `submissions` 并写入 `submission.submitted` Outbox，接口只在事务成功后返回。
+3. 发布作业时只创建一条作业级截止任务，而不是为每名学生创建延迟消息。
+4. 调度器用 Redis 锁配合数据库条件更新认领到期任务，再通过 Outbox 投递 `assignment.deadline_reached`。
+5. Worker 消费后批量将该作业的 `draft` 更新为 `submitted`；`not_started` 保持未提交。
+6. Outbox 唯一键、Consumer Inbox 和提交版本共同处理请求重试、消息重投及后续任务的陈旧版本判断。
+
 ## Memory 分层
 
 | 层 | 数据源 | 更新规则 |

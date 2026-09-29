@@ -21,7 +21,7 @@ from app.models import (AIJob, AgentRun, AgentRunStep, Answer, Assignment, Assig
                         Question, QuestionKnowledgePoint, ScheduledNotification, Submission,
                         SubmissionStatus, ResourceChunk, CourseMapVersion, CourseMapNode,
                         CourseMapEdge, CourseMapEvidence, CourseOffering)
-from app.services.submissions import auto_submit_expired_drafts
+from app.services.submissions import auto_submit_assignment_drafts
 from app.integrations.object_storage import object_storage
 from app.integrations.rag import chunk_blocks, delete_resource_vectors, extract_blocks, index_resource
 from app.integrations.runtime_cache import runtime_cache
@@ -34,11 +34,62 @@ logger = logging.getLogger(__name__)
 
 
 def maintain_deadlines() -> int:
-    with SessionLocal() as db:
-        count = auto_submit_expired_drafts(db)
-    if count:
-        logger.info("Auto-submitted %s saved assignment snapshots at deadline", count)
-    return count
+    """Claim due assignment schedules and persist one transactional outbox event each."""
+    dispatched = 0
+    with runtime_cache.lock("assignment-deadline-dispatch", ttl_seconds=10) as acquired:
+        if not acquired:
+            return 0
+        with SessionLocal.begin() as db:
+            rows = db.scalars(select(ScheduledNotification).where(
+                ScheduledNotification.kind == "assignment_auto_submit",
+                ScheduledNotification.sent_at.is_(None),
+                ScheduledNotification.scheduled_at <= datetime.now(),
+            ).order_by(ScheduledNotification.id).limit(100)).all()
+            for row in rows:
+                claimed = db.execute(
+                    update(ScheduledNotification)
+                    .where(ScheduledNotification.id == row.id,
+                           ScheduledNotification.sent_at.is_(None))
+                    .values(sent_at=datetime.now())
+                )
+                if claimed.rowcount == 0 or row.assignment_id is None:
+                    continue
+                db.add(OutboxEvent(
+                    topic=get_settings().rocketmq_topic,
+                    tag="assignment.deadline_reached",
+                    aggregate_id=str(row.assignment_id),
+                    dedup_key=f"assignment:{row.assignment_id}:deadline-reached",
+                    payload={
+                        "event_type": "assignment.deadline_reached",
+                        "assignment_id": row.assignment_id,
+                    },
+                ))
+                dispatched += 1
+            # Recovery path for assignments published before deadline schedules
+            # existed, or for a schedule row lost during an interrupted deploy.
+            due_assignment_ids = db.scalars(select(Assignment.id).where(
+                Assignment.status.in_([AssignmentStatus.open, AssignmentStatus.scheduled]),
+                Assignment.end_at.is_not(None),
+                Assignment.end_at <= datetime.now(),
+            ).order_by(Assignment.end_at).limit(100)).all()
+            for assignment_id in due_assignment_ids:
+                dedup_key = f"assignment:{assignment_id}:deadline-reached"
+                if db.scalar(select(OutboxEvent.id).where(OutboxEvent.dedup_key == dedup_key)):
+                    continue
+                db.add(OutboxEvent(
+                    topic=get_settings().rocketmq_topic,
+                    tag="assignment.deadline_reached",
+                    aggregate_id=str(assignment_id),
+                    dedup_key=dedup_key,
+                    payload={
+                        "event_type": "assignment.deadline_reached",
+                        "assignment_id": assignment_id,
+                    },
+                ))
+                dispatched += 1
+    if dispatched:
+        logger.info("Dispatched %s assignment deadline events", dispatched)
+    return dispatched
 
 
 def deliver_scheduled_notifications() -> int:
@@ -46,7 +97,9 @@ def deliver_scheduled_notifications() -> int:
     realtime_deliveries: list[tuple[list[int], dict]] = []
     with SessionLocal() as db:
         rows = db.scalars(select(ScheduledNotification).where(
-            ScheduledNotification.sent_at.is_(None), ScheduledNotification.scheduled_at <= datetime.now()
+            ScheduledNotification.kind == "assignment_deadline",
+            ScheduledNotification.sent_at.is_(None),
+            ScheduledNotification.scheduled_at <= datetime.now(),
         ).limit(100)).all()
         for row in rows:
             claimed = db.execute(
@@ -423,7 +476,32 @@ def process_resource(payload: dict) -> None:
 
 
 def process_teaching_event(payload: dict) -> None:
-    if payload.get("event_type") != "submission.graded":
+    event_type = payload.get("event_type")
+    if event_type == "assignment.deadline_reached":
+        assignment_id = int(payload["assignment_id"])
+        with runtime_cache.lock(f"assignment-deadline:{assignment_id}", ttl_seconds=120) as acquired:
+            if not acquired:
+                raise RuntimeError(f"作业 {assignment_id} 的截止任务正在由其他 Worker 处理")
+            with SessionLocal.begin() as db:
+                changed = auto_submit_assignment_drafts(db, assignment_id)
+                if changed:
+                    db.add(OutboxEvent(
+                        topic=get_settings().rocketmq_topic,
+                        tag="assignment.auto_submitted",
+                        aggregate_id=str(assignment_id),
+                        dedup_key=f"assignment:{assignment_id}:auto-submitted",
+                        payload={
+                            "event_type": "assignment.auto_submitted",
+                            "assignment_id": assignment_id,
+                            "submitted_count": changed,
+                        },
+                    ))
+        return
+    if event_type in {"submission.submitted", "assignment.auto_submitted", "assignment.published"}:
+        # Durable integration facts. Expensive follow-up work can subscribe later
+        # without extending the student's synchronous submission request.
+        return
+    if event_type != "submission.graded":
         return
     with SessionLocal.begin() as db:
         submission = db.get(Submission, int(payload["submission_id"]))
@@ -452,7 +530,10 @@ def process_event(payload: dict) -> None:
         process_job(payload)
     elif event_type.startswith("resource."):
         process_resource(payload)
-    elif event_type in {"assignment.published", "submission.graded"}:
+    elif event_type in {
+        "assignment.published", "assignment.deadline_reached",
+        "assignment.auto_submitted", "submission.submitted", "submission.graded",
+    }:
         process_teaching_event(payload)
     # Teaching events are durable integration facts; local side effects are already committed.
     if event_id:

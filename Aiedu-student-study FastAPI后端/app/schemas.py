@@ -89,6 +89,7 @@ class AnswerInput(BaseModel):
 
 class SubmissionSave(BaseModel):
     answers: list[AnswerInput]
+    idempotency_key: str | None = Field(default=None, min_length=8, max_length=128)
 
 
 class GradeItem(BaseModel):

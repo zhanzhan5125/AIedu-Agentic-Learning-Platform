@@ -442,6 +442,7 @@ async submit(num){
 
       try {
         if (num === 1) {
+          payload.idempotency_key = `submission-${assignmentId}-${Date.now()}`
           await apiV1.post(`/student/assignments/${assignmentId}/submit`, payload)
           this.$message.success('提交成功')
           this.returnTo()

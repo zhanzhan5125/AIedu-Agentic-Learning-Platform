@@ -323,6 +323,15 @@ def publish_assignment(
                 dedup_key=f"assignment:{assignment.id}:deadline:{hours}h",
                 payload={"hours": hours, "title": assignment.title},
             ))
+    # One durable deadline task per assignment; never enqueue one delayed message per student.
+    db.add(ScheduledNotification(
+        offering_id=assignment.offering_id,
+        assignment_id=assignment.id,
+        kind="assignment_auto_submit",
+        scheduled_at=assignment.end_at,
+        dedup_key=f"assignment:{assignment.id}:auto-submit",
+        payload={"title": assignment.title},
+    ))
     db.commit()
     publish_message(set(student_ids), {
         "event_type": "notification", "offering_id": assignment.offering_id,
@@ -357,12 +366,17 @@ def list_student_assignments(
     return ok({"total": len(records), "page": 1, "page_size": len(records) or 1, "records": records}, request.state.request_id)
 
 
-def student_submission(db: Session, assignment_id: int, student_id: int) -> tuple[Assignment, Submission]:
-    row = db.execute(
+def student_submission(
+    db: Session, assignment_id: int, student_id: int, *, for_update: bool = False,
+) -> tuple[Assignment, Submission]:
+    query = (
         select(Assignment, Submission)
         .join(Submission, Submission.assignment_id == Assignment.id)
         .where(Assignment.id == assignment_id, Submission.student_id == student_id)
-    ).one_or_none()
+    )
+    if for_update:
+        query = query.with_for_update()
+    row = db.execute(query).one_or_none()
     if row is None:
         raise NotFound("作业或提交记录不存在")
     return row[0], row[1]
@@ -472,7 +486,7 @@ def save_submission(
     user: User = Depends(require_roles(Role.student)),
     db: Session = Depends(get_db),
 ):
-    assignment, submission = student_submission(db, assignment_id, user.id)
+    assignment, submission = student_submission(db, assignment_id, user.id, for_update=True)
     now = datetime.now()
     if assignment.start_at and now < assignment.start_at:
         raise Conflict("作业尚未开始")
@@ -482,8 +496,10 @@ def save_submission(
     reset_grading(db, submission)
     # 保存新快照相当于继续编辑；若此后不再提交，Worker 会在截止时间自动提交该快照。
     submission.status = SubmissionStatus.draft
+    submission.version += 1
     db.commit()
-    return ok({"submission_id": submission.id, "status": submission.status.value}, request.state.request_id)
+    return ok({"submission_id": submission.id, "status": submission.status.value,
+               "version": submission.version}, request.state.request_id)
 
 
 @router.post("/student/assignments/{assignment_id}/submit")
@@ -494,7 +510,14 @@ def submit_assignment(
     user: User = Depends(require_roles(Role.student)),
     db: Session = Depends(get_db),
 ):
-    assignment, submission = student_submission(db, assignment_id, user.id)
+    assignment, submission = student_submission(db, assignment_id, user.id, for_update=True)
+    dedup_key = (
+        f"submission:{submission.id}:submit:{payload.idempotency_key}"
+        if payload is not None and payload.idempotency_key else None
+    )
+    if dedup_key and db.scalar(select(OutboxEvent.id).where(OutboxEvent.dedup_key == dedup_key)):
+        return ok({"submission_id": submission.id, "status": submission.status.value,
+                   "version": submission.version}, request.state.request_id)
     now = datetime.now()
     if assignment.start_at and now < assignment.start_at:
         raise Conflict("作业尚未开始")
@@ -506,8 +529,23 @@ def submit_assignment(
     reset_grading(db, submission)
     submission.status = SubmissionStatus.submitted
     submission.submitted_at = now
+    submission.version += 1
+    db.add(OutboxEvent(
+        topic=get_settings().rocketmq_topic,
+        tag="submission.submitted",
+        aggregate_id=str(submission.id),
+        dedup_key=dedup_key,
+        payload={
+            "event_type": "submission.submitted",
+            "submission_id": submission.id,
+            "assignment_id": assignment.id,
+            "submission_version": submission.version,
+            "submit_mode": "manual",
+        },
+    ))
     db.commit()
-    return ok({"submission_id": submission.id, "status": submission.status.value}, request.state.request_id)
+    return ok({"submission_id": submission.id, "status": submission.status.value,
+               "version": submission.version}, request.state.request_id)
 
 
 @router.post("/teacher/submissions/{submission_id}/grade")
