@@ -48,6 +48,12 @@ def queue_agent(db: Session, *, kind: str, resource_type: str, resource_id: int,
         if run is None:
             raise Conflict("任务审计记录缺失")
         return existing, run
+    settings = get_settings()
+    if not runtime_cache.allow(
+        "agent-job", owner.id, settings.ai_job_rate_per_minute, 60,
+        capacity=settings.ai_job_burst,
+    ):
+        raise AppError(429, "AI 任务创建过于频繁，请稍后再试")
     agent_name, task_type = agent_identity(kind)
     run = AgentRun(kind=kind, agent_name=agent_name, task_type=task_type,
                    owner_id=owner.id, resource_type=resource_type,
@@ -69,8 +75,6 @@ def queue_agent(db: Session, *, kind: str, resource_type: str, resource_id: int,
 @router.post("/teacher/offerings/{offering_id}/assignment-drafts", status_code=status.HTTP_202_ACCEPTED)
 def generate_assignment_draft(offering_id: int, payload: AssignmentDraftRequest, request: Request,
                               user: User = Depends(require_roles(Role.teacher)), db: Session = Depends(get_db)):
-    if not runtime_cache.allow("question-generate", user.id, 10, 60):
-        raise AppError(429, "出题任务过于频繁，请稍后再试")
     offering = offering_for_user(db, offering_id, user)
     ids = set(payload.knowledge_point_ids)
     selected_node_ids = set(payload.course_map_node_ids)

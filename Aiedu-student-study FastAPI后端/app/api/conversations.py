@@ -163,8 +163,6 @@ def _similarity(left: str, right: str) -> float:
 @router.post("/{conversation_id}/ask", status_code=status.HTTP_201_CREATED)
 def ask_tutor(conversation_id: int, payload: AskRequest, request: Request,
               user: User = Depends(require_roles(Role.student)), db: Session = Depends(get_db)):
-    if not runtime_cache.allow("chat", user.id, 30, 60):
-        raise AppError(429, "提问过于频繁，请稍后再试")
     conversation = _owned_conversation(conversation_id, user, db)
     run_kind = f"tutor:{hashlib.sha256(payload.idempotency_key.encode()).hexdigest()[:32]}"
     existing_run = db.scalar(select(AgentRun).where(
@@ -172,6 +170,12 @@ def ask_tutor(conversation_id: int, payload: AskRequest, request: Request,
     ))
     if existing_run and existing_run.result:
         return ok(existing_run.result, request.state.request_id)
+    settings = get_settings()
+    if not runtime_cache.allow(
+        "chat", user.id, settings.ai_chat_rate_per_minute, 60,
+        capacity=settings.ai_chat_burst,
+    ):
+        raise AppError(429, "提问过于频繁，请稍后再试")
     open_questions = db.execute(
         select(Assignment.id, Question.prompt)
         .join(AssignmentQuestion, AssignmentQuestion.assignment_id == Assignment.id)

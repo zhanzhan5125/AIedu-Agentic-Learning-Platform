@@ -54,7 +54,11 @@ def ai_provider_status(request: Request,
 @router.post("/ai/provider/test-chat")
 def test_chat_provider(payload: ChatProbeRequest, request: Request,
                        user: User = Depends(require_roles(Role.teacher, Role.manager))):
-    if not runtime_cache.allow("ai-provider-chat-test", user.id, 5, 60):
+    settings = get_settings()
+    if not runtime_cache.allow(
+        "ai-provider-chat-test", user.id, settings.ai_provider_test_rate_per_minute, 60,
+        capacity=settings.ai_provider_test_burst,
+    ):
         raise AppError(429, "AI 连通性测试过于频繁，请稍后再试")
     try:
         result = chat_completion(payload.prompt)
@@ -66,7 +70,11 @@ def test_chat_provider(payload: ChatProbeRequest, request: Request,
 @router.post("/ai/provider/test-embedding")
 def test_embedding_provider(payload: EmbeddingProbeRequest, request: Request,
                             user: User = Depends(require_roles(Role.teacher, Role.manager))):
-    if not runtime_cache.allow("ai-provider-embedding-test", user.id, 5, 60):
+    settings = get_settings()
+    if not runtime_cache.allow(
+        "ai-provider-embedding-test", user.id, settings.ai_provider_test_rate_per_minute, 60,
+        capacity=settings.ai_provider_test_burst,
+    ):
         raise AppError(429, "Embedding 连通性测试过于频繁，请稍后再试")
     try:
         result = embedding_probe(payload.text)
@@ -81,6 +89,21 @@ def enqueue(kind: str, resource_type: str, payload: AIJobCreate, user: User, db:
         if existing.owner_id != user.id or existing.kind != kind:
             raise Conflict("幂等键已被其他任务使用")
         return existing
+    settings = get_settings()
+    if kind == "grading.single":
+        scope = "grading-job"
+        limit = settings.ai_grading_rate_per_minute
+        capacity = settings.ai_grading_burst
+    elif kind == "rag.chat":
+        scope = "chat"
+        limit = settings.ai_chat_rate_per_minute
+        capacity = settings.ai_chat_burst
+    else:
+        scope = "agent-job"
+        limit = settings.ai_job_rate_per_minute
+        capacity = settings.ai_job_burst
+    if not runtime_cache.allow(scope, user.id, limit, 60, capacity=capacity):
+        raise AppError(429, "AI 任务创建过于频繁，请稍后再试")
     agent_name, task_type = agent_identity(kind)
     run = AgentRun(kind=kind, agent_name=agent_name, task_type=task_type,
                    owner_id=user.id, resource_type=resource_type,

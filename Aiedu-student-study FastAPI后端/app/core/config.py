@@ -35,6 +35,14 @@ class Settings(BaseSettings):
     ai_api_key: str = ""
     llm_model: str = "qwen-plus"
     assignment_llm_timeout_seconds: int = Field(default=180, ge=30, le=600)
+    ai_chat_rate_per_minute: int = Field(default=30, ge=1, le=600)
+    ai_chat_burst: int = Field(default=6, ge=1, le=100)
+    ai_job_rate_per_minute: int = Field(default=10, ge=1, le=120)
+    ai_job_burst: int = Field(default=3, ge=1, le=30)
+    ai_grading_rate_per_minute: int = Field(default=30, ge=1, le=600)
+    ai_grading_burst: int = Field(default=10, ge=1, le=100)
+    ai_provider_test_rate_per_minute: int = Field(default=5, ge=1, le=60)
+    ai_provider_test_burst: int = Field(default=1, ge=1, le=10)
     enable_mq: bool = False
     enable_llm: bool = False
     upload_dir: str = "./uploads"
