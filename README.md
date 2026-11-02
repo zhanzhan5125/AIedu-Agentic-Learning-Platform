@@ -1,6 +1,6 @@
 # AIedu Agentic Learning Platform
 
-AIedu 是一个面向高校课程的、可审计的四智能体协作学习平台。项目不是把每个功能都包装成 Agent，而是在现有 FastAPI、Vue 2、MySQL、Redis、RocketMQ、Qdrant 和 MinIO 业务系统上，加入四个边界清晰的业务智能体。
+AIedu 是一个面向高校课程的、可审计的四智能体协作学习平台。项目不是把每个功能都包装成 Agent，而是在现有 FastAPI、Vue 3、MySQL、Redis、RocketMQ、Qdrant 和 MinIO 业务系统上，加入四个边界清晰的业务智能体。
 
 ## 四个智能体
 
