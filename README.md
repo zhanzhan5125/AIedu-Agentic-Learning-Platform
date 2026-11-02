@@ -27,20 +27,6 @@ flowchart LR
     QA --> A[带引用回答或证据不足说明]
 ```
 
-## 面试可讲的工程点
-
-- LangGraph 公共运行状态：`prepare_context → make_plan → execute_tools → compose_result → validate_result → reflect_once? → finalize`。
-- Pydantic 结构化输出；OpenAI-compatible 网关不支持严格 schema 时，JSON 提示 + 校验 + 一次修复。
-- PDF、DOCX、PPTX 保留页码/幻灯片/标题层级的结构化切片。
-- Qdrant Dense Top-20 + MySQL BM25 Top-20 + RRF + 可降级本地 `bge-reranker-base`。
-- 作业手动提交同步写 MySQL 并在同一事务写 Outbox；截止时间按作业派发单条 MQ 事件，Worker 只批量提交已保存草稿，未作答学生保持未提交。
-- AI 接口使用 Redis Lua 原子令牌桶，把持续调用速率与瞬时突发容量分开；Redis 异常时退化为单进程令牌桶，避免昂贵模型接口无限放行。
-- 课程路线先生成草稿、校验证据、教师发布，再同步为业务知识点。
-- 工作记忆、会话摘要、确定性学情语义记忆、反馈记忆和提示词版本分层。
-- AI 不能直接发布作业或确认成绩；低置信批阅进入人工复核。
-
-更完整的边界与数据流见 [架构说明](docs/ARCHITECTURE.md)，可重复演示流程见 [演示脚本](docs/DEMO.md)。
-
 ## 本地运行
 
 1. 复制 `.env.example` 和 `.env.ai.example`，只在本地文件中填写密钥。
@@ -56,36 +42,3 @@ flowchart LR
 
 4. 另开终端启动 Worker：`uv run python -m app.worker`。
 5. 前端：进入 `Aiedu-student-study 前端` 后运行 `npm ci`、`npm run serve`。
-
-本地 reranker 默认关闭，生产使用 RRF 结果。需要复现实验时执行 `uv sync --extra reranker` 并设置 `AIEDU_ENABLE_LOCAL_RERANKER=true`；显存不足会回退 CPU，加载失败不会阻断问答。
-
-## 验证
-
-```powershell
-cd "Aiedu-student-study FastAPI后端"
-$env:PYTHONPATH='.'
-.\.venv\Scripts\python.exe -m pytest -q
-
-cd "..\Aiedu-student-study 前端"
-npm run build
-```
-
-## 可复现评测
-
-项目内置 RAG、智能批阅 Reflection、结构化意图路由三组消融评测。统一入口：
-
-```powershell
-cd "Aiedu-student-study FastAPI后端"
-uv run python -m scripts.evaluate_agents --suite all --dataset-version v2 --offering-id 2
-uv run python -m scripts.evaluate_agents --suite grading --dataset-version v3 --seed 42
-```
-
-评测会保存逐样本 JSON、Markdown 汇总、失败案例、Token 和延迟。正式运行要求全部样本经过审核，且指定 Rerank 时必须真正加载模型，禁止静默降级后伪报重排结果。结构化切片后的 v2 中，章节类 Hybrid nDCG@5 从 v1 的 0.5419 提升到 0.7827；补充的 Dense+Rerank 消融将 Dense nDCG@5 从 0.6582 提升到 0.7946、Hit@1 从 0.3125 提升到 0.6875，但 Recall@5 略降、CPU p95 达 8.60 秒，因此生产不默认启用。批阅 v3 在 60 条答案上将结构化 Reflection 与同一份 Raw 输出配对比较，归一化 MAE 从 0.0636 降到 0.0503，允许区间命中率从 73.33% 提升到 80%；但 95% CI 仍跨 0，且存在 3 条评分回归，所以仍保留教师确认。详见 [评测说明](docs/evaluation.md)、[RAG v2 正式结果](docs/evaluation-results-v2.md)、[Dense+Rerank 补充消融](docs/evaluation-results-dense-rerank-v2.md)与 [批阅 Reflection v3 正式结果](docs/evaluation-results-grading-v3.md)。
-
-## 已知边界
-
-- 不处理扫描 PDF OCR、课件图片语义或复杂多模态内容。
-- 不使用 Neo4j；课程路线采用 MySQL 版本化节点/边，便于审核与发布。
-- 不允许智能体自由循环或互相无限对话。
-- 网页搜索只有配置 Tavily-compatible 密钥后才开放，网页文本始终视为不可信证据。
-- 当前 Vue 2 构建仍有历史大资源包告警，不影响生产构建成功。
